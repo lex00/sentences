@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reed-Kellogg Diagram Engine</title>
+    <style>
+      :root { color-scheme: light dark; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        display: grid;
+        place-items: center;
+        background: #f7f6f2;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      #stage {
+        background: #fffdf8;
+        border: 1px solid #e2ddd0;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage" width="900" height="500"></canvas>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

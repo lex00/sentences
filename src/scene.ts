@@ -1,0 +1,64 @@
+// Scene — the decoupling seam. layout() runs once and produces a Scene;
+// every renderer (Canvas now, WebGPU later) consumes the same Scene.
+//
+// Two rules that make "rich" possible:
+//   (a) a tagged scene-*graph*, not a flat list (groups carry role + stable id)
+//   (b) primitives carry *roles*, not pixels (Theme maps role -> appearance)
+
+export type Pt = { x: number; y: number };
+
+// Axis-aligned bounding box, in abstract layout units. Right/left may overhang the head.
+export type BBox = { left: number; top: number; right: number; bottom: number };
+
+// Identity back-references.
+export type NodeId = string; // stable, STRUCTURAL (derived from IR path/role) — load-bearing for morph
+export type IrId = string; // back-ref to the originating IR node
+
+// The full alphabet of marks. Everything renders to a Seg or a Lbl.
+export type Role =
+  | "baseline"
+  | "rail"
+  | "divider.full"
+  | "divider.half"
+  | "divider.lean"
+  | "slant"
+  | "word"
+  | "connector.dotted"
+  | "fork";
+
+export type Prim =
+  | { kind: "seg"; a: Pt; b: Pt; role: Role; sourceId?: IrId }
+  | { kind: "lbl"; text: string; anchor: Pt; angle: number; role: Role; sourceId?: IrId };
+
+export type NodeRole =
+  | "clause"
+  | "subject"
+  | "verb"
+  | "object"
+  | "complement"
+  | "modifier"
+  | "pp"
+  | "compound"
+  | "subclause";
+
+export type SceneNode = {
+  id: NodeId;
+  role: NodeRole;
+  sourceId?: IrId;
+  children: Array<SceneNode | Prim>;
+  bounds: BBox;
+};
+
+export type Scene = { root: SceneNode; bounds: BBox };
+
+// --- small helpers ---
+
+export const isNode = (c: SceneNode | Prim): c is SceneNode =>
+  (c as SceneNode).children !== undefined;
+
+export const emptyBBox = (): BBox => ({
+  left: Infinity,
+  top: Infinity,
+  right: -Infinity,
+  bottom: -Infinity,
+});
