@@ -15,9 +15,23 @@
   diff-and-tween and layout invariants. `npm test`.
 - ✅ **Phase 4** Theme variants (default + blueprint) + compound (fork) & subordinate-clause
   (nesting) layout. Clause arrangement refactored into a placeable `Measured` so clauses nest.
-- ▢ **Phase 5** next — effect bindings + Canvas effects (draw-on, particles) + perf-wall capture.
+- ✅ **Phase 5** Effects as data: EffectScheduler (bindings -> instances), Canvas draw-on +
+  CPU particle sim (executor-owned state, seeded RNG), shader binding skipped via supports().
+  **Perf wall:** `npm run bench`.
+- ▢ **Phase 6** next — benepar parser -> IR.
 
-17 specs across 3 files. 7 commits, local only.
+### Perf-wall finding (Phase 5)
+
+The particle **sim** is not the Canvas2D wall: 1,000,000 particles update in ~2.24ms (13% of a
+60fps frame), and 250k in ~0.5ms. So the entire Canvas2D ceiling is **rasterization** — the
+per-particle `arc()` + `fill()` with `lighter` compositing — not the math. That is precisely
+the WebGPU win (Phase 7): move rasterization + compositing to the GPU (instanced/point draw),
+since we already have effectively unlimited sim headroom on the CPU.
+
+Remaining to measure: the in-browser raster FPS curve (dominant real cost). The node bench is
+the CPU-sim floor only; a browser bench harness is future work.
+
+21 specs across 4 files. 8 commits, local only.
 
 ## Sequencing principle
 

@@ -2,7 +2,7 @@
 // the EffectExecutor. The spine hands the executor effect *instances*, never draw calls;
 // particle simulation state lives inside the executor.
 
-import type { Pt, NodeRole, Role } from "./scene.js";
+import type { Pt, SceneNode } from "./scene.js";
 import type { Theme } from "./theme.js";
 import type { Easing, RenderFrame } from "./anim.js";
 
@@ -23,10 +23,9 @@ export type EffectDesc =
 
 export type EffectEvent = "enter" | "update" | "exit" | "idle" | "hover" | "select";
 
-// Selector over the scene graph — role of a primitive or role of a node.
-export type RoleSelector =
-  | { on: "prim"; role: Role }
-  | { on: "node"; role: NodeRole };
+// Selector over the scene graph — match by node role or by a primitive role in the subtree.
+// role "*" is a wildcard.
+export type RoleSelector = { on: "node" | "prim"; role: string };
 
 export type EffectBinding = {
   event: EffectEvent;
@@ -34,12 +33,14 @@ export type EffectBinding = {
   effect: EffectDesc;
 };
 
-// A live effect: the descriptor plus where/when it fired. The executor owns its sim state.
+// A live effect: the descriptor plus where/when it fired, and the target node snapshot
+// (geometry the executor may trace, e.g. draw-on). The executor owns its sim state, not this.
 export type EffectInstance = {
   id: string;
   desc: EffectDesc;
   anchor: Pt;
   spawnedAt: number; // ms (Clock time)
+  target?: SceneNode;
 };
 
 // The ONLY per-renderer part of the system. Consumes a RenderFrame (pure-geometry Scene +
