@@ -5,6 +5,16 @@
 > integration or GPU work. See `DESIGN.md` for the architecture and `RESEARCH.md` for the
 > motivating gap.
 
+## Status (2026-06-28)
+
+- ✅ **Phase 0** Scaffold — Vite+TS, canvas, type contracts
+- ✅ **Phase 1** IR + fixtures — superseded by layout(); IR fixtures remain
+- ✅ **Phase 2** Animator + Canvas executor (RISK 1 retired)
+- ✅ **Phase 3** Footprint layout engine (RISK 2 retired)
+- ⏳ **Hardening** — Vitest landed early (Phase 8 testing pulled forward); 9 specs lock in the
+  diff-and-tween and layout invariants. `npm test`.
+- ▢ **Phase 4** next.
+
 ## Sequencing principle
 
 De-risk before you build wide. The novel, could-sink-the-project parts are (1) the 2-D
