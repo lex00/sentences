@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parse } from "./parse.js";
-import { lower } from "../lower.js";
+import { lower, lowerSentence } from "../lower.js";
 import { layout, type TextMetrics } from "../layout.js";
 import { isNode, type Scene, type SceneNode } from "../scene.js";
 import type { Nominal, Verbal, Modifier } from "../ir.js";
@@ -53,6 +53,21 @@ describe("in-browser parser -> IR", () => {
 
   it("throws when there isn't even a subject+verb (graceful failure for the UI)", () => {
     expect(() => parse("seashells")).toThrow(); // single noun — no predicate
+  });
+});
+
+describe("clause coordination (compound sentences)", () => {
+  it("splits independent clauses into a compound sentence", () => {
+    const s = lowerSentence(parse("Birds sing and dogs bark"));
+    expect(s.clauses).toHaveLength(2);
+    expect(s.conjunctions.map((c) => c.text)).toEqual(["and"]);
+    expect((s.clauses[0]!.subject as Nominal).head.text).toBe("Birds");
+    expect((s.clauses[1]!.subject as Nominal).head.text).toBe("dogs");
+  });
+
+  it("does NOT split NP coordination or VP coordination into clauses", () => {
+    expect(lowerSentence(parse("Dogs and cats chase mice")).clauses).toHaveLength(1); // compound subject
+    expect(lowerSentence(parse("the dog runs and barks")).clauses).toHaveLength(1); // compound predicate
   });
 });
 

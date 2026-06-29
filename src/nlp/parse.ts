@@ -171,11 +171,33 @@ function parseS(ts: Tagged[], i: number, end: number): R {
   return { tree: node("S", [subj.tree, vp.tree]), next: vp.next };
 }
 
-// Parse a sentence into a constituency Tree. Throws if it can't find an S (NP + VP).
+// Parse into a constituency Tree. A single clause returns its S; independent clauses joined by
+// a conjunction ("Birds sing and dogs bark") return an S whose children are several S + CC
+// (a compound sentence). Throws if it can't find even one clause.
 export function parse(text: string): Tree {
   const ts = tag(text).filter((t) => t.tag !== "." && t.tag !== ",");
   ensureVerb(ts);
-  const s = parseS(ts, 0, ts.length);
-  if (!s) throw new Error("couldn't parse: expected a subject and a verb");
-  return s.tree;
+
+  const clauses: Tree[] = [];
+  const ccs: string[] = [];
+  let i = 0;
+  while (i < ts.length) {
+    const s = parseS(ts, i, ts.length);
+    if (!s) break;
+    clauses.push(s.tree);
+    i = s.next;
+    if (i < ts.length && ts[i]!.tag === "CC") {
+      ccs.push(ts[i]!.word);
+      i++;
+    } else break;
+  }
+  if (clauses.length === 0) throw new Error("couldn't parse: expected a subject and a verb");
+  if (clauses.length === 1) return clauses[0]!;
+
+  const kids: Tree[] = [];
+  clauses.forEach((c, k) => {
+    kids.push(c);
+    if (k < ccs.length) kids.push(leaf("CC", ccs[k]!));
+  });
+  return node("S", kids);
 }

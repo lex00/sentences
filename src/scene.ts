@@ -31,6 +31,7 @@ export type Prim =
   | { kind: "lbl"; text: string; anchor: Pt; angle: number; role: Role; sourceId?: IrId };
 
 export type NodeRole =
+  | "sentence"
   | "clause"
   | "subject"
   | "verb"

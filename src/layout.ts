@@ -5,7 +5,7 @@
 // clause with no special-casing. Every Measured bakes its id + NodeRole at measure time and
 // exposes place(x, y) -> SceneNode. The engine is closed over an injected TextMetrics port.
 
-import type { Clause, Nominal, Verbal, Modifier, Word, Compound } from "./ir.js";
+import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Sentence } from "./ir.js";
 import type { Scene, SceneNode, Prim, BBox, Pt, NodeId, NodeRole } from "./scene.js";
 import type { LayoutStyle } from "./theme.js";
 import { defaultLayoutStyle } from "./theme.js";
@@ -58,7 +58,7 @@ const isCompound = (
   x: Nominal | Verbal | Compound<Nominal> | Compound<Verbal>,
 ): x is Compound<Nominal | Verbal> => "items" in x;
 
-export function layout(ir: Clause, metrics: TextMetrics, style: LayoutStyle = defaultLayoutStyle): Scene {
+export function layout(input: Clause | Sentence, metrics: TextMetrics, style: LayoutStyle = defaultLayoutStyle): Scene {
   const SZ = style.em;
   const w = (t: string) => metrics.measure(t, SZ).width;
   const cos = Math.cos(style.slantAngle);
@@ -270,7 +270,36 @@ export function layout(ir: Clause, metrics: TextMetrics, style: LayoutStyle = de
     };
   }
 
-  const root = measureClause(ir, "c", "clause").place(START_X, BASE_Y);
+  const sentence: Sentence = "clauses" in input ? input : { clauses: [input], conjunctions: [] };
+
+  // Single clause: unchanged (root id "c").
+  if (sentence.clauses.length <= 1) {
+    const root = measureClause(sentence.clauses[0] ?? (input as Clause), "c", "clause").place(START_X, BASE_Y);
+    return { root, bounds: root.bounds };
+  }
+
+  // Compound sentence: stack the clause diagrams, joined by a dashed step with the conjunction.
+  const nodes: SceneNode[] = [];
+  const baselineYs: number[] = [];
+  let y = BASE_Y - (sentence.clauses.length - 1) * style.em * 3.5;
+  sentence.clauses.forEach((clause, i) => {
+    const placed = measureClause(clause, `c${i}`, "clause").place(START_X, y);
+    nodes.push(placed);
+    baselineYs.push(y);
+    y = placed.bounds.bottom + style.em * 3.5;
+  });
+
+  const extra: Prim[] = [];
+  const cx = START_X + style.em * 3;
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const y0 = baselineYs[i]!;
+    const y1 = baselineYs[i + 1]!;
+    extra.push({ kind: "seg", a: { x: cx, y: y0 }, b: { x: cx, y: y1 }, role: "connector.dotted" });
+    extra.push({ kind: "lbl", text: sentence.conjunctions[i]?.text ?? "and", anchor: { x: cx + 4, y: (y0 + y1) / 2 }, angle: 0, role: "word" });
+  }
+
+  const children: Array<SceneNode | Prim> = [...nodes, ...extra];
+  const root: SceneNode = { id: "s", role: "sentence", children, bounds: childrenBox(children) };
   return { root, bounds: root.bounds };
 }
 

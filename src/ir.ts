@@ -39,3 +39,7 @@ export type Modifier =
 
 // Compound wrapper (compound subject/predicate/object): fork + dotted conjunction line.
 export type Compound<T> = { items: T[]; conjunction: Word };
+
+// A whole sentence: one clause, or several independent clauses coordinated into a compound
+// sentence ("Birds sing and dogs bark"). conjunctions[i] joins clauses[i] and clauses[i+1].
+export type Sentence = { clauses: Clause[]; conjunctions: Word[] };

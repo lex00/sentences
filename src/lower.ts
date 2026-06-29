@@ -9,7 +9,7 @@
 // lowering (UD arcs -> subject/object/modifiers); both produce the same Clause IR. Keeping
 // the IR the convergence point is what keeps that door open.
 
-import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Complement } from "./ir.js";
+import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Complement, Sentence } from "./ir.js";
 import { parseBracket, phrase, type Tree } from "./ptb.js";
 
 const w = (text: string): Word => ({ text });
@@ -165,6 +165,17 @@ function lowerClause(s: Tree): Clause {
 
 export function lower(parse: Tree | string): Clause {
   return lowerClause(typeof parse === "string" ? parseBracket(parse) : parse);
+}
+
+// Lower a whole sentence: a compound sentence (top-level S with several S children) becomes
+// multiple clauses; anything else is a single-clause sentence.
+export function lowerSentence(parse: Tree | string): Sentence {
+  const t = typeof parse === "string" ? parseBracket(parse) : parse;
+  const sKids = t.children.filter((c) => c.label === "S" || c.label === "SINV");
+  if (t.label === "S" && sKids.length >= 2) {
+    return { clauses: sKids.map(lowerClause), conjunctions: t.children.filter((c) => c.label === "CC").map((c) => w(c.word ?? "and")) };
+  }
+  return { clauses: [lowerClause(t)], conjunctions: [] };
 }
 
 // N-best: lower each candidate parse, dropping any that fail to lower.
