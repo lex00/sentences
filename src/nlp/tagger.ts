@@ -13,7 +13,7 @@
 import nlp from "compromise";
 import { POSS, AUX, SUBORD, REL, ADV } from "./lexicon.js";
 
-export type Tag = "DT" | "PRP$" | "PRP" | "IN" | "SUB" | "REL" | "CC" | "MD" | "COP" | "AUX" | "RB" | "CD" | "JJ" | "X" | "," | ".";
+export type Tag = "DT" | "PRP$" | "PRP" | "IN" | "TO" | "SUB" | "REL" | "CC" | "MD" | "COP" | "AUX" | "RB" | "CD" | "JJ" | "X" | "," | ".";
 export type Tagged = { word: string; lc: string; tag: Tag; forced?: "V" };
 
 type Term = { text: string; tags?: string[] };
@@ -22,6 +22,7 @@ function mapTags(word: string, tags: Set<string>): { tag: Tag; forced?: "V" } {
   const lc = word.toLowerCase();
   if (/^[.!?;:]$/.test(word)) return { tag: "." };
   if (word === ",") return { tag: "," };
+  if (lc === "to") return { tag: "TO" }; // infinitive marker OR preposition — disambiguated in the chunker
   if (POSS.has(lc)) return { tag: "PRP$" };
   if (SUBORD.has(lc)) return { tag: "SUB" };
   if (AUX.has(lc)) return { tag: "AUX" };

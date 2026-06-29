@@ -17,7 +17,11 @@ import { VERBS, isCapitalized, MODAL, COPULA, AUX } from "./lexicon.js";
 const leaf = (label: string, word: string): Tree => ({ label, word, children: [] });
 const node = (label: string, children: Tree[]): Tree => ({ label, children });
 
-const looksLikeVerb = (t: Tagged): boolean => t.forced === "V" || (t.tag === "X" && (VERBS.has(t.lc) || t.lc.endsWith("ing") || t.lc.endsWith("ed")));
+// Verb-like: compromise tagged it a verb (forced), OR the seed lexicon/morphology catches one
+// compromise mis-tagged as a noun ("bark", "runs"). The lexicon can over-fire on noun uses
+// ("a big old walk"); parseBaseNP guards that with a head-noun check, not this predicate.
+const looksLikeVerb = (t: Tagged): boolean =>
+  t.forced === "V" || (t.tag === "X" && (VERBS.has(t.lc) || t.lc.endsWith("ed") || t.lc.endsWith("ing")));
 
 // Questions invert the auxiliary before the subject ("Can dogs bark?", "Why can X identify Y?").
 // Rewrite to declarative order so the SVO grammar handles them: aux subj ... -> subj aux ...,
@@ -96,9 +100,14 @@ function parseBaseNP(ts: Tagged[], i: number, end: number): R {
     return { tree: node("NP", kids), next: j };
   }
 
-  // open-class run: adjectives + head noun, stopping at the first verb-like word
+  // open-class run: adjectives + head noun. A verb-like word ends the run ONLY once we already
+  // have a head noun (then it's the predicate: "dogs | bark"). Before that, a verb-like word is
+  // taken as the noun head, so a determiner-led NP gets its head ("a big old | walk").
   const run: Tagged[] = [];
-  while (j < end && (ts[j]!.tag === "X" || ts[j]!.tag === "JJ" || ts[j]!.tag === "CD" || ts[j]!.tag === "RB") && !looksLikeVerb(ts[j]!)) {
+  let hasNoun = false;
+  while (j < end && (ts[j]!.tag === "X" || ts[j]!.tag === "JJ" || ts[j]!.tag === "CD" || ts[j]!.tag === "RB")) {
+    if (looksLikeVerb(ts[j]!) && hasNoun) break;
+    if (ts[j]!.tag === "X" || ts[j]!.tag === "CD") hasNoun = true;
     run.push(ts[j]!);
     j++;
   }
@@ -119,7 +128,7 @@ function parseBaseNP(ts: Tagged[], i: number, end: number): R {
 }
 
 function parsePP(ts: Tagged[], i: number, end: number): R {
-  if (ts[i]!.tag !== "IN") return null;
+  if (ts[i]!.tag !== "IN" && ts[i]!.tag !== "TO") return null;
   const np = parseNP(ts, i + 1, end);
   if (!np) return null;
   return { tree: node("PP", [leaf("IN", ts[i]!.word), np.tree]), next: np.next };
@@ -164,6 +173,9 @@ function parseSingleVP(ts: Tagged[], i: number, end: number): R {
     } else if (t.tag === "RB" && j + 1 < end && isAuxOrVerb(ts[j + 1]!)) {
       kids.push(node("ADVP", [leaf("RB", t.word)])); // adverb inside the verb chain: "can not identify"
       j++;
+    } else if (t.tag === "TO" && j + 1 < end && isAuxOrVerb(ts[j + 1]!)) {
+      kids.push(leaf("TO", t.word)); // infinitive: "need to take" extends the verb
+      j++;
     } else break;
   }
   if (kids.length === 0) return null;
@@ -173,8 +185,8 @@ function parseSingleVP(ts: Tagged[], i: number, end: number): R {
     if (t.tag === "RB") {
       kids.push(node("ADVP", [leaf("RB", t.word)]));
       j++;
-    } else if (t.tag === "IN") {
-      const pp = parsePP(ts, j, end);
+    } else if (t.tag === "IN" || t.tag === "TO") {
+      const pp = parsePP(ts, j, end); // "to" + noun is a preposition ("went to the store")
       if (!pp) break;
       kids.push(pp.tree);
       j = pp.next;

@@ -56,6 +56,27 @@ describe("in-browser parser -> IR", () => {
   });
 });
 
+describe("infinitives and 'to' disambiguation", () => {
+  it("infinitive complement extends the verb: 'I need to take a big old walk'", () => {
+    const c = ir("i need to take a big old walk");
+    expect((c.verb as Verbal).head.text).toBe("need to take");
+    expect(c.complement?.kind).toBe("directObject");
+    if (c.complement?.kind === "directObject") expect((c.complement.value as Nominal).head.text).toBe("walk");
+  });
+
+  it("a verb-lexicon word is a NOUN head when it heads a determiner-led NP: 'a big old walk is nice'", () => {
+    const c = ir("a big old walk is nice");
+    expect((c.subject as Nominal).head.text).toBe("walk");
+    expect(c.complement?.kind).toBe("predicateAdj");
+  });
+
+  it("'to' + noun stays a preposition: 'I went to the store'", () => {
+    const c = ir("I went to the store");
+    const pp = (c.verb as Verbal).modifiers.find((m) => m.kind === "prep");
+    expect(pp && pp.kind === "prep" && pp.object.head.text).toBe("store");
+  });
+});
+
 describe("questions (subject-auxiliary inversion)", () => {
   it("yes/no question un-inverts: 'Can dogs bark'", () => {
     const c = ir("Can dogs bark");

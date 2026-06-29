@@ -124,7 +124,7 @@ function lowerPredicate(vp: Tree): { verb: Verbal | Compound<Verbal>; complement
 
   const walk = (node: Tree): void => {
     for (const c of node.children) {
-      if (c.word !== undefined && isVerb(c.label)) verbWords.push(c.word);
+      if (c.word !== undefined && (isVerb(c.label) || c.label === "TO")) verbWords.push(c.word); // incl. infinitive "to"
       else if (c.label === "VP") walk(c); // auxiliary chain: "has been running"
       else if (c.label === "ADVP" || c.label === "RB") modifiers.push({ kind: "word", value: w(phrase(c)) });
       else if (c.label === "PP") modifiers.push(lowerPP(c));
