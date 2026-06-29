@@ -2,13 +2,19 @@
 // (click or press space) and watch the diagram MORPH — reflow, fade-out, fade-in —
 // instead of snapping. Proves the portable Animator spine + the Canvas executor seam.
 
-import { sceneA, sceneB } from "./fixtures.js";
+import { irA, irB } from "./fixtures.js";
 import { Animator, wallClock } from "./anim.js";
 import { CanvasExecutor } from "./canvas-renderer.js";
-import { defaultTheme } from "./theme.js";
+import { layout, CanvasTextMetrics } from "./layout.js";
+import { defaultTheme, defaultLayoutStyle } from "./theme.js";
 
 const CSS_W = 900;
 const CSS_H = 500;
+
+// Phase 3: Scenes now come from the real layout engine, not the fixture placer.
+const metrics = new CanvasTextMetrics();
+const sceneA = layout(irA, metrics, defaultLayoutStyle);
+const sceneB = layout(irB, metrics, defaultLayoutStyle);
 
 const canvas = document.getElementById("stage") as HTMLCanvasElement;
 const executor = new CanvasExecutor(canvas, CSS_W, CSS_H);
