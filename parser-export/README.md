@@ -48,6 +48,15 @@ Output: `span_scores` `[b, w, w, 124]`.
 int8 is the shippable artifact (one-time cached browser download). If trees ever diverge from
 the reference on hard sentences, fp16 (~134 MB) is the near-exact fallback.
 
+**End-to-end (e2e.py):** int8 ONNX → CKY produces trees that **exactly match** benepar's
+reference on 5/5 test sentences, including "It won't be the carbon dioxide that kills us" (the
+relative clause the rule-based parser can't recover). So the 98.3% span agreement still yields
+correct trees — disagreements fall on low-confidence spans that don't change the argmax.
+
+The TS side (`src/parser/`) is validated against the Python reference: the Unigram tokenizer
+reproduces subword ids exactly, feed construction matches all 6 tensors, and the CKY decoder
+reproduces every reference tree. Only the ORT-Web browser session + app wiring remain.
+
 ## Remaining (TS side, see tasks)
 
 1. ORT-Web session + feed construction (tokenization + `words_from_tokens` + decoder ids).
