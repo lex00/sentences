@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { layout, type TextMetrics } from "./layout.js";
 import { irA } from "./fixtures.js";
 import { isNode, type Scene, type SceneNode } from "./scene.js";
-import type { Clause, Word } from "./ir.js";
+import type { Clause, Word, Modifier } from "./ir.js";
 import { defaultLayoutStyle } from "./theme.js";
 
 const metrics: TextMetrics = {
@@ -45,7 +45,7 @@ const hasRole = (s: Scene, role: string): boolean => {
   return found;
 };
 
-const intransitive = (subjMods: Clause["subject"]["modifiers"], verb: string): Clause => ({
+const intransitive = (subjMods: Modifier[], verb: string): Clause => ({
   subject: { head: W("dog"), modifiers: subjMods },
   verb: { head: W(verb), modifiers: [] },
   complement: null,

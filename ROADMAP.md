@@ -11,9 +11,13 @@
 - ✅ **Phase 1** IR + fixtures — superseded by layout(); IR fixtures remain
 - ✅ **Phase 2** Animator + Canvas executor (RISK 1 retired)
 - ✅ **Phase 3** Footprint layout engine (RISK 2 retired)
-- ⏳ **Hardening** — Vitest landed early (Phase 8 testing pulled forward); 9 specs lock in the
+- ✅ **Hardening** — Vitest landed early (Phase 8 testing pulled forward); locks in the
   diff-and-tween and layout invariants. `npm test`.
-- ▢ **Phase 4** next.
+- ✅ **Phase 4** Theme variants (default + blueprint) + compound (fork) & subordinate-clause
+  (nesting) layout. Clause arrangement refactored into a placeable `Measured` so clauses nest.
+- ▢ **Phase 5** next — effect bindings + Canvas effects (draw-on, particles) + perf-wall capture.
+
+17 specs across 3 files. 7 commits, local only.
 
 ## Sequencing principle
 

@@ -5,9 +5,13 @@ export type Word = {
   text: string;
 };
 
+// Head slots may be single or compound ("dogs and cats run").
+export type Subject = Nominal | Compound<Nominal>;
+export type Predicate = Verbal | Compound<Verbal>;
+
 export type Clause = {
-  subject: Nominal;
-  verb: Verbal;
+  subject: Subject;
+  verb: Predicate;
   complement: Complement | null; // direct object, predicate noun/adj, or null (intransitive)
 };
 
@@ -24,8 +28,8 @@ export type Verbal = {
 };
 
 export type Complement =
-  | { kind: "directObject"; value: Nominal } // divider: half-vertical, on baseline
-  | { kind: "predicateNoun"; value: Nominal } // divider: lean-left
+  | { kind: "directObject"; value: Nominal | Compound<Nominal> } // divider: half-vertical, on baseline
+  | { kind: "predicateNoun"; value: Nominal | Compound<Nominal> } // divider: lean-left
   | { kind: "predicateAdj"; value: Word }; // divider: lean-left
 
 export type Modifier =

@@ -1,43 +1,45 @@
-// Phase 2: reactive diff-and-tween in action. Toggle between two hardcoded Scenes
-// (click or press space) and watch the diagram MORPH — reflow, fade-out, fade-in —
-// instead of snapping. Proves the portable Animator spine + the Canvas executor seam.
+// Phase 4: cycle through fixtures (click / space) to see morph, compounds, and subordinate
+// clauses; press T to swap Theme over identical geometry. The diagram MORPHS between sentences
+// instead of snapping. Proves the portable spine, the layout engine, and the role->appearance seam.
 
-import { irA, irB } from "./fixtures.js";
+import { cycle } from "./fixtures.js";
 import { Animator, wallClock } from "./anim.js";
 import { CanvasExecutor } from "./canvas-renderer.js";
 import { layout, CanvasTextMetrics } from "./layout.js";
-import { defaultTheme, defaultLayoutStyle } from "./theme.js";
+import { defaultTheme, blueprintTheme, defaultLayoutStyle } from "./theme.js";
 
 const CSS_W = 900;
 const CSS_H = 500;
 
-// Phase 3: Scenes now come from the real layout engine, not the fixture placer.
 const metrics = new CanvasTextMetrics();
-const sceneA = layout(irA, metrics, defaultLayoutStyle);
-const sceneB = layout(irB, metrics, defaultLayoutStyle);
+const scenes = cycle.map((ir) => layout(ir, metrics, defaultLayoutStyle));
 
 const canvas = document.getElementById("stage") as HTMLCanvasElement;
 const executor = new CanvasExecutor(canvas, CSS_W, CSS_H);
-const animator = new Animator(sceneA, wallClock);
-const theme = defaultTheme;
+const animator = new Animator(scenes[0]!, wallClock);
 
-let showingA = true;
-function toggle(): void {
-  showingA = !showingA;
-  animator.setTarget(showingA ? sceneA : sceneB);
+const themes = [defaultTheme, blueprintTheme];
+let themeIdx = 0;
+let sceneIdx = 0;
+
+function next(): void {
+  sceneIdx = (sceneIdx + 1) % scenes.length;
+  animator.setTarget(scenes[sceneIdx]!);
 }
 
-canvas.addEventListener("click", toggle);
+canvas.addEventListener("click", next);
 window.addEventListener("keydown", (e) => {
   if (e.key === " " || e.key === "Enter") {
     e.preventDefault();
-    toggle();
+    next();
+  } else if (e.key.toLowerCase() === "t") {
+    themeIdx = (themeIdx + 1) % themes.length;
   }
 });
 
 function loop(): void {
   const { frame } = animator.sample();
-  executor.drawScene(frame, theme);
+  executor.drawScene(frame, themes[themeIdx]!);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

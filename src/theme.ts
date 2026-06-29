@@ -68,6 +68,33 @@ export const defaultTheme: Theme = {
   },
 };
 
+// A second, visually distinct Theme over IDENTICAL geometry — proves the role->appearance
+// seam and the LayoutStyle/RenderStyle split (this changes appearance, never coordinates).
+export const blueprintTheme: Theme = {
+  stroke(role: Role): StrokeSpec {
+    switch (role) {
+      case "baseline":
+      case "rail":
+        return { color: "#cfe8ff", weight: 2, cap: "round" };
+      case "slant":
+        return { color: "#9ecbff", weight: 1.3, cap: "round" };
+      case "connector.dotted":
+        return { color: "#7fb0e8", weight: 1.1, dash: [2, 4], cap: "butt" };
+      case "fork":
+        return { color: "#9ecbff", weight: 1.3, cap: "round" };
+      default:
+        return { color: "#dbeeff", weight: 1.5, cap: "round" };
+    }
+  },
+  font(_role: Role): FontSpec {
+    return { family: "ui-monospace, 'SF Mono', Menlo, monospace", size: 15 };
+  },
+  emphasis(_role: Role, state: EmphasisState): Override {
+    if (state === "muted") return { opacity: 0.4 };
+    return { color: "#ffd36b" };
+  },
+};
+
 export const defaultLayoutStyle: LayoutStyle = {
   em: 16,
   slantAngle: Math.PI / 3, // 60deg

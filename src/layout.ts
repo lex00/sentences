@@ -1,12 +1,11 @@
-// Layout — measure/arrange with a 2-D footprint. The novel, risky core (Phase 3).
-// R-K nodes consume space on two interacting axes: horizontal room on the baseline AND a
-// diagonal footprint below. Adjacent words' below-clusters can collide independently of
-// baseline spacing — which is why constituency-tree layout engines do not transfer.
+// Layout — measure/arrange with a 2-D footprint. The novel, risky core (Phase 3), extended
+// in Phase 4 with compounds (forks) and subordinate clauses (nesting).
 //
-// The whole engine is closed over an injected TextMetrics port + LayoutStyle, so the same
-// code serves any backend (canvas measureText in the browser; a stub in tests).
+// Key Phase-4 refactor: clause arrangement is itself a `Measured`, so a clause nests inside a
+// clause with no special-casing. Every Measured bakes its id + NodeRole at measure time and
+// exposes place(x, y) -> SceneNode. The engine is closed over an injected TextMetrics port.
 
-import type { Clause, Nominal, Modifier, Word } from "./ir.js";
+import type { Clause, Nominal, Verbal, Modifier, Word, Compound } from "./ir.js";
 import type { Scene, SceneNode, Prim, BBox, Pt, NodeId, NodeRole } from "./scene.js";
 import type { LayoutStyle } from "./theme.js";
 import { defaultLayoutStyle } from "./theme.js";
@@ -37,11 +36,11 @@ export class CanvasTextMetrics implements TextMetrics {
 }
 
 // measure() result: horizontal room on the rail + the below-cluster bbox (relative to the
-// head's left anchor at (0,0), baseline y=0) + a closure that emits absolute geometry.
+// left anchor at (0,0), baseline y=0) + a closure that emits absolute geometry. id + role baked.
 export type Measured = {
-  width: number; // baselineWidth
-  below: BBox; // everything hanging beneath, relative to left anchor
-  place: (x: number, y: number, id: NodeId, role: NodeRole, sourceId?: string) => SceneNode;
+  width: number;
+  below: BBox;
+  place: (x: number, y: number) => SceneNode;
 };
 
 const BASE_Y = 250;
@@ -55,11 +54,16 @@ const unionB = (a: BBox, b: BBox): BBox => ({
   bottom: Math.max(a.bottom, b.bottom),
 });
 
+const isCompound = (
+  x: Nominal | Verbal | Compound<Nominal> | Compound<Verbal>,
+): x is Compound<Nominal | Verbal> => "items" in x;
+
 export function layout(ir: Clause, metrics: TextMetrics, style: LayoutStyle = defaultLayoutStyle): Scene {
   const SZ = style.em;
   const w = (t: string) => metrics.measure(t, SZ).width;
   const cos = Math.cos(style.slantAngle);
   const sin = Math.sin(style.slantAngle);
+  const MARGIN = style.pad;
 
   const lblBox = (anchor: Pt, text: string, angle: number): BBox => {
     const tw = w(text);
@@ -74,8 +78,8 @@ export function layout(ir: Clause, metrics: TextMetrics, style: LayoutStyle = de
   const childrenBox = (cs: Array<SceneNode | Prim>): BBox =>
     cs.map((c) => ("children" in c ? c.bounds : primBox(c))).reduce(unionB);
 
-  // A modifier hanging below a head, measured relative to its attach point at (0,0).
-  type MeasuredMod = { below: BBox; place: (ax: number, by: number, id: NodeId) => SceneNode };
+  // --- a modifier hanging below a head, measured relative to its attach point at (0,0) ---
+  type MeasuredMod = { below: BBox; place: (ax: number, by: number) => SceneNode };
 
   function measureMod(m: Modifier, idPath: NodeId): MeasuredMod {
     if (m.kind === "word") {
@@ -85,11 +89,11 @@ export function layout(ir: Clause, metrics: TextMetrics, style: LayoutStyle = de
       const dy = L * sin;
       return {
         below: box(0, 0, dx, dy),
-        place: (ax, by, id) => {
+        place: (ax, by) => {
           const slant: Prim = { kind: "seg", a: { x: ax, y: by }, b: { x: ax + dx, y: by + dy }, role: "slant" };
           const lbl: Prim = { kind: "lbl", text, anchor: { x: ax + 6 * cos, y: by + 6 * sin }, angle: style.slantAngle, role: "word" };
           const ch: Array<SceneNode | Prim> = [slant, lbl];
-          return { id, role: "modifier", children: ch, bounds: childrenBox(ch) };
+          return { id: idPath, role: "modifier", children: ch, bounds: childrenBox(ch) };
         },
       };
     }
@@ -98,40 +102,43 @@ export function layout(ir: Clause, metrics: TextMetrics, style: LayoutStyle = de
       const L = w(prep) + style.pad;
       const dx = L * cos;
       const dy = L * sin;
-      const obj = measureHead(m.object.head.text, m.object.modifiers, `${idPath}/obj`); // recursion
+      const obj = measureHead(m.object.head.text, m.object.modifiers, `${idPath}/obj`, "object"); // recursion
       const objBelow = box(dx + obj.below.left, dy + obj.below.top, dx + obj.below.right, dy + obj.below.bottom);
       return {
         below: unionB(box(0, 0, dx, dy), objBelow),
-        place: (ax, by, id) => {
+        place: (ax, by) => {
           const P = { x: ax + dx, y: by + dy };
           const slant: Prim = { kind: "seg", a: { x: ax, y: by }, b: P, role: "slant" };
           const prepLbl: Prim = { kind: "lbl", text: prep, anchor: { x: ax + 6 * cos, y: by + 6 * sin }, angle: style.slantAngle, role: "word" };
-          const objNode = obj.place(P.x, P.y, `${id}/obj`, "object");
-          const ch: Array<SceneNode | Prim> = [slant, prepLbl, objNode];
-          return { id, role: "pp", children: ch, bounds: childrenBox(ch) };
+          const ch: Array<SceneNode | Prim> = [slant, prepLbl, obj.place(P.x, P.y)];
+          return { id: idPath, role: "pp", children: ch, bounds: childrenBox(ch) };
         },
       };
     }
-    // relative/subordinate clause modifier — full support deferred to Phase 4
-    const text = "[clause]";
-    const L = w(text) + style.pad;
+    // subordinate / relative clause: nested clause below the head on a dotted connector.
+    const nested = measureClause(m.value, `${idPath}/c`, "subclause");
+    const conn = m.connector.text;
+    const DROP = style.em * 2.6;
     return {
-      below: box(0, 0, L * cos, L * sin),
-      place: (ax, by, id) => {
-        const lbl: Prim = { kind: "lbl", text, anchor: { x: ax, y: by + SZ }, angle: 0, role: "word" };
-        return { id, role: "subclause", children: [lbl], bounds: primBox(lbl) };
+      below: unionB(box(0, 0, 0, DROP), box(nested.below.left, DROP + nested.below.top, Math.max(nested.width, nested.below.right), DROP + nested.below.bottom)),
+      place: (ax, by) => {
+        const drop: Pt = { x: ax, y: by + DROP };
+        const dotted: Prim = { kind: "seg", a: { x: ax, y: by }, b: drop, role: "connector.dotted" };
+        const connLbl: Prim = { kind: "lbl", text: conn, anchor: { x: ax + 4, y: by + DROP * 0.5 }, angle: 0, role: "word" };
+        const ch: Array<SceneNode | Prim> = [dotted, connLbl, nested.place(ax, by + DROP)];
+        return { id: idPath, role: "subclause", children: ch, bounds: childrenBox(ch) };
       },
     };
   }
 
-  // A head word + its hanging modifiers, occupying [x, x+width] on the baseline.
-  function measureHead(headText: string, mods: Modifier[], idPath: NodeId): Measured {
+  // --- a head word + its hanging modifiers, occupying [x, x+width] on the baseline ---
+  function measureHead(headText: string, mods: Modifier[], idPath: NodeId, role: NodeRole): Measured {
     const headW = w(headText);
     const mm = mods.map((m, i) => ({ i, m: measureMod(m, `${idPath}/m${i}`) }));
     const segW = Math.max(headW, mods.length * style.minSlantSpacing) + style.pad;
     const attachX = (i: number) => style.pad + i * style.minSlantSpacing;
 
-    let below = box(0, 0, segW, 0); // baseline segment, no overhang until a modifier adds it
+    let below = box(0, 0, segW, 0);
     for (const { i, m } of mm) {
       const ax = attachX(i);
       below = unionB(below, box(ax + m.below.left, m.below.top, ax + m.below.right, m.below.bottom));
@@ -140,74 +147,122 @@ export function layout(ir: Clause, metrics: TextMetrics, style: LayoutStyle = de
     return {
       width: segW,
       below,
-      place: (x, y, id, role, sourceId) => {
+      place: (x, y) => {
         const rail: Prim = { kind: "seg", a: { x, y }, b: { x: x + segW, y }, role: "baseline" };
         const headLbl: Prim = { kind: "lbl", text: headText, anchor: { x: x + segW / 2 - headW / 2, y: y - 4 }, angle: 0, role: "word" };
-        const modNodes = mm.map(({ i, m }) => m.place(x + attachX(i), y, `${id}/m${i}`));
+        const modNodes = mm.map(({ i, m }) => m.place(x + attachX(i), y));
         const ch: Array<SceneNode | Prim> = [rail, headLbl, ...modNodes];
-        const node: SceneNode = { id, role, children: ch, bounds: childrenBox(ch) };
-        if (sourceId !== undefined) node.sourceId = sourceId;
-        return node;
+        return { id: idPath, role, children: ch, bounds: childrenBox(ch) };
       },
     };
   }
 
-  type CompM = { divider: "half" | "lean"; measured: Measured; id: NodeId; role: NodeRole };
-  function measureComplement(c: NonNullable<Clause["complement"]>): CompM {
-    if (c.kind === "directObject")
-      return { divider: "half", measured: measureHead(c.value.head.text, c.value.modifiers, "c/obj"), id: "c/obj", role: "object" };
-    if (c.kind === "predicateNoun")
-      return { divider: "lean", measured: measureHead(c.value.head.text, c.value.modifiers, "c/pn"), id: "c/pn", role: "complement" };
-    return { divider: "lean", measured: measureHead(c.value.text, [], "c/pa"), id: "c/pa", role: "complement" };
+  // --- a compound head slot: branches forked into one apex on the main rail ---
+  function measureCompound(branches: Measured[], conj: string, idPath: NodeId): Measured {
+    const n = branches.length;
+    const SP = style.em * 2.2; // vertical gap between adjacent branches
+    const offAt = (i: number) => (i - (n - 1) / 2) * SP;
+    const maxW = Math.max(...branches.map((b) => b.width));
+    const width = maxW + style.em * 1.6; // + fork length
+
+    let below = box(0, offAt(0), width, offAt(n - 1));
+    branches.forEach((b, i) => {
+      const off = offAt(i);
+      below = unionB(below, box(b.below.left, off + b.below.top, b.below.right, off + b.below.bottom));
+    });
+
+    return {
+      width,
+      below,
+      place: (x, y) => {
+        const apex: Pt = { x: x + width, y };
+        const ch: Array<SceneNode | Prim> = [];
+        branches.forEach((b, i) => {
+          const by = y + offAt(i);
+          ch.push(b.place(x, by));
+          ch.push({ kind: "seg", a: { x: x + b.width, y: by }, b: apex, role: "fork" });
+        });
+        const bx = x + maxW; // dotted conjunction bridge between top & bottom branches
+        ch.push({ kind: "seg", a: { x: bx, y: y + offAt(0) }, b: { x: bx, y: y + offAt(n - 1) }, role: "connector.dotted" });
+        ch.push({ kind: "lbl", text: conj, anchor: { x: bx + 4, y }, angle: 0, role: "word" });
+        return { id: idPath, role: "compound", children: ch, bounds: childrenBox(ch) };
+      },
+    };
   }
 
-  // --- arrange: place left-to-right applying the non-overlap rule ---
-  const Y = BASE_Y;
-  const MARGIN = style.pad;
-
-  const subj = measureHead(ir.subject.head.text, ir.subject.modifiers, "c/subj");
-  const verb = measureHead(ir.verb.head.text, ir.verb.modifiers, "c/verb");
-  const comp = ir.complement ? measureComplement(ir.complement) : null;
-
-  const subjNode = subj.place(START_X, Y, "c/subj", "subject");
-  const subjRight = START_X + subj.width;
-  const subjClusterR = START_X + subj.below.right;
-
-  // THE CRUX: spacing to the verb respects both the divider minimum AND below-cluster overlap.
-  const verbLeft = Math.max(subjRight + style.dividerGap, subjClusterR + MARGIN - verb.below.left);
-  const fullX = (subjRight + verbLeft) / 2;
-  const fullDiv: Prim = {
-    kind: "seg",
-    a: { x: fullX, y: Y - style.fullDividerRise },
-    b: { x: fullX, y: Y + style.fullDividerRise },
-    role: "divider.full",
-  };
-  const verbNode = verb.place(verbLeft, Y, "c/verb", "verb");
-  const verbRight = verbLeft + verb.width;
-
-  const children: Array<SceneNode | Prim> = [subjNode, fullDiv, verbNode];
-
-  if (comp) {
-    const verbClusterR = verbLeft + verb.below.right;
-    const compLeft = Math.max(verbRight + style.dividerGap, verbClusterR + MARGIN - comp.measured.below.left);
-    const dx = (verbRight + compLeft) / 2;
-    if (comp.divider === "half") {
-      children.push({ kind: "seg", a: { x: dx, y: Y - style.halfDividerRise }, b: { x: dx, y: Y }, role: "divider.half" });
-    } else {
-      const len = style.halfDividerRise / Math.sin(style.leanLeftAngle);
-      children.push({
-        kind: "seg",
-        a: { x: dx, y: Y },
-        b: { x: dx - len * Math.cos(style.leanLeftAngle), y: Y - len * Math.sin(style.leanLeftAngle) },
-        role: "divider.lean",
-      });
+  // --- a head slot that may be single or compound ---
+  function measureFiller(slot: Nominal | Verbal | Compound<Nominal> | Compound<Verbal>, idPath: NodeId, role: NodeRole): Measured {
+    if (isCompound(slot)) {
+      const items = slot.items;
+      if (items.length === 1) {
+        const it = items[0]!;
+        return measureHead(it.head.text, it.modifiers, idPath, role);
+      }
+      const branches = items.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role));
+      return measureCompound(branches, slot.conjunction.text, idPath);
     }
-    children.push(comp.measured.place(compLeft, Y, comp.id, comp.role));
+    return measureHead(slot.head.text, slot.modifiers, idPath, role);
   }
 
-  const root: SceneNode = { id: "c", role: "clause", children, bounds: childrenBox(children) };
+  type CompM = { divider: "half" | "lean"; measured: Measured };
+  function measureComplement(c: NonNullable<Clause["complement"]>, idPrefix: NodeId): CompM {
+    if (c.kind === "directObject") return { divider: "half", measured: measureFiller(c.value, `${idPrefix}/obj`, "object") };
+    if (c.kind === "predicateNoun") return { divider: "lean", measured: measureFiller(c.value, `${idPrefix}/pn`, "complement") };
+    return { divider: "lean", measured: measureHead(c.value.text, [], `${idPrefix}/pa`, "complement") };
+  }
+
+  // --- a whole clause as a placeable unit (so clauses nest in clauses) ---
+  function measureClause(clause: Clause, idPrefix: NodeId, role: NodeRole): Measured {
+    const subj = measureFiller(clause.subject, `${idPrefix}/subj`, "subject");
+    const verb = measureFiller(clause.verb, `${idPrefix}/verb`, "verb");
+    const comp = clause.complement ? measureComplement(clause.complement, idPrefix) : null;
+
+    const subjRight = subj.width;
+    // THE CRUX: spacing respects both the divider minimum AND below-cluster overlap.
+    const verbLeft = Math.max(subjRight + style.dividerGap, subj.below.right + MARGIN - verb.below.left);
+    const fullX = (subjRight + verbLeft) / 2;
+    const verbRight = verbLeft + verb.width;
+
+    let compLeft = 0;
+    let compDx = 0;
+    let totalRight = verbRight;
+    if (comp) {
+      const verbClusterR = verbLeft + verb.below.right;
+      compLeft = Math.max(verbRight + style.dividerGap, verbClusterR + MARGIN - comp.measured.below.left);
+      compDx = (verbRight + compLeft) / 2;
+      totalRight = compLeft + comp.measured.width;
+    }
+
+    let below = unionB(subj.below, box(verbLeft + verb.below.left, verb.below.top, verbLeft + verb.below.right, verb.below.bottom));
+    if (comp) below = unionB(below, box(compLeft + comp.measured.below.left, comp.measured.below.top, compLeft + comp.measured.below.right, comp.measured.below.bottom));
+
+    return {
+      width: totalRight,
+      below,
+      place: (x, y) => {
+        const ch: Array<SceneNode | Prim> = [
+          subj.place(x, y),
+          { kind: "seg", a: { x: x + fullX, y: y - style.fullDividerRise }, b: { x: x + fullX, y: y + style.fullDividerRise }, role: "divider.full" },
+          verb.place(x + verbLeft, y),
+        ];
+        if (comp) {
+          const dx = x + compDx;
+          if (comp.divider === "half") {
+            ch.push({ kind: "seg", a: { x: dx, y: y - style.halfDividerRise }, b: { x: dx, y }, role: "divider.half" });
+          } else {
+            const len = style.halfDividerRise / Math.sin(style.leanLeftAngle);
+            ch.push({ kind: "seg", a: { x: dx, y }, b: { x: dx - len * Math.cos(style.leanLeftAngle), y: y - len * Math.sin(style.leanLeftAngle) }, role: "divider.lean" });
+          }
+          ch.push(comp.measured.place(x + compLeft, y));
+        }
+        return { id: idPrefix, role, children: ch, bounds: childrenBox(ch) };
+      },
+    };
+  }
+
+  const root = measureClause(ir, "c", "clause").place(START_X, BASE_Y);
   return { root, bounds: root.bounds };
 }
 
-// Convenience: a Word -> single-word Nominal (used when lowering predicate adjectives, etc.)
+// Convenience: a Word -> single-word Nominal.
 export const wordNominal = (word: Word): Nominal => ({ head: word, modifiers: [] });
