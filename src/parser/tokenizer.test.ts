@@ -15,7 +15,7 @@ describe("T5 Unigram tokenizer", () => {
 });
 
 describe("feed construction matches benepar", () => {
-  for (const fx of feedFixtures as Array<{ words: string[] } & Record<string, number[] | boolean[]>>) {
+  for (const fx of feedFixtures as unknown as Array<{ words: string[] } & Record<string, number[] | boolean[]>>) {
     it(`builds feeds for "${fx.words.join(" ")}"`, () => {
       const f = tok.buildFeeds(fx.words);
       expect(f.input_ids).toEqual(fx.input_ids);

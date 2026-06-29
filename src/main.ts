@@ -10,6 +10,8 @@ import { defaultTheme, blueprintTheme, defaultLayoutStyle } from "./theme.js";
 import { EffectScheduler, hitTest } from "./scheduler.js";
 import { defaultBindings } from "./bindings.js";
 import { parseDocument } from "./document.js";
+import { lowerSentence } from "./lower.js";
+import { ModelParser } from "./parser/model-parser.js";
 import type { EffectExecutor } from "./effects.js";
 import type { Scene } from "./scene.js";
 
@@ -40,15 +42,38 @@ function show(scene: Scene): void {
 
 scheduler.fireEvent("enter", current.root); // reveal the first sentence on load
 
-input.addEventListener("keydown", (e) => {
+// The neural parser (benepar ONNX, ~72MB) lazy-loads on first focus; rule-based is the fallback.
+let model: ModelParser | null = null;
+let modelState: "idle" | "loading" | "ready" | "failed" = "idle";
+function ensureModel(): void {
+  if (modelState !== "idle") return;
+  modelState = "loading";
+  status.textContent = "loading neural parser (~72 MB, first time)…";
+  ModelParser.load()
+    .then((mp) => { model = mp; modelState = "ready"; status.textContent = "neural parser ready ✓"; })
+    .catch(() => { modelState = "failed"; status.textContent = "neural parser unavailable — using rule-based"; });
+}
+input.addEventListener("focus", ensureModel);
+
+input.addEventListener("keydown", async (e) => {
   if (e.key !== "Enter") return;
   const text = input.value.trim();
   if (!text) return;
   try {
-    show(layout(parseDocument(text), metrics, defaultLayoutStyle));
-    status.textContent = "";
+    if (model) {
+      show(layout(lowerSentence(await model.parse(text)), metrics, defaultLayoutStyle)); // neural parse
+      status.textContent = "";
+    } else {
+      show(layout(parseDocument(text), metrics, defaultLayoutStyle)); // rule-based
+      status.textContent = modelState === "loading" ? "(rule-based; neural parser still loading…)" : "";
+    }
   } catch {
-    status.textContent = "couldn't diagram that one — try a simpler sentence";
+    try {
+      show(layout(parseDocument(text), metrics, defaultLayoutStyle));
+      status.textContent = "(rule-based fallback)";
+    } catch {
+      status.textContent = "couldn't diagram that one — try a simpler sentence";
+    }
   }
 });
 

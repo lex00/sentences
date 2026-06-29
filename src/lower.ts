@@ -183,7 +183,9 @@ export function lower(parse: Tree | string): Clause {
 // Lower a whole sentence: a compound sentence (top-level S with several S children) becomes
 // multiple clauses; anything else is a single-clause sentence.
 export function lowerSentence(parse: Tree | string): Sentence {
-  const t = typeof parse === "string" ? parseBracket(parse) : parse;
+  let t = typeof parse === "string" ? parseBracket(parse) : parse;
+  // unwrap a ROOT/TOP/S1 wrapper (the neural parser returns a Tree object, not a string)
+  while (["ROOT", "TOP", "S1", ""].includes(t.label) && t.children.length === 1 && t.children[0]) t = t.children[0];
   const sKids = t.children.filter((c) => c.label === "S" || c.label === "SINV");
   if (t.label === "S" && sKids.length >= 2) {
     return { clauses: sKids.map(lowerClause), conjunctions: t.children.filter((c) => c.label === "CC").map((c) => w(c.word ?? "and")) };
