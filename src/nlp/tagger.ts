@@ -3,7 +3,7 @@
 
 import { DET, POSS, PRON, PREP, SUBORD, REL, CONJ, MODAL, COPULA, AUX, ADV, isNumber } from "./lexicon.js";
 
-export type Tagged = { word: string; lc: string; tag: Tag };
+export type Tagged = { word: string; lc: string; tag: Tag; forced?: "V" };
 export type Tag = "DT" | "PRP$" | "PRP" | "IN" | "SUB" | "REL" | "CC" | "MD" | "COP" | "AUX" | "RB" | "CD" | "X" | "," | ".";
 
 export function tokenize(text: string): string[] {

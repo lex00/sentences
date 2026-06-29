@@ -43,8 +43,8 @@ describe("in-browser parser -> IR", () => {
     expect(m && m.kind === "clause" && m.connector.text).toBe("because");
   });
 
-  it("throws on input with no verb (graceful failure for the UI)", () => {
-    expect(() => parse("the small cat")).toThrow();
+  it("throws when there isn't even a subject+verb to force (graceful failure for the UI)", () => {
+    expect(() => parse("seashells")).toThrow(); // single content word — nothing to force a verb from
   });
 });
 

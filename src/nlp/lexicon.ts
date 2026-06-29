@@ -31,6 +31,11 @@ export const VERBS = new Set([
   "play", "plays", "played", "read", "reads", "write", "writes", "wrote", "walk", "walks", "walked", "jump", "jumps", "jumped",
   "sit", "sits", "sat", "stand", "stands", "stood", "hold", "holds", "held", "bring", "brings", "brought", "build", "builds", "built",
   "catch", "catches", "caught", "throw", "throws", "threw", "hit", "hits", "won", "win", "wins", "drink", "drinks", "drank",
+  // common irregular past / participle forms that don't end in -ed
+  "sold", "sang", "sung", "swam", "drove", "rode", "spoke", "broke", "chose", "froze", "stole", "woke", "drew", "flew", "grew", "blew",
+  "bought", "taught", "fought", "sought", "lost", "sent", "spent", "kept", "felt", "left", "meant", "dealt", "began", "rang", "sank",
+  "became", "got", "forgot", "hung", "dug", "wore", "tore", "swore", "bore", "rose", "lit", "bit", "hid", "slid", "fell",
+  "met", "fed", "led", "paid", "laid", "understood", "arose", "awoke", "shook", "rang",
 ]);
 
 export const isNumber = (w: string) => /^\d[\d,.]*$/.test(w);

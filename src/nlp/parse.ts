@@ -12,7 +12,16 @@ import { VERBS, isCapitalized } from "./lexicon.js";
 const leaf = (label: string, word: string): Tree => ({ label, word, children: [] });
 const node = (label: string, children: Tree[]): Tree => ({ label, children });
 
-const looksLikeVerb = (t: Tagged): boolean => t.tag === "X" && (VERBS.has(t.lc) || t.lc.endsWith("ing") || t.lc.endsWith("ed"));
+const looksLikeVerb = (t: Tagged): boolean => t.forced === "V" || (t.tag === "X" && (VERBS.has(t.lc) || t.lc.endsWith("ing") || t.lc.endsWith("ed")));
+
+// Every declarative needs a verb. If none was detected (e.g. an unknown irregular like "sold",
+// or a subject mistagged by the -ly rule), assume SVO: the 2nd content word is the verb.
+function ensureVerb(ts: Tagged[]): void {
+  const hasVerb = ts.some((t) => t.tag === "COP" || t.tag === "AUX" || t.tag === "MD" || looksLikeVerb(t));
+  if (hasVerb) return;
+  const content = ts.filter((t) => t.tag === "X" || t.tag === "RB" || t.tag === "PRP" || t.tag === "CD");
+  if (content.length >= 2) content[1]!.forced = "V"; // 1st content = subject, 2nd = verb
+}
 
 function finiteVerbTag(word: string): string {
   const lc = word.toLowerCase();
@@ -48,6 +57,7 @@ function parseBaseNP(ts: Tagged[], i: number, end: number): R {
   // last open-class word is the head noun; earlier ones are modifiers
   let headIdx = -1;
   for (let k = run.length - 1; k >= 0; k--) if (run[k]!.tag === "X" || run[k]!.tag === "CD") { headIdx = k; break; }
+  if (headIdx === -1) headIdx = run.length - 1; // no clear noun (e.g. an -ly word) -> last token is head
   run.forEach((t, k) => {
     if (k === headIdx) kids.push(leaf(nounTag(t.word), t.word));
     else if (t.tag === "RB") kids.push(leaf("RB", t.word));
@@ -159,6 +169,7 @@ function parseS(ts: Tagged[], i: number, end: number): R {
 // Parse a sentence into a constituency Tree. Throws if it can't find an S (NP + VP).
 export function parse(text: string): Tree {
   const ts = tag(text).filter((t) => t.tag !== "." && t.tag !== ",");
+  ensureVerb(ts);
   const s = parseS(ts, 0, ts.length);
   if (!s) throw new Error("couldn't parse: expected a subject and a verb");
   return s.tree;
