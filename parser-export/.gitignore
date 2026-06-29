@@ -1,0 +1,5 @@
+.venv/
+*.onnx
+*.onnx.data
+nltk_data/
+__pycache__/
