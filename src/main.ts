@@ -9,8 +9,7 @@ import { layout, CanvasTextMetrics } from "./layout.js";
 import { defaultTheme, blueprintTheme, defaultLayoutStyle } from "./theme.js";
 import { EffectScheduler, hitTest } from "./scheduler.js";
 import { defaultBindings } from "./bindings.js";
-import { parse } from "./nlp/parse.js";
-import { lowerSentence } from "./lower.js";
+import { parseDocument } from "./document.js";
 import type { EffectExecutor } from "./effects.js";
 import type { Scene } from "./scene.js";
 
@@ -46,7 +45,7 @@ input.addEventListener("keydown", (e) => {
   const text = input.value.trim();
   if (!text) return;
   try {
-    show(layout(lowerSentence(parse(text)), metrics, defaultLayoutStyle));
+    show(layout(parseDocument(text), metrics, defaultLayoutStyle));
     status.textContent = "";
   } catch {
     status.textContent = "couldn't diagram that one — try a simpler sentence";

@@ -86,7 +86,7 @@ describe("clause coordination (compound sentences)", () => {
   it("splits independent clauses into a compound sentence", () => {
     const s = lowerSentence(parse("Birds sing and dogs bark"));
     expect(s.clauses).toHaveLength(2);
-    expect(s.conjunctions.map((c) => c.text)).toEqual(["and"]);
+    expect(s.conjunctions.map((c) => c?.text)).toEqual(["and"]);
     expect((s.clauses[0]!.subject as Nominal).head.text).toBe("Birds");
     expect((s.clauses[1]!.subject as Nominal).head.text).toBe("dogs");
   });

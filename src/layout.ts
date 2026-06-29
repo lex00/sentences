@@ -292,10 +292,12 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
   const extra: Prim[] = [];
   const cx = START_X + style.em * 3;
   for (let i = 0; i < nodes.length - 1; i++) {
+    const conj = sentence.conjunctions[i];
+    if (!conj) continue; // separate sentences (split input): just stack, no connector
     const y0 = baselineYs[i]!;
     const y1 = baselineYs[i + 1]!;
     extra.push({ kind: "seg", a: { x: cx, y: y0 }, b: { x: cx, y: y1 }, role: "connector.dotted" });
-    extra.push({ kind: "lbl", text: sentence.conjunctions[i]?.text ?? "and", anchor: { x: cx + 4, y: (y0 + y1) / 2 }, angle: 0, role: "word" });
+    extra.push({ kind: "lbl", text: conj.text, anchor: { x: cx + 4, y: (y0 + y1) / 2 }, angle: 0, role: "word" });
   }
 
   const children: Array<SceneNode | Prim> = [...nodes, ...extra];

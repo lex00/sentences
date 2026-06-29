@@ -73,15 +73,6 @@ function normalizeQuestion(ts: Tagged[]): Tagged[] {
   return ts;
 }
 
-// Every declarative needs a verb. If none was detected (e.g. an unknown irregular like "sold",
-// or a subject mistagged by the -ly rule), assume SVO: the 2nd content word is the verb.
-function ensureVerb(ts: Tagged[]): void {
-  const hasVerb = ts.some((t) => t.tag === "COP" || t.tag === "AUX" || t.tag === "MD" || looksLikeVerb(t));
-  if (hasVerb) return;
-  const content = ts.filter((t) => t.tag === "X" || t.tag === "RB" || t.tag === "PRP" || t.tag === "CD");
-  if (content.length >= 2) content[1]!.forced = "V"; // 1st content = subject, 2nd = verb
-}
-
 function finiteVerbTag(word: string): string {
   const lc = word.toLowerCase();
   const cop: Record<string, string> = { is: "VBZ", are: "VBP", am: "VBP", was: "VBD", were: "VBD", be: "VB", been: "VBN", being: "VBG" };
@@ -237,7 +228,6 @@ function parseS(ts: Tagged[], i: number, end: number): R {
 // (a compound sentence). Throws if it can't find even one clause.
 export function parse(text: string): Tree {
   const ts = normalizeQuestion(tag(text).filter((t) => t.tag !== "." && t.tag !== ","));
-  ensureVerb(ts);
 
   const clauses: Tree[] = [];
   const ccs: string[] = [];
