@@ -21,7 +21,12 @@
 - ✅ **Phase 6** Parser -> IR bridge: ptb.ts (bracket parser) + lower.ts (constituency -> Clause
   IR, the converter no tool provides). benepar adapter `tools/parse.py` (not run in CI — heavy).
   End-to-end test: parser output lays out with the SAME ids as the hand-built fixtures.
-  See `docs/PARSER.md`. Remaining: live benepar wiring; browser raster bench (Phase 5).
+  See `docs/PARSER.md`.
+- ✅ **Phase 6b** In-browser parser (`src/nlp/`): tokenizer + lexicon POS tagger + rule-based
+  constituency chunker -> PTB Tree -> existing lower(). **No server, no ML stack for clients**
+  — ships in the static bundle (~11kB gzip). Live text input wired in `main.ts`: type a
+  sentence -> parse -> morph into view. 9/10 of a sample battery fully correct; graceful
+  failure on hard input. Deployment decision: client-side parsing (benepar stays optional).
 - ✅ **Phase 7** WebGPU executor (`webgpu-renderer.ts`) — HYBRID: Canvas2D scene + GPU
   instanced soft-glow particles (WGSL), shader glow lit up (supports("shader")===true).
   Sim stays CPU-side & shared (`particles.ts`) per the bench; GPU does only raster.
@@ -40,7 +45,7 @@ since we already have effectively unlimited sim headroom on the CPU.
 Remaining to measure: the in-browser raster FPS curve (dominant real cost). The node bench is
 the CPU-sim floor only; a browser bench harness is future work.
 
-34 specs across 6 files. 10 commits, local only.
+41 specs across 8 files. 11 commits, local only.
 
 ## Sequencing principle
 
