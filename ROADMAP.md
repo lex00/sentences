@@ -18,7 +18,11 @@
 - ✅ **Phase 5** Effects as data: EffectScheduler (bindings -> instances), Canvas draw-on +
   CPU particle sim (executor-owned state, seeded RNG), shader binding skipped via supports().
   **Perf wall:** `npm run bench`.
-- ▢ **Phase 6** next — benepar parser -> IR.
+- ✅ **Phase 6** Parser -> IR bridge: ptb.ts (bracket parser) + lower.ts (constituency -> Clause
+  IR, the converter no tool provides). benepar adapter `tools/parse.py` (not run in CI — heavy).
+  End-to-end test: parser output lays out with the SAME ids as the hand-built fixtures.
+  See `docs/PARSER.md`. Remaining: live benepar wiring; browser raster bench (Phase 5).
+- ▢ **Phase 7** next — WebGPU executor; light up the deferred shaders.
 
 ### Perf-wall finding (Phase 5)
 
@@ -31,7 +35,7 @@ since we already have effectively unlimited sim headroom on the CPU.
 Remaining to measure: the in-browser raster FPS curve (dominant real cost). The node bench is
 the CPU-sim floor only; a browser bench harness is future work.
 
-21 specs across 4 files. 8 commits, local only.
+29 specs across 5 files. 9 commits, local only.
 
 ## Sequencing principle
 
