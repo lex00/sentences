@@ -39,6 +39,35 @@ export type LayoutStyle = {
   pad: number;
 };
 
+// A minimal, clean-minimal Theme — proves the role->appearance seam. Phase 4 adds variants.
+export const defaultTheme: Theme = {
+  stroke(role: Role): StrokeSpec {
+    switch (role) {
+      case "baseline":
+      case "rail":
+        return { color: "#2b2b2b", weight: 1.8, cap: "round" };
+      case "divider.full":
+      case "divider.half":
+      case "divider.lean":
+        return { color: "#2b2b2b", weight: 1.4, cap: "round" };
+      case "slant":
+        return { color: "#3a3a3a", weight: 1.2, cap: "round" };
+      case "connector.dotted":
+        return { color: "#6a6a6a", weight: 1.1, dash: [3, 3], cap: "butt" };
+      default:
+        return { color: "#2b2b2b", weight: 1.2 };
+    }
+  },
+  font(_role: Role): FontSpec {
+    return { family: "ui-serif, Georgia, 'Times New Roman', serif", size: 16 };
+  },
+  emphasis(_role: Role, state: EmphasisState): Override {
+    if (state === "muted") return { opacity: 0.35 };
+    if (state === "hover") return { color: "#1769aa" };
+    return { color: "#0b3d91" };
+  },
+};
+
 export const defaultLayoutStyle: LayoutStyle = {
   em: 16,
   slantAngle: Math.PI / 3, // 60deg

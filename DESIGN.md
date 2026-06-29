@@ -201,6 +201,12 @@ interface Clock { now(): number }   // INJECTABLE → determinism/export is a la
 `update` → geometry interpolation = morph & reflow, identical on any executor.
 `enter` / `exit` → fire bindings (draw-on, particle burst, dissolve).
 
+**Refinement (Phase 2):** the Scene stays **pure geometry**. Transient per-instant visual
+state (enter/exit presence → alpha) rides in a `RenderFrame = { scene, presence:
+Map<NodeId, number> }` wrapper that `Animator.sample(t)` returns and the executor consumes —
+so motion never leaks into the Scene contract. The executor multiplies `presence` down the
+node tree for subtree fades.
+
 ---
 
 ## 6. EffectBindings — "CSS for animation" (effects as data)

@@ -2,9 +2,9 @@
 // the EffectExecutor. The spine hands the executor effect *instances*, never draw calls;
 // particle simulation state lives inside the executor.
 
-import type { Scene, Pt, NodeRole, Role } from "./scene.js";
+import type { Pt, NodeRole, Role } from "./scene.js";
 import type { Theme } from "./theme.js";
-import type { Easing } from "./anim.js";
+import type { Easing, RenderFrame } from "./anim.js";
 
 export type EmitterSpec = {
   count: number;
@@ -42,9 +42,10 @@ export type EffectInstance = {
   spawnedAt: number; // ms (Clock time)
 };
 
-// The ONLY per-renderer part of the system.
+// The ONLY per-renderer part of the system. Consumes a RenderFrame (pure-geometry Scene +
+// per-node presence) so enter/exit alpha never leaks into the Scene contract.
 export interface EffectExecutor {
-  drawScene(scene: Scene, theme: Theme): void;
+  drawScene(frame: RenderFrame, theme: Theme): void;
   run(fx: EffectInstance, t: number): void;
   supports(kind: EffectDesc["kind"]): boolean; // Canvas: false for "shader"
 }
