@@ -22,7 +22,12 @@
   IR, the converter no tool provides). benepar adapter `tools/parse.py` (not run in CI — heavy).
   End-to-end test: parser output lays out with the SAME ids as the hand-built fixtures.
   See `docs/PARSER.md`. Remaining: live benepar wiring; browser raster bench (Phase 5).
-- ▢ **Phase 7** next — WebGPU executor; light up the deferred shaders.
+- ✅ **Phase 7** WebGPU executor (`webgpu-renderer.ts`) — HYBRID: Canvas2D scene + GPU
+  instanced soft-glow particles (WGSL), shader glow lit up (supports("shader")===true).
+  Sim stays CPU-side & shared (`particles.ts`) per the bench; GPU does only raster.
+  `makeExecutor()` falls back to Canvas when WebGPU absent. **⚠️ BUILT BUT UN-RUN** — no
+  GPU/browser in the env; the GPU path needs in-browser verification.
+- ▢ **Phase 8** next — reproducibility/export (deterministic Clock, snapshot tests, video/GIF).
 
 ### Perf-wall finding (Phase 5)
 
@@ -35,7 +40,7 @@ since we already have effectively unlimited sim headroom on the CPU.
 Remaining to measure: the in-browser raster FPS curve (dominant real cost). The node bench is
 the CPU-sim floor only; a browser bench harness is future work.
 
-29 specs across 5 files. 9 commits, local only.
+34 specs across 6 files. 10 commits, local only.
 
 ## Sequencing principle
 

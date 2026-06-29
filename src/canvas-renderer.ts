@@ -7,25 +7,11 @@ import type { RenderFrame } from "./anim.js";
 import type { Theme, FontSpec } from "./theme.js";
 import type { SceneNode, Prim, NodeId, Pt } from "./scene.js";
 import { isNode } from "./scene.js";
+import { spawnParticles, updateParticles, particleAlpha, type Particle } from "./particles.js";
 
 const fontStr = (f: FontSpec) =>
   `${f.style ?? "normal"} ${f.weight ?? 400} ${f.size}px ${f.family}`;
 
-// Seeded RNG (deterministic-ready): particles vary by instance id + index, not Math.random.
-const hashStr = (s: string): number => {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  return h >>> 0;
-};
-const mulberry32 = (seed: number) => () => {
-  seed |= 0;
-  seed = (seed + 0x6d2b79f5) | 0;
-  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-};
-
-type Particle = { x: number; y: number; vx: number; vy: number; life: number; age: number; r: number };
 const lerpPt = (a: Pt, b: Pt, u: number): Pt => ({ x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u });
 
 export class CanvasExecutor implements EffectExecutor {
@@ -121,26 +107,16 @@ export class CanvasExecutor implements EffectExecutor {
     const e = fx.desc.emitter;
     let ps = this.sims.get(fx.id);
     if (!ps) {
-      const rng = mulberry32(hashStr(fx.id));
-      ps = Array.from({ length: e.count }, () => {
-        const ang = -Math.PI / 2 + (rng() * 2 - 1) * e.spread;
-        const sp = e.speed * (0.5 + rng());
-        return { x: fx.anchor.x, y: fx.anchor.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: e.lifetime, age: 0, r: 1 + rng() * 2.5 };
-      });
+      ps = spawnParticles(e, fx.anchor, fx.id); // shared CPU sim
       this.sims.set(fx.id, ps);
     }
-    const dts = this.dt / 1000;
-    const grav = e.gravity ?? 0;
+    const dead = updateParticles(ps, this.dt, e.gravity ?? 0);
     const color = this.theme?.emphasis("word", "active").color ?? "#e0791a";
     const g = this.g;
     g.save();
     g.globalCompositeOperation = "lighter"; // additive glow
     for (const p of ps) {
-      p.age += this.dt;
-      p.vy += grav * dts;
-      p.x += p.vx * dts;
-      p.y += p.vy * dts;
-      const a = Math.max(0, 1 - p.age / p.life);
+      const a = particleAlpha(p);
       if (a <= 0) continue;
       g.globalAlpha = a;
       g.fillStyle = color;
@@ -149,7 +125,7 @@ export class CanvasExecutor implements EffectExecutor {
       g.fill();
     }
     g.restore();
-    if (ps.every((p) => p.age >= p.life)) this.sims.delete(fx.id);
+    if (dead) this.sims.delete(fx.id);
   }
 
   private runDrawOn(fx: EffectInstance, t: number): void {

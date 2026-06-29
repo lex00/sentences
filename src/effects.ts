@@ -48,5 +48,6 @@ export type EffectInstance = {
 export interface EffectExecutor {
   drawScene(frame: RenderFrame, theme: Theme): void;
   run(fx: EffectInstance, t: number): void;
-  supports(kind: EffectDesc["kind"]): boolean; // Canvas: false for "shader"
+  supports(kind: EffectDesc["kind"]): boolean; // Canvas: false for "shader"; WebGPU: true
+  endFrame?(): void; // optional: batched renderers (WebGPU) flush/present here
 }

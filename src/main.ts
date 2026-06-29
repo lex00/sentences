@@ -4,11 +4,12 @@
 
 import { cycle } from "./fixtures.js";
 import { Animator, wallClock } from "./anim.js";
-import { CanvasExecutor } from "./canvas-renderer.js";
+import { makeExecutor } from "./webgpu-renderer.js";
 import { layout, CanvasTextMetrics } from "./layout.js";
 import { defaultTheme, blueprintTheme, defaultLayoutStyle } from "./theme.js";
 import { EffectScheduler, hitTest } from "./scheduler.js";
 import { defaultBindings } from "./bindings.js";
+import type { EffectExecutor } from "./effects.js";
 
 const CSS_W = 900;
 const CSS_H = 500;
@@ -17,9 +18,11 @@ const metrics = new CanvasTextMetrics();
 const scenes = cycle.map((ir) => layout(ir, metrics, defaultLayoutStyle));
 
 const canvas = document.getElementById("stage") as HTMLCanvasElement;
-const executor = new CanvasExecutor(canvas, CSS_W, CSS_H);
 const animator = new Animator(scenes[0]!, wallClock);
 const scheduler = new EffectScheduler(defaultBindings, wallClock);
+
+// WebGPU executor (hybrid: Canvas2D scene + GPU particles/glow), falling back to Canvas2D.
+let executor: EffectExecutor | null = null;
 
 const themes = [defaultTheme, blueprintTheme];
 let themeIdx = 0;
@@ -52,15 +55,22 @@ window.addEventListener("keydown", (e) => {
 });
 
 function loop(): void {
-  const now = wallClock.now();
-  const { frame } = animator.sample(now);
-  executor.drawScene(frame, themes[themeIdx]!);
-  for (const fx of scheduler.sample(now)) {
-    if (executor.supports(fx.desc.kind)) executor.run(fx, now);
+  if (executor) {
+    const now = wallClock.now();
+    const { frame } = animator.sample(now);
+    executor.drawScene(frame, themes[themeIdx]!);
+    for (const fx of scheduler.sample(now)) {
+      if (executor.supports(fx.desc.kind)) executor.run(fx, now);
+    }
+    executor.endFrame?.(); // batched renderers (WebGPU) flush/present here
   }
   requestAnimationFrame(loop);
 }
-requestAnimationFrame(loop);
+
+makeExecutor(canvas, CSS_W, CSS_H).then((ex) => {
+  executor = ex;
+  requestAnimationFrame(loop);
+});
 
 if (import.meta.hot) {
   import.meta.hot.accept();
