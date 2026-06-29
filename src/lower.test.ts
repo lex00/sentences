@@ -50,7 +50,7 @@ describe("lower: constituency parse -> IR", () => {
   it("copula + ADJP -> predicate adjective (ROOT wrapper unwrapped)", () => {
     const c = lower(PTB.predAdj);
     expect(c.complement?.kind).toBe("predicateAdj");
-    if (c.complement?.kind === "predicateAdj") expect(c.complement.value.text).toBe("blue");
+    if (c.complement?.kind === "predicateAdj" && "text" in c.complement.value) expect(c.complement.value.text).toBe("blue");
   });
 
   it("nested NP + PP -> prep modifier on the base nominal", () => {

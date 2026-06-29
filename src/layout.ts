@@ -157,32 +157,37 @@ export function layout(ir: Clause, metrics: TextMetrics, style: LayoutStyle = de
     };
   }
 
-  // --- a compound head slot: branches forked into one apex on the main rail ---
-  function measureCompound(branches: Measured[], conj: string, idPath: NodeId): Measured {
+  // --- a compound head slot: N branches forked to a single apex on the main rail ---
+  // openRight=true  -> apex on the right (a SUBJECT connects rightward to the divider).
+  // openRight=false -> apex on the left  (an OBJECT/COMPLEMENT/VERB connects leftward to it).
+  function measureCompound(branches: Measured[], conj: string, idPath: NodeId, openRight: boolean): Measured {
     const n = branches.length;
     const SP = style.em * 2.2; // vertical gap between adjacent branches
     const offAt = (i: number) => (i - (n - 1) / 2) * SP;
     const maxW = Math.max(...branches.map((b) => b.width));
-    const width = maxW + style.em * 1.6; // + fork length
+    const forkLen = style.em * 1.6;
+    const width = maxW + forkLen;
+    const bx0 = openRight ? 0 : forkLen; // branch baseline left offset
 
     let below = box(0, offAt(0), width, offAt(n - 1));
     branches.forEach((b, i) => {
       const off = offAt(i);
-      below = unionB(below, box(b.below.left, off + b.below.top, b.below.right, off + b.below.bottom));
+      below = unionB(below, box(bx0 + b.below.left, off + b.below.top, bx0 + b.below.right, off + b.below.bottom));
     });
 
     return {
       width,
       below,
       place: (x, y) => {
-        const apex: Pt = { x: x + width, y };
+        const apex: Pt = openRight ? { x: x + width, y } : { x, y };
         const ch: Array<SceneNode | Prim> = [];
         branches.forEach((b, i) => {
           const by = y + offAt(i);
-          ch.push(b.place(x, by));
-          ch.push({ kind: "seg", a: { x: x + b.width, y: by }, b: apex, role: "fork" });
+          ch.push(b.place(x + bx0, by));
+          const connect: Pt = openRight ? { x: x + bx0 + b.width, y: by } : { x: x + bx0, y: by };
+          ch.push({ kind: "seg", a: connect, b: apex, role: "fork" });
         });
-        const bx = x + maxW; // dotted conjunction bridge between top & bottom branches
+        const bx = x + bx0 + (openRight ? maxW : 0); // dotted conjunction bridge near the fork
         ch.push({ kind: "seg", a: { x: bx, y: y + offAt(0) }, b: { x: bx, y: y + offAt(n - 1) }, role: "connector.dotted" });
         ch.push({ kind: "lbl", text: conj, anchor: { x: bx + 4, y }, angle: 0, role: "word" });
         return { id: idPath, role: "compound", children: ch, bounds: childrenBox(ch) };
@@ -191,7 +196,7 @@ export function layout(ir: Clause, metrics: TextMetrics, style: LayoutStyle = de
   }
 
   // --- a head slot that may be single or compound ---
-  function measureFiller(slot: Nominal | Verbal | Compound<Nominal> | Compound<Verbal>, idPath: NodeId, role: NodeRole): Measured {
+  function measureFiller(slot: Nominal | Verbal | Compound<Nominal> | Compound<Verbal>, idPath: NodeId, role: NodeRole, openRight: boolean): Measured {
     if (isCompound(slot)) {
       const items = slot.items;
       if (items.length === 1) {
@@ -199,22 +204,27 @@ export function layout(ir: Clause, metrics: TextMetrics, style: LayoutStyle = de
         return measureHead(it.head.text, it.modifiers, idPath, role);
       }
       const branches = items.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role));
-      return measureCompound(branches, slot.conjunction.text, idPath);
+      return measureCompound(branches, slot.conjunction.text, idPath, openRight);
     }
     return measureHead(slot.head.text, slot.modifiers, idPath, role);
   }
 
   type CompM = { divider: "half" | "lean"; measured: Measured };
   function measureComplement(c: NonNullable<Clause["complement"]>, idPrefix: NodeId): CompM {
-    if (c.kind === "directObject") return { divider: "half", measured: measureFiller(c.value, `${idPrefix}/obj`, "object") };
-    if (c.kind === "predicateNoun") return { divider: "lean", measured: measureFiller(c.value, `${idPrefix}/pn`, "complement") };
+    if (c.kind === "directObject") return { divider: "half", measured: measureFiller(c.value, `${idPrefix}/obj`, "object", false) };
+    if (c.kind === "predicateNoun") return { divider: "lean", measured: measureFiller(c.value, `${idPrefix}/pn`, "complement", false) };
+    // predicate adjective — single word, or a fork ("tiny and loud")
+    if ("items" in c.value) {
+      const branches = c.value.items.map((wd, i) => measureHead(wd.text, [], `${idPrefix}/pa/b${i}`, "complement"));
+      return { divider: "lean", measured: measureCompound(branches, c.value.conjunction.text, `${idPrefix}/pa`, false) };
+    }
     return { divider: "lean", measured: measureHead(c.value.text, [], `${idPrefix}/pa`, "complement") };
   }
 
   // --- a whole clause as a placeable unit (so clauses nest in clauses) ---
   function measureClause(clause: Clause, idPrefix: NodeId, role: NodeRole): Measured {
-    const subj = measureFiller(clause.subject, `${idPrefix}/subj`, "subject");
-    const verb = measureFiller(clause.verb, `${idPrefix}/verb`, "verb");
+    const subj = measureFiller(clause.subject, `${idPrefix}/subj`, "subject", true); // apex right -> divider
+    const verb = measureFiller(clause.verb, `${idPrefix}/verb`, "verb", false); // apex left <- divider
     const comp = clause.complement ? measureComplement(clause.complement, idPrefix) : null;
 
     const subjRight = subj.width;

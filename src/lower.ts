@@ -128,7 +128,13 @@ function lowerPredicate(vp: Tree): { verb: Verbal | Compound<Verbal>; complement
         const nom = lowerNP(c);
         complement = isCopula(verbWords) ? { kind: "predicateNoun", value: nom } : { kind: "directObject", value: nom };
       } else if (c.label === "ADJP" || c.label === "JJ") {
-        complement = { kind: "predicateAdj", value: w(phrase(c)) };
+        const jjs = c.label === "JJ" ? [c] : c.children.filter((k) => k.label === "JJ");
+        const cc = c.children.find((k) => k.label === "CC");
+        if (jjs.length > 1 && cc) {
+          complement = { kind: "predicateAdj", value: { items: jjs.map((j) => w(j.word ?? phrase(j))), conjunction: w(cc.word ?? "and") } };
+        } else {
+          complement = { kind: "predicateAdj", value: w(phrase(c)) };
+        }
       }
     }
   };

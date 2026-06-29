@@ -105,4 +105,50 @@ describe("complements", () => {
     expect(hasRole(L(pa), "divider.lean")).toBe(true);
     expect(ids(L(pa))).toContain("c/pa");
   });
+
+  it("compound predicate adjective forks (tiny and loud)", () => {
+    const c: Clause = {
+      subject: { head: W("dog"), modifiers: [] },
+      verb: { head: W("is"), modifiers: [] },
+      complement: { kind: "predicateAdj", value: { items: [W("tiny"), W("loud")], conjunction: W("and") } },
+    };
+    expect(ids(L(c))).toEqual(expect.arrayContaining(["c/pa", "c/pa/b0", "c/pa/b1"]));
+  });
+});
+
+describe("compound fork direction", () => {
+  const forkSegsIn = (s: Scene, id: string) => {
+    const out: Array<{ a: { x: number }; b: { x: number } }> = [];
+    (function w(n: SceneNode): void {
+      for (const c of n.children) {
+        if (!isNode(c) && c.kind === "seg" && c.role === "fork") out.push(c);
+        if (isNode(c)) w(c);
+      }
+    })(node(s, id));
+    return out;
+  };
+
+  it("subject forks toward the divider (apex on the right)", () => {
+    const c: Clause = {
+      subject: { items: [{ head: W("dogs"), modifiers: [] }, { head: W("cats"), modifiers: [] }], conjunction: W("and") },
+      verb: { head: W("run"), modifiers: [] },
+      complement: null,
+    };
+    const f = forkSegsIn(L(c), "c/subj");
+    expect(f).toHaveLength(2);
+    expect(f.every((seg) => seg.a.x < seg.b.x)).toBe(true); // connect-left -> apex-right
+    expect(f[0]!.b).toEqual(f[1]!.b); // shared apex
+  });
+
+  it("object forks toward the verb (apex on the left)", () => {
+    const c: Clause = {
+      subject: { head: W("dog"), modifiers: [] },
+      verb: { head: W("chased"), modifiers: [] },
+      complement: { kind: "directObject", value: { items: [{ head: W("cats"), modifiers: [] }, { head: W("mice"), modifiers: [] }], conjunction: W("and") } },
+    };
+    const f = forkSegsIn(L(c), "c/obj");
+    expect(f).toHaveLength(2);
+    expect(f.every((seg) => seg.a.x > seg.b.x)).toBe(true); // connect-right -> apex-left
+    expect(f[0]!.b).toEqual(f[1]!.b); // shared apex
+  });
 });

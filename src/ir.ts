@@ -30,7 +30,7 @@ export type Verbal = {
 export type Complement =
   | { kind: "directObject"; value: Nominal | Compound<Nominal> } // divider: half-vertical, on baseline
   | { kind: "predicateNoun"; value: Nominal | Compound<Nominal> } // divider: lean-left
-  | { kind: "predicateAdj"; value: Word }; // divider: lean-left
+  | { kind: "predicateAdj"; value: Word | Compound<Word> }; // divider: lean-left ("tiny and loud" -> fork)
 
 export type Modifier =
   | { kind: "word"; value: Word } // adj/article/adverb/possessive -> slant

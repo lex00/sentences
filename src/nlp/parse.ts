@@ -118,9 +118,13 @@ function parseSingleVP(ts: Tagged[], i: number, end: number): R {
       kids.push(node("SBAR", [leaf("IN", t.word), s.tree]));
       j = s.next;
     } else if (isCop && t.tag === "X" && !looksLikeVerb(t)) {
-      // predicate adjective(s): copula + bare open-class word
+      // predicate adjective(s): copula + bare open-class word(s), incl. "tiny and loud"
       const adj: Tree[] = [];
-      while (j < end && ts[j]!.tag === "X" && !looksLikeVerb(ts[j]!)) adj.push(leaf("JJ", ts[j++]!.word));
+      for (;;) {
+        if (j < end && ts[j]!.tag === "X" && !looksLikeVerb(ts[j]!)) adj.push(leaf("JJ", ts[j++]!.word));
+        else if (j + 1 < end && ts[j]!.tag === "CC" && ts[j + 1]!.tag === "X" && !looksLikeVerb(ts[j + 1]!)) adj.push(leaf("CC", ts[j++]!.word));
+        else break;
+      }
       kids.push(node("ADJP", adj));
     } else if (t.tag === "DT" || t.tag === "PRP$" || t.tag === "PRP" || (t.tag === "X" && !looksLikeVerb(t)) || t.tag === "CD") {
       const np = parseNP(ts, j, end);
