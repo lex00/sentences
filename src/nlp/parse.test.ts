@@ -56,6 +56,32 @@ describe("in-browser parser -> IR", () => {
   });
 });
 
+describe("questions (subject-auxiliary inversion)", () => {
+  it("yes/no question un-inverts: 'Can dogs bark'", () => {
+    const c = ir("Can dogs bark");
+    expect((c.subject as Nominal).head.text).toBe("dogs");
+    expect((c.verb as Verbal).head.text.toLowerCase()).toContain("bark");
+  });
+
+  it("copula question: 'Is the sky blue' -> predicate adjective", () => {
+    const c = ir("Is the sky blue");
+    expect((c.subject as Nominal).head.text).toBe("sky");
+    expect(c.complement?.kind).toBe("predicateAdj");
+  });
+
+  it("wh-object question: 'What did the dog eat'", () => {
+    const c = ir("What did the dog eat");
+    expect((c.subject as Nominal).head.text).toBe("dog");
+    expect(c.complement?.kind).toBe("directObject");
+  });
+
+  it("negation joins the verb chain: 'Why can the dog not run'", () => {
+    const c = ir("Why can the dog not run");
+    expect((c.verb as Verbal).head.text).toContain("run");
+    expect(modWords(c.verb as Verbal)).toContain("not");
+  });
+});
+
 describe("clause coordination (compound sentences)", () => {
   it("splits independent clauses into a compound sentence", () => {
     const s = lowerSentence(parse("Birds sing and dogs bark"));

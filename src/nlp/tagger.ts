@@ -11,9 +11,9 @@
 // everything downstream are unchanged.
 
 import nlp from "compromise";
-import { POSS, AUX, SUBORD, REL } from "./lexicon.js";
+import { POSS, AUX, SUBORD, REL, ADV } from "./lexicon.js";
 
-export type Tag = "DT" | "PRP$" | "PRP" | "IN" | "SUB" | "REL" | "CC" | "MD" | "COP" | "AUX" | "RB" | "CD" | "X" | "," | ".";
+export type Tag = "DT" | "PRP$" | "PRP" | "IN" | "SUB" | "REL" | "CC" | "MD" | "COP" | "AUX" | "RB" | "CD" | "JJ" | "X" | "," | ".";
 export type Tagged = { word: string; lc: string; tag: Tag; forced?: "V" };
 
 type Term = { text: string; tags?: string[] };
@@ -32,10 +32,11 @@ function mapTags(word: string, tags: Set<string>): { tag: Tag; forced?: "V" } {
   if (tags.has("Conjunction")) return { tag: "CC" };
   if (tags.has("Pronoun")) return { tag: "PRP" };
   if (tags.has("Preposition")) return { tag: "IN" };
-  if (tags.has("Adverb")) return { tag: "RB" };
+  if (tags.has("Adverb") || tags.has("Negative") || ADV.has(lc)) return { tag: "RB" }; // incl. "not"
   if (tags.has("Value") || tags.has("Cardinal")) return { tag: "CD" };
   if (tags.has("Verb")) return { tag: "X", forced: "V" }; // open-class verb -> the predicate
-  return { tag: "X" }; // noun / adjective / unknown -> resolved by position in the chunker
+  if (tags.has("Adjective")) return { tag: "JJ" };
+  return { tag: "X" }; // noun / unknown -> resolved by position in the chunker
 }
 
 export function tag(text: string): Tagged[] {
