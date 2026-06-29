@@ -134,6 +134,32 @@ function parsePP(ts: Tagged[], i: number, end: number): R {
   return { tree: node("PP", [leaf("IN", ts[i]!.word), np.tree]), next: np.next };
 }
 
+// Infinitive phrase: "to" + verb + (object) + (adverbs/PPs). A verbal — diagrammed on a stand.
+function parseInfinitive(ts: Tagged[], i: number, end: number): R {
+  const verb = ts[i + 1];
+  if (!verb) return null;
+  const kids: Tree[] = [leaf("TO", ts[i]!.word), leaf("VB", verb.word)];
+  let j = i + 2;
+  while (j < end && ts[j]!.tag !== "CC") {
+    const t = ts[j]!;
+    if (t.tag === "RB") {
+      kids.push(node("ADVP", [leaf("RB", t.word)]));
+      j++;
+    } else if (t.tag === "IN" || t.tag === "TO") {
+      const pp = parsePP(ts, j, end);
+      if (!pp) break;
+      kids.push(pp.tree);
+      j = pp.next;
+    } else if (t.tag === "DT" || t.tag === "PRP$" || t.tag === "PRP" || t.tag === "JJ" || (t.tag === "X" && !looksLikeVerb(t)) || t.tag === "CD") {
+      const np = parseNP(ts, j, end);
+      if (!np) break;
+      kids.push(np.tree);
+      j = np.next;
+    } else break;
+  }
+  return { tree: node("INF", kids), next: j };
+}
+
 // base NP + trailing PPs + coordination (NP CC NP)
 function parseNP(ts: Tagged[], i: number, end: number): R {
   const base = parseBaseNP(ts, i, end);
@@ -173,9 +199,6 @@ function parseSingleVP(ts: Tagged[], i: number, end: number): R {
     } else if (t.tag === "RB" && j + 1 < end && isAuxOrVerb(ts[j + 1]!)) {
       kids.push(node("ADVP", [leaf("RB", t.word)])); // adverb inside the verb chain: "can not identify"
       j++;
-    } else if (t.tag === "TO" && j + 1 < end && isAuxOrVerb(ts[j + 1]!)) {
-      kids.push(leaf("TO", t.word)); // infinitive: "need to take" extends the verb
-      j++;
     } else break;
   }
   if (kids.length === 0) return null;
@@ -185,6 +208,11 @@ function parseSingleVP(ts: Tagged[], i: number, end: number): R {
     if (t.tag === "RB") {
       kids.push(node("ADVP", [leaf("RB", t.word)]));
       j++;
+    } else if (t.tag === "TO" && j + 1 < end && looksLikeVerb(ts[j + 1]!)) {
+      const inf = parseInfinitive(ts, j, end); // "to take a walk" — an infinitive object
+      if (!inf) break;
+      kids.push(inf.tree);
+      j = inf.next;
     } else if (t.tag === "IN" || t.tag === "TO") {
       const pp = parsePP(ts, j, end); // "to" + noun is a preposition ("went to the store")
       if (!pp) break;

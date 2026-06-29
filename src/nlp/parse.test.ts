@@ -57,11 +57,14 @@ describe("in-browser parser -> IR", () => {
 });
 
 describe("infinitives and 'to' disambiguation", () => {
-  it("infinitive complement extends the verb: 'I need to take a big old walk'", () => {
+  it("infinitive is its own construction, not joined to the verb: 'I need to take a big old walk'", () => {
     const c = ir("i need to take a big old walk");
-    expect((c.verb as Verbal).head.text).toBe("need to take");
+    expect((c.verb as Verbal).head.text).toBe("need"); // "need" is the verb...
     expect(c.complement?.kind).toBe("directObject");
-    if (c.complement?.kind === "directObject") expect((c.complement.value as Nominal).head.text).toBe("walk");
+    if (c.complement?.kind === "directObject" && "kind" in c.complement.value) {
+      expect(c.complement.value.verb.text).toBe("take"); // ...and "to take a walk" is an infinitive object
+      expect(c.complement.value.object?.head.text).toBe("walk");
+    }
   });
 
   it("a verb-lexicon word is a NOUN head when it heads a determiner-led NP: 'a big old walk is nice'", () => {

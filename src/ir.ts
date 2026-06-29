@@ -27,8 +27,17 @@ export type Verbal = {
   indirectObject?: Nominal; // hangs below on a slant + rail
 };
 
+// A verbal: a verb form used as another part of speech, with its own R-K notation.
+// Infinitive ("to take a walk") sits on a stand. (Gerund/participle to follow.)
+export type Infinitive = {
+  kind: "infinitive";
+  verb: Word; // "take"
+  object: Nominal | null; // "a walk"
+  modifiers: Modifier[]; // adverbs / PPs on the infinitive verb
+};
+
 export type Complement =
-  | { kind: "directObject"; value: Nominal | Compound<Nominal> } // divider: half-vertical, on baseline
+  | { kind: "directObject"; value: Nominal | Compound<Nominal> | Infinitive } // half-vertical (or a stand for an infinitive)
   | { kind: "predicateNoun"; value: Nominal | Compound<Nominal> } // divider: lean-left
   | { kind: "predicateAdj"; value: Word | Compound<Word> }; // divider: lean-left ("tiny and loud" -> fork)
 

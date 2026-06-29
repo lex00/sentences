@@ -5,7 +5,7 @@
 // clause with no special-casing. Every Measured bakes its id + NodeRole at measure time and
 // exposes place(x, y) -> SceneNode. The engine is closed over an injected TextMetrics port.
 
-import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Sentence } from "./ir.js";
+import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Sentence, Infinitive } from "./ir.js";
 import type { Scene, SceneNode, Prim, BBox, Pt, NodeId, NodeRole } from "./scene.js";
 import type { LayoutStyle } from "./theme.js";
 import { defaultLayoutStyle } from "./theme.js";
@@ -209,9 +209,43 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
     return measureHead(slot.head.text, slot.modifiers, idPath, role);
   }
 
+  // An infinitive object on a STAND: a post rises from the object slot to a raised rail that
+  // carries "to" (on a slant) + the verb, with the verb's own object after a half-divider.
+  function measureInfinitive(inf: Infinitive, idPath: NodeId): Measured {
+    const STAND_H = style.em * 3.4;
+    const verbW = w(inf.verb.text);
+    const toW = w("to");
+    const objM = inf.object ? measureHead(inf.object.head.text, inf.object.modifiers, `${idPath}/o`, "object") : null;
+    const railW = style.pad + verbW + (objM ? style.dividerGap + objM.width : 0) + style.pad;
+    return {
+      width: railW,
+      below: box(-toW, -(STAND_H + SZ * 2), railW, 0), // sits entirely above the baseline
+      place: (x, y) => {
+        const ry = y - STAND_H; // raised rail of the infinitive
+        const sx = x + style.pad; // stand post + rail left
+        const ch: Array<SceneNode | Prim> = [];
+        ch.push({ kind: "seg", a: { x: sx, y }, b: { x: sx, y: ry }, role: "rail" }); // stand post
+        ch.push({ kind: "seg", a: { x: sx - 5, y }, b: { x: sx + 5, y }, role: "rail" }); // foot
+        ch.push({ kind: "seg", a: { x: sx, y: ry }, b: { x: sx + railW, y: ry }, role: "baseline" }); // raised rail
+        ch.push({ kind: "seg", a: { x: sx - toW * 0.7, y: ry + toW * 0.7 }, b: { x: sx, y: ry }, role: "slant" }); // "to" slant
+        ch.push({ kind: "lbl", text: "to", anchor: { x: sx - toW * 0.7 + 2, y: ry + toW * 0.7 - 3 }, angle: style.slantAngle, role: "word" });
+        ch.push({ kind: "lbl", text: inf.verb.text, anchor: { x: sx + style.pad, y: ry - 4 }, angle: 0, role: "word" });
+        if (objM) {
+          const dx = sx + style.pad + verbW + style.dividerGap / 2;
+          ch.push({ kind: "seg", a: { x: dx, y: ry - style.halfDividerRise }, b: { x: dx, y: ry }, role: "divider.half" });
+          ch.push(objM.place(sx + style.pad + verbW + style.dividerGap, ry));
+        }
+        return { id: idPath, role: "object", children: ch, bounds: childrenBox(ch) };
+      },
+    };
+  }
+
   type CompM = { divider: "half" | "lean"; measured: Measured };
   function measureComplement(c: NonNullable<Clause["complement"]>, idPrefix: NodeId): CompM {
-    if (c.kind === "directObject") return { divider: "half", measured: measureFiller(c.value, `${idPrefix}/obj`, "object", false) };
+    if (c.kind === "directObject") {
+      if ("kind" in c.value) return { divider: "half", measured: measureInfinitive(c.value, `${idPrefix}/inf`) }; // only Infinitive has `kind`
+      return { divider: "half", measured: measureFiller(c.value, `${idPrefix}/obj`, "object", false) };
+    }
     if (c.kind === "predicateNoun") return { divider: "lean", measured: measureFiller(c.value, `${idPrefix}/pn`, "complement", false) };
     // predicate adjective — single word, or a fork ("tiny and loud")
     if ("items" in c.value) {

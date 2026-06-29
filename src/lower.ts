@@ -9,7 +9,7 @@
 // lowering (UD arcs -> subject/object/modifiers); both produce the same Clause IR. Keeping
 // the IR the convergence point is what keeps that door open.
 
-import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Complement, Sentence } from "./ir.js";
+import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Complement, Sentence, Infinitive } from "./ir.js";
 import { parseBracket, phrase, type Tree } from "./ptb.js";
 
 const w = (text: string): Word => ({ text });
@@ -132,6 +132,8 @@ function lowerPredicate(vp: Tree): { verb: Verbal | Compound<Verbal>; complement
       else if (c.label === "NP") {
         const nom = lowerNP(c);
         complement = isCopula(verbWords) ? { kind: "predicateNoun", value: nom } : { kind: "directObject", value: nom };
+      } else if (c.label === "INF") {
+        complement = { kind: "directObject", value: lowerInfinitive(c) }; // infinitive object on a stand
       } else if (c.label === "ADJP" || c.label === "JJ") {
         const jjs = c.label === "JJ" ? [c] : c.children.filter((k) => k.label === "JJ");
         const cc = c.children.find((k) => k.label === "CC");
@@ -146,6 +148,17 @@ function lowerPredicate(vp: Tree): { verb: Verbal | Compound<Verbal>; complement
   walk(vp);
 
   return { verb: { head: w(verbWords.join(" ") || phrase(vp)), modifiers }, complement };
+}
+
+function lowerInfinitive(inf: Tree): Infinitive {
+  const verb = inf.children.find((c) => c.label === "VB");
+  const obj = inf.children.find((c) => c.label === "NP");
+  const modifiers: Modifier[] = [];
+  for (const c of inf.children) {
+    if (c.label === "ADVP" || c.label === "RB") modifiers.push({ kind: "word", value: w(phrase(c)) });
+    else if (c.label === "PP") modifiers.push(lowerPP(c));
+  }
+  return { kind: "infinitive", verb: w(verb?.word ?? phrase(inf)), object: obj ? asNominal(lowerNP(obj)) : null, modifiers };
 }
 
 const asVerbalFlat = (c: Compound<Verbal>): Verbal => ({ head: w(c.items.map((i) => i.head.text).join(` ${c.conjunction.text} `)), modifiers: [] });
