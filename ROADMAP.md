@@ -22,11 +22,14 @@
   IR, the converter no tool provides). benepar adapter `tools/parse.py` (not run in CI — heavy).
   End-to-end test: parser output lays out with the SAME ids as the hand-built fixtures.
   See `docs/PARSER.md`.
-- ✅ **Phase 6b** In-browser parser (`src/nlp/`): tokenizer + lexicon POS tagger + rule-based
-  constituency chunker -> PTB Tree -> existing lower(). **No server, no ML stack for clients**
-  — ships in the static bundle (~11kB gzip). Live text input wired in `main.ts`: type a
-  sentence -> parse -> morph into view. 9/10 of a sample battery fully correct; graceful
-  failure on hard input. Deployment decision: client-side parsing (benepar stays optional).
+- ✅ **Phase 6b** In-browser parser (`src/nlp/`): POS tagger (now backed by **compromise**,
+  pure-JS) + rule-based constituency chunker -> PTB Tree -> existing lower(). **No server, no
+  ML stack for clients.** Live text input in `main.ts`: type -> parse -> morph into view.
+  Decisions: (a) **client-side parsing** (benepar stays optional); (b) the hand-rolled tagger's
+  failures were all POS ambiguity (sally/sold/-ly), so it was replaced by compromise — model-
+  quality POS in ~150kB gzip, **no WASM needed**. WASM is reserved for the multilingual UD path.
+  (c) **English now, door open**: English-specific seams flagged in `parse.ts` + `lower.ts`; the
+  IR is the convergence point for a future `dependency -> IR` lowering.
 - ✅ **Phase 7** WebGPU executor (`webgpu-renderer.ts`) — HYBRID: Canvas2D scene + GPU
   instanced soft-glow particles (WGSL), shader glow lit up (supports("shader")===true).
   Sim stays CPU-side & shared (`particles.ts`) per the bench; GPU does only raster.

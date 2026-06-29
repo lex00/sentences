@@ -43,8 +43,16 @@ describe("in-browser parser -> IR", () => {
     expect(m && m.kind === "clause" && m.connector.text).toBe("because");
   });
 
-  it("throws when there isn't even a subject+verb to force (graceful failure for the UI)", () => {
-    expect(() => parse("seashells")).toThrow(); // single content word — nothing to force a verb from
+  it("handles irregular verbs + an -ly head noun (compromise POS)", () => {
+    // Regression: the hand-rolled tagger mis-tagged "sally" (->adverb) and missed "sold".
+    const c = ir("sally sold seashells by the seashore");
+    expect((c.subject as Nominal).head.text.toLowerCase()).toBe("sally");
+    expect((c.verb as Verbal).head.text).toBe("sold");
+    expect(c.complement?.kind).toBe("directObject");
+  });
+
+  it("throws when there isn't even a subject+verb (graceful failure for the UI)", () => {
+    expect(() => parse("seashells")).toThrow(); // single noun — no predicate
   });
 });
 

@@ -1,38 +1,54 @@
-// Coarse POS tagger. Closed-class words get real tags from the lexicon; open-class words are
-// left as "X" (ambiguous noun/verb/adjective) and disambiguated by position in the chunker.
+// POS tagger backed by `compromise` (pure-JS, ships in the bundle — no WASM, no model
+// download). It replaced a hand-rolled lexicon+morphology tagger whose failures were all POS
+// ambiguities a rule can't resolve ("sally" noun vs -ly adverb; "sold" verb vs unknown word).
+//
+// We map compromise's rich tag set down to the coarse tags the chunker (parse.ts) consumes.
+// Open-class words stay "X" (the chunker assigns noun/adjective by position); a detected verb
+// is marked forced:"V" so the chunker treats it as the predicate reliably.
+//
+// ENGLISH-SPECIFIC: this + parse.ts + lower.ts are the English layer. A future multilingual
+// path swaps in a Universal-Dependencies parser and a dependency->IR lowering; the IR and
+// everything downstream are unchanged.
 
-import { DET, POSS, PRON, PREP, SUBORD, REL, CONJ, MODAL, COPULA, AUX, ADV, isNumber } from "./lexicon.js";
+import nlp from "compromise";
+import { POSS, AUX, SUBORD, REL } from "./lexicon.js";
 
-export type Tagged = { word: string; lc: string; tag: Tag; forced?: "V" };
 export type Tag = "DT" | "PRP$" | "PRP" | "IN" | "SUB" | "REL" | "CC" | "MD" | "COP" | "AUX" | "RB" | "CD" | "X" | "," | ".";
+export type Tagged = { word: string; lc: string; tag: Tag; forced?: "V" };
 
-export function tokenize(text: string): string[] {
-  return text
-    .replace(/([.,!?;:])/g, " $1 ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-}
+type Term = { text: string; tags?: string[] };
 
-function tagOne(word: string): Tag {
+function mapTags(word: string, tags: Set<string>): { tag: Tag; forced?: "V" } {
   const lc = word.toLowerCase();
-  if (/^[.!?;:]$/.test(word)) return ".";
-  if (word === ",") return ",";
-  if (isNumber(word)) return "CD";
-  if (DET.has(lc)) return "DT"; // note: "that" -> DT (demonstrative) takes precedence over REL
-  if (POSS.has(lc)) return "PRP$";
-  if (CONJ.has(lc)) return "CC";
-  if (MODAL.has(lc)) return "MD";
-  if (COPULA.has(lc)) return "COP";
-  if (AUX.has(lc)) return "AUX";
-  if (SUBORD.has(lc)) return "SUB";
-  if (REL.has(lc)) return "REL";
-  if (PREP.has(lc)) return "IN";
-  if (PRON.has(lc)) return "PRP";
-  if (ADV.has(lc) || (lc.endsWith("ly") && lc.length > 3)) return "RB";
-  return "X"; // open-class: noun / verb / adjective — resolved in the chunker
+  if (/^[.!?;:]$/.test(word)) return { tag: "." };
+  if (word === ",") return { tag: "," };
+  if (POSS.has(lc)) return { tag: "PRP$" };
+  if (SUBORD.has(lc)) return { tag: "SUB" };
+  if (AUX.has(lc)) return { tag: "AUX" };
+  if (REL.has(lc) && !tags.has("Determiner")) return { tag: "REL" };
+  if (tags.has("Determiner")) return { tag: "DT" };
+  if (tags.has("Modal")) return { tag: "MD" };
+  if (tags.has("Copula")) return { tag: "COP" };
+  if (tags.has("Conjunction")) return { tag: "CC" };
+  if (tags.has("Pronoun")) return { tag: "PRP" };
+  if (tags.has("Preposition")) return { tag: "IN" };
+  if (tags.has("Adverb")) return { tag: "RB" };
+  if (tags.has("Value") || tags.has("Cardinal")) return { tag: "CD" };
+  if (tags.has("Verb")) return { tag: "X", forced: "V" }; // open-class verb -> the predicate
+  return { tag: "X" }; // noun / adjective / unknown -> resolved by position in the chunker
 }
 
 export function tag(text: string): Tagged[] {
-  return tokenize(text).map((word) => ({ word, lc: word.toLowerCase(), tag: tagOne(word) }));
+  // compromise's published types don't expose the runtime json() options shape; cast past it.
+  const sentences = (nlp(text) as { json(o: unknown): unknown }).json({ terms: true }) as Array<{ terms: Term[] }>;
+  const out: Tagged[] = [];
+  for (const sent of sentences) {
+    for (const t of sent.terms) {
+      const word = t.text;
+      if (!word) continue;
+      const m = mapTags(word, new Set(t.tags ?? []));
+      out.push(m.forced ? { word, lc: word.toLowerCase(), tag: m.tag, forced: m.forced } : { word, lc: word.toLowerCase(), tag: m.tag });
+    }
+  }
+  return out;
 }

@@ -2,6 +2,11 @@
 // lower() turns into Clause IR. Deliberately a pragmatic subset for the pedagogical domain
 // (simple-to-moderate sentences); it degrades gracefully and the UI catches hard failures.
 //
+// ENGLISH-SPECIFIC SEAM (1 of 2). This chunker hard-codes English word order (subject before
+// verb, adjectives before the head noun). A future multilingual path does NOT extend this; it
+// swaps in a Universal-Dependencies parser and a dependency->IR lowering. The IR is the
+// convergence point — both paths feed the same Clause IR, layout, and renderer.
+//
 // Core idea: an NP's open-class run stops at the first verb-like word, so the boundary between
 // subject and predicate falls out of greedy NP parsing rather than needing a separate step.
 

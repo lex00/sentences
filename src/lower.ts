@@ -3,6 +3,11 @@
 // recover subject / predicate / complement, modifiers, PPs, coordination, and subordinate
 // clauses. Deliberately a pragmatic subset; unsupported shapes throw a clear error so callers
 // (e.g. lowerNBest) can fall back rather than silently mis-diagram.
+//
+// ENGLISH-SPECIFIC SEAM (2 of 2). Constituency-shaped and English-tuned (subject = first NP,
+// copula list, PTB labels). A future multilingual path adds a SIBLING `dependency -> IR`
+// lowering (UD arcs -> subject/object/modifiers); both produce the same Clause IR. Keeping
+// the IR the convergence point is what keeps that door open.
 
 import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Complement } from "./ir.js";
 import { parseBracket, phrase, type Tree } from "./ptb.js";
