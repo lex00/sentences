@@ -99,7 +99,9 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
     }
     if (m.kind === "prep") {
       const prep = m.prep.text;
-      const L = w(prep) + style.pad;
+      // slant must be LONGER than the preposition label so the object on the horizontal at its
+      // foot doesn't collide with the label ("of" overlapping "Request").
+      const L = w(prep) + style.em * 1.6;
       const dx = L * cos;
       const dy = L * sin;
       const obj = measureHead(m.object.head.text, m.object.modifiers, `${idPath}/obj`, "object"); // recursion
