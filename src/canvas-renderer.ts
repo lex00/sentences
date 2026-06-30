@@ -41,11 +41,29 @@ export class CanvasExecutor implements EffectExecutor {
     this.g.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  private view = { s: 1, tx: 0, ty: 0 }; // fit-to-canvas transform (scene -> screen)
+
+  private applyView(g: CanvasRenderingContext2D): void {
+    g.translate(this.view.tx, this.view.ty);
+    g.scale(this.view.s, this.view.s);
+  }
+
   drawScene(frame: RenderFrame, theme: Theme): void {
     this.theme = theme;
     this.fit();
     this.g.clearRect(0, 0, this.cssW, this.cssH);
+    // Fit + center the whole diagram in the canvas (only ever scales DOWN), so long sentences
+    // don't overflow / collide with the edges.
+    const b = frame.scene.bounds;
+    const pad = 28;
+    const bw = Math.max(1, b.right - b.left);
+    const bh = Math.max(1, b.bottom - b.top);
+    const s = Math.min(1, (this.cssW - 2 * pad) / bw, (this.cssH - 2 * pad) / bh);
+    this.view = { s, tx: (this.cssW - bw * s) / 2 - b.left * s, ty: (this.cssH - bh * s) / 2 - b.top * s };
+    this.g.save();
+    this.applyView(this.g);
     this.walk(frame.scene.root, 1, frame.presence, theme);
+    this.g.restore();
   }
 
   private walk(node: SceneNode, inherited: number, presence: ReadonlyMap<NodeId, number>, theme: Theme): void {
@@ -114,6 +132,7 @@ export class CanvasExecutor implements EffectExecutor {
     const color = this.theme?.emphasis("word", "active").color ?? "#e0791a";
     const g = this.g;
     g.save();
+    this.applyView(g); // particles live in scene space — match the fit transform
     g.globalCompositeOperation = "lighter"; // additive glow
     for (const p of ps) {
       const a = particleAlpha(p);
@@ -134,6 +153,7 @@ export class CanvasExecutor implements EffectExecutor {
     const color = this.theme?.emphasis("baseline", "active").color ?? "#0b3d91";
     const g = this.g;
     g.save();
+    this.applyView(g); // draw-on trace lives in scene space — match the fit transform
     g.strokeStyle = color;
     g.lineWidth = 2.4;
     g.lineCap = "round";

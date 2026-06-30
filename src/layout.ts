@@ -135,14 +135,23 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
   function measureHead(headText: string, mods: Modifier[], idPath: NodeId, role: NodeRole): Measured {
     const headW = w(headText);
     const mm = mods.map((m, i) => ({ i, m: measureMod(m, `${idPath}/m${i}`) }));
-    const segW = Math.max(headW, mods.length * style.minSlantSpacing) + style.pad;
-    const attachX = (i: number) => style.pad + i * style.minSlantSpacing;
+    // Place modifiers left-to-right, each reserving its OWN footprint width, so a wide modifier
+    // (a PP or a relative clause) doesn't overlap its neighbors.
+    const attaches: number[] = [];
+    let ax = style.pad;
+    for (const { m } of mm) {
+      attaches.push(ax);
+      ax += Math.max(style.minSlantSpacing, m.below.right - m.below.left);
+    }
+    // The rail stays tight to the word; the modifier fan overhangs below-right (its width is in
+    // `below`, so the non-overlap rule pushes neighbors) instead of widening the baseline.
+    const segW = Math.max(headW, style.minSlantSpacing) + style.pad;
 
     let below = box(0, 0, segW, 0);
-    for (const { i, m } of mm) {
-      const ax = attachX(i);
-      below = unionB(below, box(ax + m.below.left, m.below.top, ax + m.below.right, m.below.bottom));
-    }
+    mm.forEach(({ m }, k) => {
+      const a = attaches[k]!;
+      below = unionB(below, box(a + m.below.left, m.below.top, a + m.below.right, m.below.bottom));
+    });
 
     return {
       width: segW,
@@ -150,7 +159,7 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
       place: (x, y) => {
         const rail: Prim = { kind: "seg", a: { x, y }, b: { x: x + segW, y }, role: "baseline" };
         const headLbl: Prim = { kind: "lbl", text: headText, anchor: { x: x + segW / 2 - headW / 2, y: y - 4 }, angle: 0, role: "word" };
-        const modNodes = mm.map(({ i, m }) => m.place(x + attachX(i), y));
+        const modNodes = mm.map(({ m }, k) => m.place(x + attaches[k]!, y));
         const ch: Array<SceneNode | Prim> = [rail, headLbl, ...modNodes];
         return { id: idPath, role, children: ch, bounds: childrenBox(ch) };
       },
