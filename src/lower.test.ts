@@ -75,6 +75,34 @@ describe("lower: constituency parse -> IR", () => {
   });
 });
 
+describe("lower: questions and relative clauses (benepar structures)", () => {
+  it("yes/no question (SQ) un-inverts to subject + predicate adjective", () => {
+    const c = lower("(SQ (VBZ Is) (NP (DT the) (NN sky)) (ADJP (JJ blue)))");
+    expect((c.subject as Nominal).head.text).toBe("sky");
+    expect((c.verb as Verbal).head.text).toBe("Is");
+    expect(c.complement?.kind).toBe("predicateAdj");
+  });
+
+  it("wh-question (SBARQ) with wh-subject: 'Who chased the cat'", () => {
+    const c = lower("(SBARQ (WHNP (WP Who)) (SQ (VP (VBD chased) (NP (DT the) (NN cat)))))");
+    expect((c.subject as Nominal).head.text).toBe("Who");
+    expect((c.verb as Verbal).head.text).toBe("chased");
+    expect(c.complement?.kind).toBe("directObject");
+  });
+
+  it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
+    const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");
+    expect((c.subject as Nominal).head.text).toBe("dog");
+    const rel = (c.subject as Nominal).modifiers.find((m) => m.kind === "clause");
+    expect(rel?.kind).toBe("clause");
+    if (rel?.kind === "clause") {
+      expect(rel.connector.text).toBe(""); // relativizer is the subject, not a connector word
+      expect((rel.value.subject as Nominal).head.text).toBe("that");
+      expect((rel.value.verb as Verbal).head.text).toBe("barked");
+    }
+  });
+});
+
 describe("lower: end-to-end through the existing pipeline", () => {
   const metrics: TextMetrics = { measure: (t, sz) => ({ width: t.length * sz * 0.55, ascent: sz * 0.8, descent: sz * 0.2 }) };
   const ids = (s: Scene): string[] => {

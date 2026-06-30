@@ -11,14 +11,9 @@ import corpus from "./parser/__fixtures__/corpus.json";
 // lower() can't yet consume (benepar questions / relative clauses) are tracked as a known set so
 // the suite stays green AND flags regressions either way.
 
-// lower() doesn't yet handle these benepar structures (SQ/SBARQ questions, SBAR relative clauses
-// with a gapped subject). The neural path falls back to rule-based for them. TODO: extend lower().
-const KNOWN_LOWERING_GAPS = [
-  "It won't be the carbon dioxide that kills us.",
-  "Who chased the cat?",
-  "Is the sky blue?",
-  "The dog that barked ran away.",
-].sort();
+// lower() now handles benepar's questions (SQ/SBARQ) and relative clauses, so the whole corpus
+// should lower. Any sentence here is a NEW lowering gap to fix.
+const KNOWN_LOWERING_GAPS: string[] = [];
 
 let metrics: TextMetrics;
 beforeAll(() => {

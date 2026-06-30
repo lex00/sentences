@@ -9,7 +9,7 @@
 // lowering (UD arcs -> subject/object/modifiers); both produce the same Clause IR. Keeping
 // the IR the convergence point is what keeps that door open.
 
-import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Complement, Sentence, Infinitive } from "./ir.js";
+import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Complement, Sentence, Infinitive, Subject } from "./ir.js";
 import { parseBracket, phrase, type Tree } from "./ptb.js";
 
 const w = (text: string): Word => ({ text });
@@ -99,13 +99,19 @@ function lowerPP(pp: Tree): Modifier {
 }
 
 function lowerSBAR(sbar: Tree): Modifier {
-  const conn = sbar.children.find((c) => ["IN", "WHNP", "WHADVP", "WHPP", "WDT", "WP"].includes(c.label));
-  const s = sbar.children.find((c) => c.label === "S" || c.label === "SINV");
-  return {
-    kind: "clause",
-    connector: w(conn ? phrase(conn) : "that"),
-    value: s ? lowerClause(s) : { subject: { head: w("?"), modifiers: [] }, verb: { head: w("?"), modifiers: [] }, complement: null },
-  };
+  const wh = sbar.children.find((c) => ["WHNP", "WHADVP", "WHPP", "WDT", "WP", "WRB"].includes(c.label));
+  const inConn = sbar.children.find((c) => c.label === "IN");
+  const s = sbar.children.find((c) => c.label === "S" || c.label === "SINV" || c.label === "SQ");
+  const fallback: Clause = { subject: { head: w("?"), modifiers: [] }, verb: { head: w("?"), modifiers: [] }, complement: null };
+  if (!s) return { kind: "clause", connector: w(inConn ? phrase(inConn) : wh ? phrase(wh) : "that"), value: fallback };
+
+  // Relative clause: the wh-word is the gapped subject ("the dog that barked"); the dotted
+  // connector carries no separate word (the relativizer IS the clause's subject).
+  if (wh && !s.children.some((c) => c.label === "NP")) {
+    return { kind: "clause", connector: w(""), value: lowerClause(s, { head: w(phrase(wh)), modifiers: [] }) };
+  }
+  // Adverbial / complement clause ("because dogs barked"): the subordinator is the connector.
+  return { kind: "clause", connector: w(inConn ? phrase(inConn) : wh ? phrase(wh) : "that"), value: lowerClause(s) };
 }
 
 // --- predicates ---
@@ -171,18 +177,57 @@ const isCopula = (verbWords: string[]) => verbWords.some((v) => COPULA.has(v.toL
 
 // --- clause ---
 
-function lowerClause(s: Tree): Clause {
+function lowerClause(s: Tree, fallbackSubject?: Subject): Clause {
   const subjNP = s.children.find((c) => c.label === "NP");
   const vp = s.children.find((c) => c.label === "VP");
-  if (!subjNP || !vp) throw new Error(`lower: unsupported clause (need NP + VP) in (${s.label} ...)`);
+  if (!vp) throw new Error(`lower: unsupported clause (no VP) in (${s.label} ...)`);
+  const subject = subjNP ? lowerNP(subjNP) : fallbackSubject; // relative clauses have a gapped subject
+  if (!subject) throw new Error(`lower: unsupported clause (need NP + VP) in (${s.label} ...)`);
   const { verb, complement } = lowerPredicate(vp);
-  return { subject: lowerNP(subjNP), verb, complement };
+  return { subject, verb, complement };
+}
+
+// Yes/no question: (SQ (VBZ Is) (NP the sky) (ADJP blue)) — un-invert to subject + predicate.
+function lowerSQ(sq: Tree): Clause {
+  const kids = sq.children.filter((c) => c.label !== "." && c.label !== ",");
+  const lead: Tree[] = []; // leading auxiliary/verb before the subject
+  let i = 0;
+  while (i < kids.length && /^(VB|MD|AUX)/.test(kids[i]!.label)) lead.push(kids[i++]!);
+  const subjNP = kids[i]?.label === "NP" ? kids[i]! : undefined;
+  if (subjNP) i++;
+  const vp: Tree = { label: "VP", children: [...lead, ...kids.slice(i)] }; // synthetic declarative predicate
+  const { verb, complement } = lowerPredicate(vp);
+  return { subject: subjNP ? lowerNP(subjNP) : { head: w("?"), modifiers: [] }, verb, complement };
+}
+
+// Wh-question: (SBARQ (WHNP Who) (SQ ...)). The wh-word is the subject if the SQ has no inverted
+// aux+subject ("Who chased the cat"), otherwise the gapped object ("What did the dog eat").
+function lowerSBARQ(sbarq: Tree): Clause {
+  const wh = sbarq.children.find((c) => ["WHNP", "WHADVP", "WHPP"].includes(c.label));
+  const sq = sbarq.children.find((c) => c.label === "SQ" || c.label === "S");
+  if (!sq) throw new Error("lower: SBARQ without SQ");
+  const whWord = wh ? phrase(wh) : "what";
+  const sqKids = sq.children.filter((c) => c.label !== "." && c.label !== ",");
+  if (sqKids[0]?.label === "VP") {
+    const { verb, complement } = lowerPredicate(sqKids[0]!); // wh is the subject
+    return { subject: { head: w(whWord), modifiers: [] }, verb, complement };
+  }
+  const clause = lowerSQ(sq); // inverted; wh is the object
+  if (!clause.complement) clause.complement = { kind: "directObject", value: { head: w(whWord), modifiers: [] } };
+  return clause;
+}
+
+// Dispatch a top-level constituent to the right lowering.
+function lowerTop(t: Tree): Clause {
+  if (t.label === "SQ") return lowerSQ(t);
+  if (t.label === "SBARQ") return lowerSBARQ(t);
+  return lowerClause(t);
 }
 
 // --- public API ---
 
 export function lower(parse: Tree | string): Clause {
-  return lowerClause(typeof parse === "string" ? parseBracket(parse) : parse);
+  return lowerTop(typeof parse === "string" ? parseBracket(parse) : parse);
 }
 
 // Lower a whole sentence: a compound sentence (top-level S with several S children) becomes
@@ -193,9 +238,9 @@ export function lowerSentence(parse: Tree | string): Sentence {
   while (["ROOT", "TOP", "S1", ""].includes(t.label) && t.children.length === 1 && t.children[0]) t = t.children[0];
   const sKids = t.children.filter((c) => c.label === "S" || c.label === "SINV");
   if (t.label === "S" && sKids.length >= 2) {
-    return { clauses: sKids.map(lowerClause), conjunctions: t.children.filter((c) => c.label === "CC").map((c) => w(c.word ?? "and")) };
+    return { clauses: sKids.map((c) => lowerClause(c)), conjunctions: t.children.filter((c) => c.label === "CC").map((c) => w(c.word ?? "and")) };
   }
-  return { clauses: [lowerClause(t)], conjunctions: [] };
+  return { clauses: [lowerTop(t)], conjunctions: [] };
 }
 
 // N-best: lower each candidate parse, dropping any that fail to lower.

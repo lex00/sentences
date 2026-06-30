@@ -120,7 +120,7 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
     // subordinate / relative clause: nested clause below the head on a dotted connector.
     const nested = measureClause(m.value, `${idPath}/c`, "subclause");
     const conn = m.connector.text;
-    const DROP = style.em * 2.6;
+    const DROP = style.em * 3.6; // clear sibling modifier slants on the same head
     return {
       below: unionB(box(0, 0, 0, DROP), box(nested.below.left, DROP + nested.below.top, Math.max(nested.width, nested.below.right), DROP + nested.below.bottom)),
       place: (ax, by) => {
@@ -143,7 +143,7 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
     let ax = style.pad;
     for (const { m } of mm) {
       attaches.push(ax);
-      ax += Math.max(style.minSlantSpacing, m.below.right - m.below.left);
+      ax += Math.max(style.minSlantSpacing, m.below.right - m.below.left) + style.pad; // breathing room between modifiers
     }
     // The rail stays tight to the word; the modifier fan overhangs below-right (its width is in
     // `below`, so the non-overlap rule pushes neighbors) instead of widening the baseline.
