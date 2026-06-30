@@ -86,11 +86,16 @@ function lowerCoordNP(np: Tree): Compound<Nominal> {
 function lowerPP(pp: Tree): Modifier {
   const prepTok = pp.children.find((c) => c.label === "IN" || c.label === "TO");
   const objNP = pp.children.find((c) => c.label === "NP");
-  return {
-    kind: "prep",
-    prep: w(prepTok?.word ?? phrase(pp).split(" ")[0] ?? "?"),
-    object: asNominal(objNP ? lowerNP(objNP) : { head: w(phrase(pp)), modifiers: [] }),
-  };
+  let object: Nominal;
+  if (objNP) {
+    object = asNominal(lowerNP(objNP));
+  } else {
+    // object is a clause/gerund ("after leaving Portugal") — use the words AFTER the preposition,
+    // not phrase(pp), which would repeat the preposition itself.
+    const rest = pp.children.filter((c) => c !== prepTok).map(phrase).join(" ").trim();
+    object = { head: w(rest || phrase(pp)), modifiers: [] };
+  }
+  return { kind: "prep", prep: w(prepTok?.word ?? phrase(pp).split(" ")[0] ?? "?"), object };
 }
 
 function lowerSBAR(sbar: Tree): Modifier {

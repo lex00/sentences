@@ -53,6 +53,16 @@ describe("lower: constituency parse -> IR", () => {
     if (c.complement?.kind === "predicateAdj" && "text" in c.complement.value) expect(c.complement.value.text).toBe("blue");
   });
 
+  it("PP with a clause object doesn't repeat the preposition ('after leaving Portugal')", () => {
+    const c = lower("(S (NP (NNP Sarah)) (VP (VBD went) (PP (IN after) (S (VP (VBG leaving) (NP (NNP Portugal)))))))");
+    const pp = (c.verb as Verbal).modifiers.find((m) => m.kind === "prep");
+    expect(pp?.kind).toBe("prep");
+    if (pp?.kind === "prep") {
+      expect(pp.prep.text).toBe("after");
+      expect(pp.object.head.text).toBe("leaving Portugal"); // not "after leaving Portugal"
+    }
+  });
+
   it("nested NP + PP -> prep modifier on the base nominal", () => {
     const c = lower(PTB.pp);
     expect((c.subject as Nominal).head.text).toBe("man");
