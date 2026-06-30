@@ -27,6 +27,9 @@ export class ModelParser {
   ) {}
 
   static async load(base = "/models"): Promise<ModelParser> {
+    // Single-threaded wasm: no SharedArrayBuffer / cross-origin isolation (COOP/COEP) required,
+    // so it works on a plain static host and the Vite dev server.
+    ort.env.wasm.numThreads = 1;
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/";
     const [unigram, vocab] = await Promise.all([
       fetch(`${base}/t5-unigram.json`).then((r) => r.json() as Promise<UnigramModel>),

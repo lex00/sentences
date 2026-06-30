@@ -51,29 +51,32 @@ function ensureModel(): void {
   status.textContent = "loading neural parser (~72 MB, first time)…";
   ModelParser.load()
     .then((mp) => { model = mp; modelState = "ready"; status.textContent = "neural parser ready ✓"; })
-    .catch(() => { modelState = "failed"; status.textContent = "neural parser unavailable — using rule-based"; });
+    .catch((err) => { modelState = "failed"; console.error("[model load failed]", err); status.textContent = "neural parser failed to load (see console) — using rule-based"; });
 }
 input.addEventListener("focus", ensureModel);
 
 input.addEventListener("keydown", async (e) => {
   if (e.key !== "Enter") return;
+  e.preventDefault();
   const text = input.value.trim();
   if (!text) return;
-  try {
-    if (model) {
-      show(layout(lowerSentence(await model.parse(text)), metrics, defaultLayoutStyle)); // neural parse
-      status.textContent = "";
-    } else {
-      show(layout(parseDocument(text), metrics, defaultLayoutStyle)); // rule-based
-      status.textContent = modelState === "loading" ? "(rule-based; neural parser still loading…)" : "";
-    }
-  } catch {
+
+  if (model) {
     try {
-      show(layout(parseDocument(text), metrics, defaultLayoutStyle));
-      status.textContent = "(rule-based fallback)";
-    } catch {
-      status.textContent = "couldn't diagram that one — try a simpler sentence";
+      show(layout(lowerSentence(await model.parse(text)), metrics, defaultLayoutStyle)); // neural parse
+      status.textContent = "neural ✓";
+      return;
+    } catch (err) {
+      console.error("[neural parse failed]", err);
+      status.textContent = "neural parse failed (see console) — trying rule-based";
     }
+  }
+  try {
+    show(layout(parseDocument(text), metrics, defaultLayoutStyle)); // rule-based fallback
+    status.textContent = model ? "rule-based fallback" : modelState === "loading" ? "rule-based (model still loading…)" : modelState === "failed" ? "rule-based (model failed)" : "rule-based";
+  } catch (err) {
+    console.error("[rule-based parse failed]", err);
+    status.textContent = "couldn't diagram that one — try a simpler sentence";
   }
 });
 
@@ -84,7 +87,10 @@ canvas.addEventListener("click", (e) => {
 });
 
 window.addEventListener("keydown", (e) => {
-  if (document.activeElement === input) return; // don't hijack typing
+  // never hijack keys destined for a text field (paste, spaces, typing)
+  const t = e.target as HTMLElement | null;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  if (document.activeElement === input) return;
   if (e.key === " " || e.key === "Enter") {
     e.preventDefault();
     exampleIdx = (exampleIdx + 1) % examples.length;
