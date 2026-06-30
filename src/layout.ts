@@ -18,7 +18,7 @@ export interface TextMetrics {
 // Browser adapter — shared by every renderer (same fonts -> same coordinates).
 export class CanvasTextMetrics implements TextMetrics {
   private g: CanvasRenderingContext2D;
-  constructor(private family = "ui-serif, Georgia, 'Times New Roman', serif") {
+  constructor(private family = "Tinos, Georgia, 'Times New Roman', serif") {
     const c = document.createElement("canvas");
     const ctx = c.getContext("2d");
     if (!ctx) throw new Error("2D canvas context unavailable for text metrics");

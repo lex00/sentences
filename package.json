@@ -20,7 +20,10 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@fontsource/tinos": "^5.2.7",
+    "@types/opentype.js": "^1.3.10",
     "compromise": "^14.15.1",
-    "onnxruntime-web": "^1.27.0"
+    "onnxruntime-web": "^1.27.0",
+    "opentype.js": "^2.0.0"
   }
 }

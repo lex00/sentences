@@ -59,7 +59,7 @@ export const defaultTheme: Theme = {
     }
   },
   font(_role: Role): FontSpec {
-    return { family: "ui-serif, Georgia, 'Times New Roman', serif", size: 16 };
+    return { family: "Tinos, Georgia, 'Times New Roman', serif", size: 16 }; // pinned: matches test metrics
   },
   emphasis(_role: Role, state: EmphasisState): Override {
     if (state === "muted") return { opacity: 0.35 };

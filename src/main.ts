@@ -9,6 +9,7 @@ import { layout, CanvasTextMetrics } from "./layout.js";
 import { defaultTheme, blueprintTheme, defaultLayoutStyle } from "./theme.js";
 import { EffectScheduler, hitTest } from "./scheduler.js";
 import { defaultBindings } from "./bindings.js";
+import "@fontsource/tinos"; // pinned serif — same font the collision tests measure against
 import { parseDocument } from "./document.js";
 import { lowerSentence } from "./lower.js";
 import { ModelParser } from "./parser/model-parser.js";
@@ -18,6 +19,7 @@ import type { Scene } from "./scene.js";
 const CSS_W = 900;
 const CSS_H = 500;
 
+void document.fonts.load("16px Tinos"); // request the pinned font early so layout measures it
 const metrics = new CanvasTextMetrics();
 const examples = cycle.map((ir) => layout(ir, metrics, defaultLayoutStyle));
 

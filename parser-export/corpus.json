@@ -1,0 +1,90 @@
+[
+{
+"sentence": "The dog barked.",
+"ptb": "(TOP (S (NP (DT The) (NN dog)) (VP (VBD barked)) (. .)))"
+},
+{
+"sentence": "The big dog chased the ball.",
+"ptb": "(TOP (S (NP (DT The) (JJ big) (NN dog)) (VP (VBD chased) (NP (DT the) (NN ball))) (. .)))"
+},
+{
+"sentence": "Sarah went to France after leaving Portugal.",
+"ptb": "(TOP (S (NP (NNP Sarah)) (VP (VBD went) (PP (IN to) (NP (NNP France))) (PP (IN after) (S (VP (VBG leaving) (NP (NNP Portugal)))))) (. .)))"
+},
+{
+"sentence": "It won't be the carbon dioxide that kills us.",
+"ptb": "(TOP (S (NP (PRP It)) (VP (MD wo) (RB n't) (VP (VB be) (NP (NP (DT the) (NN carbon) (NN dioxide)) (SBAR (WHNP (WDT that)) (S (VP (VBZ kills) (NP (PRP us)))))))) (. .)))"
+},
+{
+"sentence": "There is a dangerous myth circulating right now that AI agents mean the end of the Pull Request.",
+"ptb": "(TOP (S (NP (EX There)) (VP (VBZ is) (NP (DT a) (JJ dangerous) (NN myth)) (VP (VP (VBG circulating) (ADVP (RB right) (RB now))) (SBAR (IN that) (S (NP (NNP AI) (NNS agents)) (VP (VBP mean) (NP (NP (DT the) (NN end)) (PP (IN of) (NP (DT the) (NNP Pull) (NNP Request))))))))) (. .)))"
+},
+{
+"sentence": "She likes to read books.",
+"ptb": "(TOP (S (NP (PRP She)) (VP (VBZ likes) (S (VP (TO to) (VP (VB read) (NP (NNS books)))))) (. .)))"
+},
+{
+"sentence": "Dogs and cats chase mice.",
+"ptb": "(TOP (S (NP (NNS Dogs) (CC and) (NNS cats)) (VP (VBP chase) (NP (NNS mice))) (. .)))"
+},
+{
+"sentence": "The man in the house slept.",
+"ptb": "(TOP (S (NP (NP (DT The) (NN man)) (PP (IN in) (NP (DT the) (NN house)))) (VP (VBD slept)) (. .)))"
+},
+{
+"sentence": "My dog is tiny and loud.",
+"ptb": "(TOP (S (NP (PRP$ My) (NN dog)) (VP (VBZ is) (ADJP (JJ tiny) (CC and) (JJ loud))) (. .)))"
+},
+{
+"sentence": "The children played quickly in the park.",
+"ptb": "(TOP (S (NP (DT The) (NNS children)) (VP (VBD played) (ADVP (RB quickly)) (PP (IN in) (NP (DT the) (NN park)))) (. .)))"
+},
+{
+"sentence": "Who chased the cat?",
+"ptb": "(TOP (SBARQ (WHNP (WP Who)) (SQ (VP (VBD chased) (NP (DT the) (NN cat)))) (. ?)))"
+},
+{
+"sentence": "Is the sky blue?",
+"ptb": "(TOP (SQ (VBZ Is) (NP (DT the) (NN sky)) (ADJP (JJ blue)) (. ?)))"
+},
+{
+"sentence": "The teacher gave the students homework.",
+"ptb": "(TOP (S (NP (DT The) (NN teacher)) (VP (VBD gave) (NP (DT the) (NNS students)) (NP (NN homework))) (. .)))"
+},
+{
+"sentence": "Birds sing and dogs bark.",
+"ptb": "(TOP (S (S (NP (NNS Birds)) (VP (VBP sing))) (CC and) (S (NP (NNS dogs)) (VP (VBP bark))) (. .)))"
+},
+{
+"sentence": "The book on the table is mine.",
+"ptb": "(TOP (S (NP (NP (DT The) (NN book)) (PP (IN on) (NP (DT the) (NN table)))) (VP (VBZ is) (NP (PRP mine))) (. .)))"
+},
+{
+"sentence": "I want to go home.",
+"ptb": "(TOP (S (NP (PRP I)) (VP (VBP want) (S (VP (TO to) (VP (VB go) (ADVP (RB home)))))) (. .)))"
+},
+{
+"sentence": "He said that she was right.",
+"ptb": "(TOP (S (NP (PRP He)) (VP (VBD said) (SBAR (IN that) (S (NP (PRP she)) (VP (VBD was) (ADJP (JJ right)))))) (. .)))"
+},
+{
+"sentence": "The quick brown fox jumps over the lazy dog.",
+"ptb": "(TOP (S (NP (DT The) (JJ quick) (JJ brown) (NN fox)) (VP (VBZ jumps) (PP (IN over) (NP (DT the) (JJ lazy) (NN dog)))) (. .)))"
+},
+{
+"sentence": "We will meet at the station before noon.",
+"ptb": "(TOP (S (NP (PRP We)) (VP (MD will) (VP (VB meet) (PP (IN at) (NP (DT the) (NN station))) (PP (IN before) (NP (NN noon))))) (. .)))"
+},
+{
+"sentence": "The dog that barked ran away.",
+"ptb": "(TOP (S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))) (. .)))"
+},
+{
+"sentence": "A small bird sang sweetly.",
+"ptb": "(TOP (S (NP (DT A) (JJ small) (NN bird)) (VP (VBD sang) (ADVP (RB sweetly))) (. .)))"
+},
+{
+"sentence": "They built a house near the river.",
+"ptb": "(TOP (S (NP (PRP They)) (VP (VBD built) (NP (DT a) (NN house)) (PP (IN near) (NP (DT the) (NN river)))) (. .)))"
+}
+]
