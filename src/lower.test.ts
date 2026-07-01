@@ -180,6 +180,20 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
     expect(v.conjunction.text).toBe("either...or");
   });
 
+  it("set-off participial phrase modifies the subject, not mistaken for the subject", () => {
+    const c = lower("(S (NP (DT The) (NN dog)) (, ,) (S (VP (VBG barking) (ADVP (RB furiously)))) (, ,) (VP (VBD chased) (NP (DT the) (JJ frightened) (NN boy))))");
+    const subj = c.subject as Nominal;
+    expect(subj.head.text).toBe("dog");
+    const part = subj.modifiers.find((m): m is Extract<Modifier, { kind: "participle" }> => m.kind === "participle");
+    expect(part?.verb.text).toBe("barking");
+  });
+
+  it("fronted participial phrase does not steal the subject slot from a following NP", () => {
+    const c = lower("(S (S (VP (VBG Growling))) (, ,) (NP (DT the) (NN monster)) (VP (VBD charged) (NP (DT the) (VBN wounded) (NN hero))))");
+    expect((c.subject as Nominal).head.text).toBe("monster"); // NOT the gerund "Growling"
+    expect((c.subject as Nominal).modifiers.some((m) => m.kind === "participle")).toBe(true);
+  });
+
   it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
     const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");
     expect((c.subject as Nominal).head.text).toBe("dog");

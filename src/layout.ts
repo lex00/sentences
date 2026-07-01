@@ -117,6 +117,24 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
         },
       };
     }
+    if (m.kind === "participle") {
+      // a participle hangs under the noun on a bent line: a short slant down to a horizontal rail
+      // carrying the participle verb (+ object) with its own modifiers below.
+      const core = measureVerbalCore(m.verb.text, m.modifiers, m.object, `${idPath}/p`);
+      const L = style.em * 1.6;
+      const dx = L * cos;
+      const dy = L * sin;
+      const coreBelow = box(dx + core.below.left, dy + core.below.top, dx + core.below.right, dy + core.below.bottom);
+      return {
+        below: unionB(box(0, 0, dx, dy), coreBelow),
+        place: (ax, by) => {
+          const P = { x: ax + dx, y: by + dy };
+          const slant: Prim = { kind: "seg", a: { x: ax, y: by }, b: P, role: "slant" };
+          const ch: Array<SceneNode | Prim> = [slant, core.place(P.x, P.y)];
+          return { id: idPath, role: "pp", children: ch, bounds: childrenBox(ch) };
+        },
+      };
+    }
     // subordinate / relative clause: nested clause below the head on a dotted connector.
     const nested = measureClause(m.value, `${idPath}/c`, "subclause");
     const conn = m.connector.text;
@@ -363,9 +381,11 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
     const comp = clause.complement ? measureComplement(clause.complement, idPrefix) : null;
 
     const subjRight = subj.width;
-    // THE CRUX: spacing respects both the divider minimum AND below-cluster overlap.
-    const verbLeft = Math.max(subjRight + style.dividerGap, subj.below.right + MARGIN - verb.below.left);
-    const fullX = (subjRight + verbLeft) / 2;
+    // THE CRUX: spacing respects both the divider minimum AND below-cluster overlap. The full
+    // divider must also sit clear of anything hanging below the subject (a wide participle/PP),
+    // so no modifier line crosses it; the verb then follows the divider.
+    const fullX = Math.max(subjRight + style.dividerGap / 2, subj.below.right + style.pad);
+    const verbLeft = Math.max(fullX + style.dividerGap / 2, subj.below.right + MARGIN - verb.below.left);
     const verbRight = verbLeft + verb.width;
 
     let compLeft = 0;

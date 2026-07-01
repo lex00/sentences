@@ -59,7 +59,10 @@ export type Complement =
 export type Modifier =
   | { kind: "word"; value: Word } // adj/article/adverb/possessive -> slant
   | { kind: "prep"; prep: Word; object: Nominal } // slant carries prep, sub-rail carries object  (recursion)
-  | { kind: "clause"; value: Clause; connector: Word }; // relative/subordinate, dotted connection  (recursion)
+  | { kind: "clause"; value: Clause; connector: Word } // relative/subordinate, dotted connection  (recursion)
+  // participial phrase ("the dog barking furiously") -> the participle on a curved line under the
+  // noun, carrying its own object and modifiers.
+  | { kind: "participle"; verb: Word; object: Nominal | null; modifiers: Modifier[] };
 
 // Compound wrapper (compound subject/predicate/object): fork + dotted conjunction line.
 export type Compound<T> = { items: T[]; conjunction: Word };

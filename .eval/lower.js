@@ -21,7 +21,7 @@ const CORREL = new Set(["both", "either", "neither"]);
 const isCorrelative = (t) => !!t?.word && CORREL.has(t.word.toLowerCase());
 const conjLabel = (correlative, conj) => (correlative ? `${correlative}...${conj}` : conj);
 const NOUN = new Set(["NN", "NNS", "NNP", "NNPS", "PRP"]);
-const PREMOD = new Set(["DT", "JJ", "JJR", "JJS", "PRP$", "CD", "POS", "PDT", "RB"]); // RB: e.g. "very" before adj
+const PREMOD = new Set(["DT", "JJ", "JJR", "JJS", "PRP$", "CD", "POS", "PDT", "RB", "VBN", "VBG"]); // RB: "very"; VBN/VBG: "burned toast"
 const isVerb = (label) => /^(VB|MD|AUX)/.test(label);
 const isCC = (t) => t.label === "CC";
 const isPunct = (t) => /^[,:.]$/.test(t.label);
@@ -31,13 +31,14 @@ const asNominal = (n) => "items" in n ? { head: w(n.items.map((i) => i.head.text
 function lowerNP(np) {
     if (np.children.some(isCC))
         return lowerCoordNP(np);
-    // (NP (NP ...) (PP|SBAR ...)+) — a base nominal with trailing post-modifiers
+    // (NP (NP ...) (PP|SBAR|VP ...)+) — a base nominal with trailing post-modifiers, where a VP is a
+    // reduced participial clause ("the girl running across the field").
     const first = np.children[0];
     const rest = np.children.slice(1);
-    if (first && first.label === "NP" && rest.length > 0 && rest.every((c) => c.label === "PP" || c.label === "SBAR")) {
+    if (first && first.label === "NP" && rest.length > 0 && rest.every((c) => c.label === "PP" || c.label === "SBAR" || (c.label === "VP" && isParticipial(c)))) {
         const base = asNominal(lowerNP(first));
         for (const c of rest)
-            base.modifiers.push(c.label === "PP" ? lowerPP(c) : lowerSBAR(c));
+            base.modifiers.push(c.label === "PP" ? lowerPP(c) : c.label === "SBAR" ? lowerSBAR(c) : lowerParticipleVP(c));
         return base;
     }
     // flat NP: pre-modifiers, head noun (last noun wins; earlier nouns become noun-adjunct mods)
@@ -268,6 +269,23 @@ function verbalModifiers(src) {
     }
     return mods;
 }
+// A participial phrase modifying a noun: the VBG/VBN verb + object + adverb/PP modifiers.
+function lowerParticipleVP(vp, leading = []) {
+    const part = vp.children.find((c) => c.label === "VBG" || c.label === "VBN");
+    const obj = vp.children.find((c) => c.label === "NP");
+    const modifiers = [...leading.map((a) => ({ kind: "word", value: w(phrase(a)) })), ...verbalModifiers(vp)];
+    return { kind: "participle", verb: w(part?.word ?? phrase(vp)), object: obj ? asNominal(lowerNP(obj)) : null, modifiers };
+}
+// A participial phrase set off as its own S: "(S (ADVP Cheerfully) (VP (VBG whistling) ...))".
+const lowerParticipleS = (s) => lowerParticipleVP(s.children.find((c) => c.label === "VP"), s.children.filter((c) => c.label === "ADVP" || c.label === "RB"));
+// A reduced clause acting as a participle ("the dog[,] barking furiously"): an S (or bare VP) with a
+// VBG/VBN-headed VP and no subject NP. Distinct from a gerund subject only by having a sibling
+// subject NP — the caller decides which reading applies.
+function isParticipial(t) {
+    const vp = t.label === "VP" ? t : t.label === "S" && !t.children.some((c) => c.label === "NP") ? t.children.find((c) => c.label === "VP") : undefined;
+    const head = vp?.children[0];
+    return !!head && (head.label === "VBG" || head.label === "VBN");
+}
 // A gerund subject/object: (S (VP (VBG Running) (NP marathons) (PP ...))).
 function lowerGerund(vp) {
     const vbg = vp.children.find((c) => c.label === "VBG");
@@ -323,11 +341,18 @@ function lowerClause(s, fallbackSubject) {
     const vp = s.children.find((c) => c.label === "VP");
     if (!vp)
         throw new Error(`lower: unsupported clause (no VP) in (${s.label} ...)`);
-    // The subject is the NP / gerund-or-infinitive S / noun-clause SBAR preceding the predicate.
-    const subjTree = s.children.find((c) => c !== vp && (c.label === "NP" || c.label === "S" || c.label === "SBAR"));
+    // Prefer a real NP subject; only when there is none is a gerund/infinitive S or noun-clause SBAR
+    // the subject. A VBG/VBN-headed S alongside an NP subject is a participial phrase, not the subject.
+    const npSubj = s.children.find((c) => c.label === "NP" && c !== vp);
+    const subjTree = npSubj ?? s.children.find((c) => c !== vp && (c.label === "S" || c.label === "SBAR"));
     const subject = subjTree ? lowerSubjectConstituent(subjTree) ?? fallbackSubject : fallbackSubject; // relative clauses have a gapped subject
     if (!subject)
         throw new Error(`lower: unsupported clause (need NP + VP) in (${s.label} ...)`);
+    // Participial phrases set off from the subject ("The dog, barking furiously, chased ...";
+    // "Growling, the monster charged ...") modify the subject noun — attach them there.
+    const participles = s.children.filter((c) => c !== subjTree && c !== vp && c.label === "S" && isParticipial(c)).map(lowerParticipleS);
+    if (participles.length && "modifiers" in subject)
+        subject.modifiers.push(...participles);
     const { verb, complement } = lowerPredicate(vp);
     // Clause-level adverbs ("your team really needs") sit outside the VP — attach to the verb.
     const advSibs = s.children.filter((c) => (c.label === "ADVP" || c.label === "RB") && c !== subjTree);
