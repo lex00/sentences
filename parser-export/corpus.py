@@ -16,6 +16,16 @@ sents=[
  "The quick brown fox jumps over the lazy dog.","We will meet at the station before noon.",
  "The dog that barked ran away.","A small bird sang sweetly.","They built a house near the river.","The big dog sat on the little dog.",
  "Can a tap mechanic still feel like a puzzle if the player has to think about layers and chain reactions?",
+ # constructions added while closing battery gaps (imperatives, interjections, IO, objective
+ # complements, correlatives, verbal/clause subjects, participles, appositives, causative, absolute)
+ "Sit!","Man, that hurt!","Alicia's hobby is to ride trail horses.",
+ "Mrs. Doubtfire gave the children homework.","They elected my uncle mayor.","This music makes me happy.",
+ "Both Max and I hit homers.","She either complains or criticizes.","Neither Laura nor Carla could come.",
+ "Running marathons is fun.","To master a new skill takes patience.","Whoever made this pottery did a good job.",
+ "The dog, barking furiously, chased the frightened boy.","I hate burned toast.",
+ "Grendel terrorized the countryside, but finally the hero Beowulf stopped him.",
+ "Professor Villa made her students read four novels.","Smoke alarms screaming, my family awoke to a fire.",
+ "Today Darren left his office earlier than he usually does.",
 ]
 out=[]
 for s in sents:
