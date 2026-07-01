@@ -79,6 +79,27 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
         expect(c.verb.head.text).toBe("chased");
         expect(c.complement?.kind).toBe("directObject");
     });
+    it("imperative: a subjectless top clause gets an implied '(you)' subject", () => {
+        const c = lower("(S (VP (VB Water) (NP (DT the) (NNS begonias))) (. .))");
+        expect(c.subject.head.text).toBe("(you)");
+        expect(c.verb.head.text).toBe("Water");
+        expect(c.complement?.kind).toBe("directObject");
+    });
+    it("a gerund/infinitive subject is NOT mistaken for an imperative", () => {
+        // (S (S (VP ...)) (VP ...)) has an S subject, not an NP — must not lower as '(you)'.
+        expect(() => lower("(S (S (VP (VBG Running) (NP (NNS marathons)))) (VP (VBZ is) (NP (NN fun))))")).toThrow();
+    });
+    it("SBARQ without an SQ (declarative-order question) lowers its clause instead of crashing", () => {
+        const c = lower("(SBARQ (INTJ (UH Wow)) (. !) (NP (PRP You)) (VP (MD will) (VP (VB run) (NP (DT a) (NN marathon)))) (. ?))");
+        expect(c.subject.head.text).toBe("You");
+        expect(c.verb.head.text).toBe("will run");
+        expect(c.detached?.map((d) => d.text)).toEqual(["Wow"]);
+    });
+    it("interjection is captured as a detached element, not dropped", () => {
+        const c = lower("(S (INTJ (UH Man)) (, ,) (NP (DT that)) (VP (VBD hurt)) (. !))");
+        expect(c.subject.head.text).toBe("that");
+        expect(c.detached?.map((d) => d.text)).toEqual(["Man"]);
+    });
     it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
         const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");
         expect(c.subject.head.text).toBe("dog");

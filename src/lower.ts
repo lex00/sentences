@@ -58,6 +58,10 @@ function lowerNP(np: Tree): Nominal | Compound<Nominal> {
     } else if (c.label === "PP") modifiers.push(lowerPP(c));
     else if (c.label === "SBAR") modifiers.push(lowerSBAR(c));
     else if (c.label === "ADJP") modifiers.push({ kind: "word", value: w(phrase(c)) });
+    else if (c.label === "NP" && c.children.some((k) => k.label === "POS")) {
+      // possessive noun ("Alicia's hobby"): the whole 's-phrase is a determiner-like slant modifier
+      modifiers.push({ kind: "word", value: w(phrase(c).replace(/ (['’]s?)\b/g, "$1")) });
+    }
   }
   return { head: w(head ?? phrase(np)), modifiers };
 }
