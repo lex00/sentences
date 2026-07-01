@@ -49,7 +49,7 @@ export type Gerund = {
 };
 
 export type Complement =
-  | { kind: "directObject"; value: Nominal | Compound<Nominal> | Infinitive } // half-vertical (or a stand for an infinitive)
+  | { kind: "directObject"; value: Nominal | Compound<Nominal> | Infinitive | Clause } // half-vertical (Clause = a causative small clause on a stand)
   | { kind: "predicateNoun"; value: Nominal | Compound<Nominal> } // divider: lean-left
   | { kind: "predicateAdj"; value: Word | Compound<Word> } // divider: lean-left ("tiny and loud" -> fork)
   // objective complement ("elected my uncle mayor", "painted my room red"): the direct object,

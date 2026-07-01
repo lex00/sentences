@@ -170,6 +170,25 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
         expect(c.subject.head.text).toBe("monster"); // NOT the gerund "Growling"
         expect(c.subject.modifiers.some((m) => m.kind === "participle")).toBe(true);
     });
+    it("fronted temporal noun is an adverbial, not the subject ('Today Darren left')", () => {
+        const c = lower("(S (NP (NN Today)) (NP (NNP Darren)) (VP (VBD left) (NP (PRP$ his) (NN office))))");
+        expect(c.subject.head.text).toBe("Darren");
+        expect(c.verb.modifiers.some((m) => m.kind === "word" && m.value.text === "Today")).toBe(true);
+    });
+    it("causative small clause becomes a nested-clause object ('made her students read four novels')", () => {
+        const c = lower("(S (NP (NNP Professor) (NNP Villa)) (VP (VBD made) (S (NP (PRP$ her) (NNS students)) (VP (VB read) (NP (CD four) (NNS novels))))))");
+        expect(c.complement?.kind).toBe("directObject");
+        if (c.complement?.kind === "directObject") {
+            const inner = c.complement.value;
+            expect(inner.subject.head.text).toBe("students");
+            expect(inner.verb.head.text).toBe("read");
+        }
+    });
+    it("trailing proper noun becomes an appositive ('the hero Beowulf')", () => {
+        const c = lower("(S (NP (DT the) (NN hero) (NP (NNP Beowulf))) (VP (VBD won)))");
+        expect(c.subject.head.text).toBe("hero");
+        expect(c.subject.appositive?.text).toBe("Beowulf");
+    });
     it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
         const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");
         expect(c.subject.head.text).toBe("dog");

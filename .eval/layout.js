@@ -123,7 +123,9 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
         };
     }
     // --- a head word + its hanging modifiers, occupying [x, x+width] on the baseline ---
-    function measureHead(headText, mods, idPath, role) {
+    function measureHead(headText, mods, idPath, role, appositive) {
+        if (appositive)
+            headText = `${headText} (${appositive})`; // R-K: apposition in parens on the rail
         const headW = w(headText);
         const mm = mods.map((m, i) => ({ i, m: measureMod(m, `${idPath}/m${i}`) }));
         // Place modifiers left-to-right, each reserving its OWN footprint width, so a wide modifier
@@ -253,17 +255,18 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
             return measureOnStand(measureClause(slot, `${idPath}/nc`, "clause"), idPath, role); // noun clause
         if (isCompound(slot)) {
             const items = slot.items;
+            const appOf = (it) => ("appositive" in it ? it.appositive?.text : undefined);
             if (items.length === 1) {
                 const it = items[0];
-                return measureHead(it.head.text, it.modifiers, idPath, role);
+                return measureHead(it.head.text, it.modifiers, idPath, role, appOf(it));
             }
-            const branches = items.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role));
+            const branches = items.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role, appOf(it)));
             return measureCompound(branches, slot.conjunction.text, idPath, openRight);
         }
         // An indirect object hangs below the verb on a slant + rail — an implied-preposition PP.
         const io = "indirectObject" in slot ? slot.indirectObject : undefined;
         const mods = io ? [...slot.modifiers, { kind: "prep", prep: { text: "" }, object: io }] : slot.modifiers;
-        return measureHead(slot.head.text, mods, idPath, role);
+        return measureHead(slot.head.text, mods, idPath, role, "appositive" in slot ? slot.appositive?.text : undefined);
     }
     // An infinitive object on a STAND: a post rises from the object slot to a raised rail that
     // carries "to" (on a slant) + the verb, with the verb's own object after a half-divider.
@@ -410,7 +413,9 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
         y = placed.bounds.bottom + style.em * 3.5;
     });
     const extra = [];
-    const cx = START_X + style.em * 3;
+    // Join the clauses at the left, clear of every clause's content (a wide subject must not be
+    // crossed by the connector).
+    const cx = Math.min(...nodes.map((n) => n.bounds.left)) - style.pad;
     for (let i = 0; i < nodes.length - 1; i++) {
         const conj = sentence.conjunctions[i];
         if (!conj)

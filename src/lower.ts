@@ -54,6 +54,7 @@ function lowerNP(np: Tree): Nominal | Compound<Nominal> {
   // flat NP: pre-modifiers, head noun (last noun wins; earlier nouns become noun-adjunct mods)
   const modifiers: Modifier[] = [];
   let head: string | null = null;
+  let appositive: string | undefined;
   for (const c of np.children) {
     if (c.word !== undefined) {
       if (NOUN.has(c.label)) {
@@ -64,13 +65,13 @@ function lowerNP(np: Tree): Nominal | Compound<Nominal> {
       }
     } else if (c.label === "PP") modifiers.push(lowerPP(c));
     else if (c.label === "SBAR") modifiers.push(lowerSBAR(c));
-    else if (c.label === "ADJP") modifiers.push({ kind: "word", value: w(phrase(c)) });
+    else if (c.label === "ADJP" || c.label === "QP") modifiers.push({ kind: "word", value: w(phrase(c)) }); // QP: "almost any"
     else if (c.label === "NP" && c.children.some((k) => k.label === "POS")) {
       // possessive noun ("Alicia's hobby"): the whole 's-phrase is a determiner-like slant modifier
       modifiers.push({ kind: "word", value: w(phrase(c).replace(/ (['’]s?)\b/g, "$1")) });
-    }
+    } else if (c.label === "NP") appositive = phrase(c); // trailing name ("the hero Beowulf")
   }
-  return { head: w(head ?? phrase(np)), modifiers };
+  return { head: w(head ?? phrase(np)), modifiers, ...(appositive ? { appositive: w(appositive) } : {}) };
 }
 
 function lowerCoordNP(np: Tree): Compound<Nominal> {
@@ -178,6 +179,9 @@ function lowerPredicate(vp: Tree): { verb: Verbal | Compound<Verbal>; complement
       }
       else if (c.label === "S" && !c.children.some((x) => x.label === "VP")) {
         ocClauses.push(c); // verbless small clause = objective complement ("named our daughter Alice")
+      }
+      else if (c.label === "S" && c.children.some((x) => x.label === "NP") && c.children.some((x) => x.label === "VP")) {
+        complement = { kind: "directObject", value: lowerClause(c) }; // causative small clause ("made her students read four novels")
       }
       else if (c.label === "ADVP" || c.label === "RB") modifiers.push({ kind: "word", value: w(phrase(c)) });
       else if (c.label === "PP") modifiers.push(lowerPP(c));
@@ -341,10 +345,11 @@ function lowerSubjectConstituent(t: Tree): Subject | null {
 function lowerClause(s: Tree, fallbackSubject?: Subject): Clause {
   const vp = s.children.find((c) => c.label === "VP");
   if (!vp) throw new Error(`lower: unsupported clause (no VP) in (${s.label} ...)`);
-  // Prefer a real NP subject; only when there is none is a gerund/infinitive S or noun-clause SBAR
-  // the subject. A VBG/VBN-headed S alongside an NP subject is a participial phrase, not the subject.
-  const npSubj = s.children.find((c) => c.label === "NP" && c !== vp);
-  const subjTree = npSubj ?? s.children.find((c) => c !== vp && (c.label === "S" || c.label === "SBAR"));
+  // The subject is the NP adjacent to the predicate; an earlier NP is a fronted adverbial ("Today
+  // Darren left ..."). Only with no NP is a gerund/infinitive S or noun-clause SBAR the subject.
+  const preVP = s.children.slice(0, s.children.indexOf(vp));
+  const nps = preVP.filter((c) => c.label === "NP");
+  const subjTree = nps[nps.length - 1] ?? preVP.find((c) => c.label === "S" || c.label === "SBAR");
   const subject = subjTree ? lowerSubjectConstituent(subjTree) ?? fallbackSubject : fallbackSubject; // relative clauses have a gapped subject
   if (!subject) throw new Error(`lower: unsupported clause (need NP + VP) in (${s.label} ...)`);
   // Participial phrases set off from the subject ("The dog, barking furiously, chased ...";
@@ -352,9 +357,15 @@ function lowerClause(s: Tree, fallbackSubject?: Subject): Clause {
   const participles = s.children.filter((c) => c !== subjTree && c !== vp && c.label === "S" && isParticipial(c)).map(lowerParticipleS);
   if (participles.length && "modifiers" in subject) subject.modifiers.push(...participles);
   const { verb, complement } = lowerPredicate(vp);
-  // Clause-level adverbs ("your team really needs") sit outside the VP — attach to the verb.
-  const advSibs = s.children.filter((c) => (c.label === "ADVP" || c.label === "RB") && c !== subjTree);
-  if (advSibs.length && "modifiers" in verb) for (const a of advSibs) verb.modifiers.push({ kind: "word", value: w(phrase(a)) });
+  // Fronted / adverbial siblings outside the VP — a temporal noun ("Today"), a fronted PP ("In old
+  // tales, ..."), a clause-level adverb ("your team really needs") — attach to the verb.
+  if ("modifiers" in verb) {
+    for (const c of s.children) {
+      if (c === subjTree || c === vp) continue;
+      if (c.label === "PP") verb.modifiers.push(lowerPP(c));
+      else if (c.label === "ADVP" || c.label === "RB" || c.label === "NP") verb.modifiers.push({ kind: "word", value: w(phrase(c)) });
+    }
+  }
   // Interjections ("Man,", "Wow!") float on a detached line above the diagram, unconnected.
   const detached = s.children.filter((c) => c.label === "INTJ").map((c) => w(phrase(c)));
   return { subject, verb, complement, ...(detached.length ? { detached } : {}) };
@@ -425,7 +436,13 @@ export function lowerSentence(parse: Tree | string): Sentence {
     // fold a leading correlative ("Either ... or ...") into the first conjunction label
     const correlative = ccWords[0] && CORREL.has(ccWords[0].toLowerCase()) ? ccWords.shift()!.toLowerCase() : null;
     const conjunctions = ccWords.map((cw, i) => w(i === 0 ? conjLabel(correlative, cw) : cw));
-    return { clauses: sKids.map((c) => lowerClause(c)), conjunctions };
+    const clauses = sKids.map((c) => lowerClause(c));
+    // A fronted PP/adverb before the first clause ("In old tales, Grendel was ...") attaches there.
+    const fronted = t.children.slice(0, t.children.indexOf(sKids[0]!)).filter((c) => c.label === "PP" || c.label === "ADVP");
+    if (fronted.length && clauses[0] && "modifiers" in clauses[0].verb) {
+      for (const f of fronted) clauses[0].verb.modifiers.push(f.label === "PP" ? lowerPP(f) : { kind: "word", value: w(phrase(f)) });
+    }
+    return { clauses, conjunctions };
   }
   return { clauses: [lowerTop(t)], conjunctions: [] };
 }
