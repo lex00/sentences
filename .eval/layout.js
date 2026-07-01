@@ -203,7 +203,7 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
     }
     // Mount an inner diagram on a stand: a base rail on the main line, a stilt rising to the raised
     // inner diagram. Used for a verbal/clause filling a nominal slot ("Running marathons is fun").
-    function measureOnStand(inner, idPath, role) {
+    function measureOnStand(inner, idPath, role, connectRight) {
         // Raise the platform above everything that hangs below the inner diagram, so its modifiers
         // clear the base rail and the main clause's divider.
         const STAND_H = Math.max(style.em * 3.6, inner.below.bottom + style.em * 1.4);
@@ -212,8 +212,12 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
             below: box(Math.min(0, inner.below.left), -STAND_H + inner.below.top - SZ, Math.max(inner.width, inner.below.right), Math.max(0, inner.below.bottom - STAND_H)),
             place: (x, y) => {
                 const ry = y - STAND_H;
+                // A subject stand's base runs to the divider on its right; an object/complement stand
+                // connects on its LEFT (via the half-divider), so it needs only a short foot — not a
+                // full-width bar under the whole raised clause.
+                const baseRight = connectRight ? x + inner.width : x + style.pad * 2;
                 const ch = [
-                    { kind: "seg", a: { x, y }, b: { x: x + inner.width, y }, role: "baseline" }, // base on the main line
+                    { kind: "seg", a: { x, y }, b: { x: baseRight, y }, role: "baseline" }, // base / foot on the main line
                     { kind: "seg", a: { x: x + style.pad, y }, b: { x: x + style.pad, y: ry }, role: "rail" }, // stilt at the left
                     inner.place(x, ry),
                 ];
@@ -249,10 +253,10 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
         if ("kind" in slot) {
             // gerund / infinitive filling a nominal slot: a verbal core raised on a stand.
             const head = slot.kind === "infinitive" ? `to ${slot.verb.text}` : slot.verb.text;
-            return measureOnStand(measureVerbalCore(head, slot.modifiers, slot.object, `${idPath}/v`), idPath, role);
+            return measureOnStand(measureVerbalCore(head, slot.modifiers, slot.object, `${idPath}/v`), idPath, role, openRight);
         }
         if ("subject" in slot)
-            return measureOnStand(measureClause(slot, `${idPath}/nc`, "clause"), idPath, role); // noun clause
+            return measureOnStand(measureClause(slot, `${idPath}/nc`, "clause"), idPath, role, openRight); // noun clause
         if (isCompound(slot)) {
             const items = slot.items;
             const appOf = (it) => ("appositive" in it ? it.appositive?.text : undefined);
