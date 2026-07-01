@@ -114,6 +114,24 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
         if (c.complement?.kind === "directObject")
             expect(c.complement.value.head.text).toBe("homework");
     });
+    it("objective complement (noun) via a following small clause: 'named our daughter Alice'", () => {
+        const c = lower("(S (NP (PRP We)) (VP (VBD named) (NP (PRP$ our) (NN daughter)) (S (NP (NNP Alice)))))");
+        expect(c.complement?.kind).toBe("objectComplement");
+        if (c.complement?.kind === "objectComplement") {
+            expect(c.complement.object.head.text).toBe("daughter");
+            expect(c.complement.ocIsAdj).toBe(false);
+            expect(c.complement.oc.head.text).toBe("Alice");
+        }
+    });
+    it("objective complement (adjective) via a nested small clause: 'makes me happy'", () => {
+        const c = lower("(S (NP (DT This) (NN music)) (VP (VBZ makes) (S (NP (PRP me)) (ADJP (JJ happy)))))");
+        expect(c.complement?.kind).toBe("objectComplement");
+        if (c.complement?.kind === "objectComplement") {
+            expect(c.complement.object.head.text).toBe("me");
+            expect(c.complement.ocIsAdj).toBe(true);
+            expect(c.complement.oc.text).toBe("happy");
+        }
+    });
     it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
         const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");
         expect(c.subject.head.text).toBe("dog");

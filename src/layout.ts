@@ -175,10 +175,15 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
   // openRight=false -> apex on the left  (an OBJECT/COMPLEMENT/VERB connects leftward to it).
   function measureCompound(branches: Measured[], conj: string, idPath: NodeId, openRight: boolean): Measured {
     const n = branches.length;
-    const SP = style.em * 2.2; // vertical gap between adjacent branches
+    // Adjacent branches must clear each other's hanging modifiers: a branch whose adjectives fan
+    // below needs the next branch's rail placed past that fan, else "strong" collides with "figure".
+    const maxDrop = Math.max(0, ...branches.map((b) => b.below.bottom));
+    const SP = Math.max(style.em * 2.2, maxDrop + style.em * 1.6); // vertical gap between adjacent branches
     const offAt = (i: number) => (i - (n - 1) / 2) * SP;
     const maxW = Math.max(...branches.map((b) => b.width));
-    const forkLen = style.em * 1.6;
+    // The fork region between the branches and the apex must be long enough to hold the conjunction
+    // label, so a long correlative ("both...and") fits there instead of spilling into the divider.
+    const forkLen = Math.max(style.em * 1.6, w(conj) + style.pad * 2);
     const width = maxW + forkLen;
     const bx0 = openRight ? 0 : forkLen; // branch baseline left offset
 
@@ -202,7 +207,10 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
         });
         const bx = x + bx0 + (openRight ? maxW : 0); // dotted conjunction bridge near the fork
         ch.push({ kind: "seg", a: { x: bx, y: y + offAt(0) }, b: { x: bx, y: y + offAt(n - 1) }, role: "connector.dotted" });
-        ch.push({ kind: "lbl", text: conj, anchor: { x: bx + 4, y }, angle: 0, role: "word" });
+        // label sits in the fork region, away from the apex: rightward for a subject (apex right),
+        // leftward for an object (apex left) — so it clears both the divider and the branches.
+        const conjX = openRight ? bx + 4 : bx - w(conj) - 4;
+        ch.push({ kind: "lbl", text: conj, anchor: { x: conjX, y }, angle: 0, role: "word" });
         return { id: idPath, role: "compound", children: ch, bounds: childrenBox(ch) };
       },
     };

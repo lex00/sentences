@@ -150,6 +150,21 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
     }
   });
 
+  it("correlative subject: 'both Max and I' folds the marker into the conjunction, not onto Max", () => {
+    const c = lower("(S (NP (DT Both) (NNP Max) (CC and) (PRP I)) (VP (VBD hit) (NP (NNS homers))))");
+    const subj = c.subject as { items: Nominal[]; conjunction: { text: string } };
+    expect(subj.items.map((i) => i.head.text)).toEqual(["Max", "I"]);
+    expect(subj.conjunction.text).toBe("both...and");
+    expect(subj.items[0]!.modifiers).toHaveLength(0); // "both" is NOT a modifier on Max
+  });
+
+  it("correlative bare-verb coordination: 'either complains or criticizes'", () => {
+    const c = lower("(S (NP (PRP She)) (VP (CC either) (VBZ complains) (CC or) (VBZ criticizes)))");
+    const v = c.verb as { items: Verbal[]; conjunction: { text: string } };
+    expect(v.items.map((i) => i.head.text)).toEqual(["complains", "criticizes"]);
+    expect(v.conjunction.text).toBe("either...or");
+  });
+
   it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
     const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");
     expect((c.subject as Nominal).head.text).toBe("dog");

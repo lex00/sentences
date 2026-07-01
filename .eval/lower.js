@@ -15,6 +15,11 @@ const COPULA = new Set([
     "seem", "seems", "seemed", "become", "becomes", "became",
     "feel", "feels", "felt", "look", "looks", "appear", "appears", "remain", "remains",
 ]);
+// Correlative pre-markers: "both ... and", "either ... or", "neither ... nor". The leading word
+// is folded into the conjunction label rather than mis-read as a determiner on the first item.
+const CORREL = new Set(["both", "either", "neither"]);
+const isCorrelative = (t) => !!t?.word && CORREL.has(t.word.toLowerCase());
+const conjLabel = (correlative, conj) => (correlative ? `${correlative}...${conj}` : conj);
 const NOUN = new Set(["NN", "NNS", "NNP", "NNPS", "PRP"]);
 const PREMOD = new Set(["DT", "JJ", "JJR", "JJS", "PRP$", "CD", "POS", "PDT", "RB"]); // RB: e.g. "very" before adj
 const isVerb = (label) => /^(VB|MD|AUX)/.test(label);
@@ -63,9 +68,15 @@ function lowerNP(np) {
     return { head: w(head ?? phrase(np)), modifiers };
 }
 function lowerCoordNP(np) {
+    let kids = np.children;
+    let correlative = null;
+    if (isCorrelative(kids[0]) && (kids[0].label === "DT" || kids[0].label === "CC")) {
+        correlative = kids[0].word.toLowerCase(); // "both Max and I" -> "both...and", not "both" on Max
+        kids = kids.slice(1);
+    }
     const groups = [[]];
     let conjunction = "and";
-    for (const c of np.children) {
+    for (const c of kids) {
         if (isCC(c)) {
             if (c.word)
                 conjunction = c.word;
@@ -81,7 +92,7 @@ function lowerCoordNP(np) {
     const items = groups
         .filter((g) => g.length > 0)
         .map((g) => asNominal(lowerNP(g.length === 1 && g[0].label === "NP" ? g[0] : { label: "NP", children: g })));
-    return { items, conjunction: w(conjunction) };
+    return { items, conjunction: w(conjLabel(correlative, conjunction)) };
 }
 // --- prepositional & subordinate ---
 function lowerPP(pp) {
@@ -128,6 +139,20 @@ function lowerPredicate(vp) {
             return "items" in r.verb ? asVerbalFlat(r.verb) : r.verb;
         });
         return { verb: { items, conjunction: w(conjunction) }, complement: null };
+    }
+    // word-level coordinated verbs: "(VP (CC either) (VBZ complains) (CC or) (VBZ criticizes))" — no
+    // VP children, just finite verbs joined by a conjunction. Only when there is nothing else to
+    // attach (no objects/complements), so a shared-object coordination isn't mis-split.
+    const bareVerbs = vp.children.filter((c) => c.word !== undefined && isVerb(c.label));
+    if (vp.children.some(isCC) && bareVerbs.length >= 2 &&
+        !vp.children.some((c) => ["VP", "NP", "ADJP", "S", "INF", "PP", "SBAR"].includes(c.label))) {
+        let conjunction = "and";
+        const correlative = isCorrelative(vp.children[0]) && isCC(vp.children[0]) ? vp.children[0].word.toLowerCase() : null;
+        for (const c of vp.children)
+            if (isCC(c) && c.word && !CORREL.has(c.word.toLowerCase()))
+                conjunction = c.word;
+        const items = bareVerbs.map((v) => ({ head: w(v.word), modifiers: [] }));
+        return { verb: { items, conjunction: w(conjLabel(correlative, conjunction)) }, complement: null };
     }
     const verbWords = [];
     const modifiers = [];
@@ -309,7 +334,11 @@ export function lowerSentence(parse) {
         t = t.children[0];
     const sKids = t.children.filter((c) => c.label === "S" || c.label === "SINV");
     if (t.label === "S" && sKids.length >= 2) {
-        return { clauses: sKids.map((c) => lowerClause(c)), conjunctions: t.children.filter((c) => c.label === "CC").map((c) => w(c.word ?? "and")) };
+        let ccWords = t.children.filter((c) => c.label === "CC").map((c) => c.word ?? "and");
+        // fold a leading correlative ("Either ... or ...") into the first conjunction label
+        const correlative = ccWords[0] && CORREL.has(ccWords[0].toLowerCase()) ? ccWords.shift().toLowerCase() : null;
+        const conjunctions = ccWords.map((cw, i) => w(i === 0 ? conjLabel(correlative, cw) : cw));
+        return { clauses: sKids.map((c) => lowerClause(c)), conjunctions };
     }
     return { clauses: [lowerTop(t)], conjunctions: [] };
 }
