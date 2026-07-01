@@ -5,8 +5,10 @@ export type Word = {
   text: string;
 };
 
-// Head slots may be single or compound ("dogs and cats run").
-export type Subject = Nominal | Compound<Nominal>;
+// Head slots may be single or compound ("dogs and cats run"). A subject may also be a verbal or a
+// whole clause used nominally ("Running marathons is fun", "Whoever made this did a good job"),
+// drawn raised on a stand.
+export type Subject = Nominal | Compound<Nominal> | Clause | Infinitive | Gerund;
 export type Predicate = Verbal | Compound<Verbal>;
 
 export type Clause = {
@@ -35,6 +37,15 @@ export type Infinitive = {
   verb: Word; // "take"
   object: Nominal | null; // "a walk"
   modifiers: Modifier[]; // adverbs / PPs on the infinitive verb
+};
+
+// A gerund phrase ("Running marathons") used as a noun — verb + optional object + modifiers,
+// drawn on a raised rail (on a stand when it fills a subject/object slot).
+export type Gerund = {
+  kind: "gerund";
+  verb: Word; // "Running"
+  object: Nominal | null; // "marathons"
+  modifiers: Modifier[];
 };
 
 export type Complement =

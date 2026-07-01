@@ -85,9 +85,22 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
         expect(c.verb.head.text).toBe("Water");
         expect(c.complement?.kind).toBe("directObject");
     });
-    it("a gerund/infinitive subject is NOT mistaken for an imperative", () => {
-        // (S (S (VP ...)) (VP ...)) has an S subject, not an NP — must not lower as '(you)'.
-        expect(() => lower("(S (S (VP (VBG Running) (NP (NNS marathons)))) (VP (VBZ is) (NP (NN fun))))")).toThrow();
+    it("a gerund subject lowers as a gerund, not mistaken for an imperative '(you)'", () => {
+        const c = lower("(S (S (VP (VBG Running) (NP (NNS marathons)))) (VP (VBZ is) (NP (NN fun))))");
+        expect(c.subject.kind).toBe("gerund");
+        expect(c.subject.verb.text).toBe("Running");
+        expect(c.subject.object.head.text).toBe("marathons");
+    });
+    it("an infinitive subject lowers as an infinitive on a stand", () => {
+        const c = lower("(S (S (VP (TO To) (VP (VB master) (NP (DT a) (JJ new) (NN skill))))) (VP (VBZ takes) (NP (NN patience))))");
+        expect(c.subject.kind).toBe("infinitive");
+        expect(c.subject.verb.text).toBe("master");
+    });
+    it("a noun clause subject lowers as a nested clause (Whoever made this pottery)", () => {
+        const c = lower("(S (SBAR (WHNP (WP Whoever)) (S (VP (VBD made) (NP (DT this) (NN pottery))))) (VP (VBD did) (NP (DT a) (JJ good) (NN job))))");
+        const subj = c.subject;
+        expect(subj.subject.head.text).toBe("Whoever");
+        expect(subj.verb.head.text).toBe("made");
     });
     it("SBARQ without an SQ (declarative-order question) lowers its clause instead of crashing", () => {
         const c = lower("(SBARQ (INTJ (UH Wow)) (. !) (NP (PRP You)) (VP (MD will) (VP (VB run) (NP (DT a) (NN marathon)))) (. ?))");
@@ -131,6 +144,19 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
             expect(c.complement.ocIsAdj).toBe(true);
             expect(c.complement.oc.text).toBe("happy");
         }
+    });
+    it("correlative subject: 'both Max and I' folds the marker into the conjunction, not onto Max", () => {
+        const c = lower("(S (NP (DT Both) (NNP Max) (CC and) (PRP I)) (VP (VBD hit) (NP (NNS homers))))");
+        const subj = c.subject;
+        expect(subj.items.map((i) => i.head.text)).toEqual(["Max", "I"]);
+        expect(subj.conjunction.text).toBe("both...and");
+        expect(subj.items[0].modifiers).toHaveLength(0); // "both" is NOT a modifier on Max
+    });
+    it("correlative bare-verb coordination: 'either complains or criticizes'", () => {
+        const c = lower("(S (NP (PRP She)) (VP (CC either) (VBZ complains) (CC or) (VBZ criticizes)))");
+        const v = c.verb;
+        expect(v.items.map((i) => i.head.text)).toEqual(["complains", "criticizes"]);
+        expect(v.conjunction.text).toBe("either...or");
     });
     it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
         const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");

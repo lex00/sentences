@@ -5,7 +5,7 @@
 // clause with no special-casing. Every Measured bakes its id + NodeRole at measure time and
 // exposes place(x, y) -> SceneNode. The engine is closed over an injected TextMetrics port.
 
-import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Sentence, Infinitive } from "./ir.js";
+import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Sentence, Infinitive, Subject } from "./ir.js";
 import type { Scene, SceneNode, Prim, BBox, Pt, NodeId, NodeRole } from "./scene.js";
 import type { LayoutStyle } from "./theme.js";
 import { defaultLayoutStyle } from "./theme.js";
@@ -216,8 +216,58 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
     };
   }
 
-  // --- a head slot that may be single or compound ---
-  function measureFiller(slot: Nominal | Verbal | Compound<Nominal> | Compound<Verbal>, idPath: NodeId, role: NodeRole, openRight: boolean): Measured {
+  // Mount an inner diagram on a stand: a base rail on the main line, a stilt rising to the raised
+  // inner diagram. Used for a verbal/clause filling a nominal slot ("Running marathons is fun").
+  function measureOnStand(inner: Measured, idPath: NodeId, role: NodeRole): Measured {
+    // Raise the platform above everything that hangs below the inner diagram, so its modifiers
+    // clear the base rail and the main clause's divider.
+    const STAND_H = Math.max(style.em * 3.6, inner.below.bottom + style.em * 1.4);
+    return {
+      width: inner.width,
+      below: box(Math.min(0, inner.below.left), -STAND_H + inner.below.top - SZ, Math.max(inner.width, inner.below.right), Math.max(0, inner.below.bottom - STAND_H)),
+      place: (x, y) => {
+        const ry = y - STAND_H;
+        const ch: Array<SceneNode | Prim> = [
+          { kind: "seg", a: { x, y }, b: { x: x + inner.width, y }, role: "baseline" }, // base on the main line
+          { kind: "seg", a: { x: x + style.pad, y }, b: { x: x + style.pad, y: ry }, role: "rail" }, // stilt at the left
+          inner.place(x, ry),
+        ];
+        return { id: idPath, role, children: ch, bounds: childrenBox(ch) };
+      },
+    };
+  }
+
+  // A verbal core "verb [│ object]" with modifiers below the verb — the raised content of a gerund.
+  function measureVerbalCore(headText: string, mods: Modifier[], object: Nominal | null, idPath: NodeId): Measured {
+    const headM = measureHead(headText, mods, `${idPath}/h`, "verb");
+    if (!object) return headM;
+    const objM = measureHead(object.head.text, object.modifiers, `${idPath}/o`, "object");
+    const objLeft = headM.width + style.dividerGap;
+    const width = objLeft + objM.width;
+    const below = unionB(headM.below, box(objLeft + objM.below.left, objM.below.top, objLeft + objM.below.right, objM.below.bottom));
+    return {
+      width,
+      below,
+      place: (x, y) => {
+        const dx = x + headM.width + style.dividerGap / 2;
+        const ch: Array<SceneNode | Prim> = [
+          headM.place(x, y),
+          { kind: "seg", a: { x: dx, y: y - style.halfDividerRise }, b: { x: dx, y }, role: "divider.half" },
+          objM.place(x + objLeft, y),
+        ];
+        return { id: idPath, role: "verb", children: ch, bounds: childrenBox(ch) };
+      },
+    };
+  }
+
+  // --- a head slot that may be single or compound, or a stand-mounted verbal/clause ---
+  function measureFiller(slot: Subject | Verbal | Compound<Verbal>, idPath: NodeId, role: NodeRole, openRight: boolean): Measured {
+    if ("kind" in slot) {
+      // gerund / infinitive filling a nominal slot: a verbal core raised on a stand.
+      const head = slot.kind === "infinitive" ? `to ${slot.verb.text}` : slot.verb.text;
+      return measureOnStand(measureVerbalCore(head, slot.modifiers, slot.object, `${idPath}/v`), idPath, role);
+    }
+    if ("subject" in slot) return measureOnStand(measureClause(slot, `${idPath}/nc`, "clause"), idPath, role); // noun clause
     if (isCompound(slot)) {
       const items = slot.items;
       if (items.length === 1) {

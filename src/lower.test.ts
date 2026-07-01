@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { lower, lowerNBest } from "./lower.js";
 import { layout, type TextMetrics } from "./layout.js";
 import { isNode, type Scene, type SceneNode } from "./scene.js";
-import type { Nominal, Verbal, Modifier } from "./ir.js";
+import type { Nominal, Verbal, Modifier, Clause } from "./ir.js";
 
 // Real-shape Penn-Treebank parses (the format benepar emits) for the fixture sentences.
 const PTB = {
@@ -97,9 +97,24 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
     expect(c.complement?.kind).toBe("directObject");
   });
 
-  it("a gerund/infinitive subject is NOT mistaken for an imperative", () => {
-    // (S (S (VP ...)) (VP ...)) has an S subject, not an NP — must not lower as '(you)'.
-    expect(() => lower("(S (S (VP (VBG Running) (NP (NNS marathons)))) (VP (VBZ is) (NP (NN fun))))")).toThrow();
+  it("a gerund subject lowers as a gerund, not mistaken for an imperative '(you)'", () => {
+    const c = lower("(S (S (VP (VBG Running) (NP (NNS marathons)))) (VP (VBZ is) (NP (NN fun))))");
+    expect((c.subject as { kind?: string }).kind).toBe("gerund");
+    expect((c.subject as { verb: { text: string } }).verb.text).toBe("Running");
+    expect((c.subject as { object: Nominal }).object.head.text).toBe("marathons");
+  });
+
+  it("an infinitive subject lowers as an infinitive on a stand", () => {
+    const c = lower("(S (S (VP (TO To) (VP (VB master) (NP (DT a) (JJ new) (NN skill))))) (VP (VBZ takes) (NP (NN patience))))");
+    expect((c.subject as { kind?: string }).kind).toBe("infinitive");
+    expect((c.subject as { verb: { text: string } }).verb.text).toBe("master");
+  });
+
+  it("a noun clause subject lowers as a nested clause (Whoever made this pottery)", () => {
+    const c = lower("(S (SBAR (WHNP (WP Whoever)) (S (VP (VBD made) (NP (DT this) (NN pottery))))) (VP (VBD did) (NP (DT a) (JJ good) (NN job))))");
+    const subj = c.subject as Clause;
+    expect((subj.subject as Nominal).head.text).toBe("Whoever");
+    expect((subj.verb as Verbal).head.text).toBe("made");
   });
 
   it("SBARQ without an SQ (declarative-order question) lowers its clause instead of crashing", () => {

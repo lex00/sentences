@@ -257,16 +257,83 @@ function lowerInfinitive(inf) {
 }
 const asVerbalFlat = (c) => ({ head: w(c.items.map((i) => i.head.text).join(` ${c.conjunction.text} `)), modifiers: [] });
 const isCopula = (verbWords) => verbWords.some((v) => COPULA.has(v.toLowerCase()));
+// Gather adverb/PP modifiers from a verbal phrase (shared by gerund/infinitive lowering).
+function verbalModifiers(src) {
+    const mods = [];
+    for (const c of src.children) {
+        if (c.label === "PP")
+            mods.push(lowerPP(c));
+        else if (c.label === "ADVP" || c.label === "RB")
+            mods.push({ kind: "word", value: w(phrase(c)) });
+    }
+    return mods;
+}
+// A gerund subject/object: (S (VP (VBG Running) (NP marathons) (PP ...))).
+function lowerGerund(vp) {
+    const vbg = vp.children.find((c) => c.label === "VBG");
+    const obj = vp.children.find((c) => c.label === "NP");
+    return { kind: "gerund", verb: w(vbg?.word ?? phrase(vp)), object: obj ? asNominal(lowerNP(obj)) : null, modifiers: verbalModifiers(vp) };
+}
+// An infinitive subject: (S (VP (TO To) (VP (VB master) (NP a new skill)))).
+function lowerInfinitiveFromVP(vp) {
+    const inner = vp.children.find((c) => c.label === "VP") ?? vp;
+    const vb = inner.children.find((c) => isVerb(c.label) && c.word);
+    const obj = inner.children.find((c) => c.label === "NP");
+    return { kind: "infinitive", verb: w(vb?.word ?? phrase(inner)), object: obj ? asNominal(lowerNP(obj)) : null, modifiers: verbalModifiers(inner) };
+}
+// A noun clause (SBAR) used nominally: "Whatever you want", "Whoever made this pottery",
+// "Where the sock had gone". Mirrors lowerSBARQ: the wh-word is the gapped subject, the gapped
+// object, or (WHADVP) an adverbial modifier on the verb.
+function lowerNounClause(sbar) {
+    const wh = sbar.children.find((c) => ["WHNP", "WHADVP", "WHPP"].includes(c.label));
+    const s = sbar.children.find((c) => c.label === "S" || c.label === "SQ");
+    if (!s)
+        throw new Error("lower: noun clause without a clause");
+    const whWord = wh ? phrase(wh) : "that";
+    if (wh?.label === "WHNP" && !s.children.some((c) => c.label === "NP")) {
+        return lowerClause(s, { head: w(whWord), modifiers: [] }); // wh is the gapped subject
+    }
+    const clause = lowerClause(s);
+    if (wh?.label === "WHADVP" && "modifiers" in clause.verb) {
+        clause.verb.modifiers.push({ kind: "word", value: w(whWord) }); // "Where ... gone"
+    }
+    else if (wh?.label === "WHNP" && !clause.complement) {
+        clause.complement = { kind: "directObject", value: { head: w(whWord), modifiers: [] } }; // gapped object
+    }
+    return clause;
+}
+// The subject constituent may be an NP, a gerund/infinitive (S), or a noun clause (SBAR).
+function lowerSubjectConstituent(t) {
+    if (t.label === "NP")
+        return lowerNP(t);
+    if (t.label === "SBAR")
+        return lowerNounClause(t);
+    if (t.label === "S") {
+        const vp = t.children.find((c) => c.label === "VP");
+        const first = vp?.children[0];
+        if (first?.label === "TO")
+            return lowerInfinitiveFromVP(vp);
+        if (first?.label === "VBG")
+            return lowerGerund(vp);
+    }
+    return null;
+}
 // --- clause ---
 function lowerClause(s, fallbackSubject) {
-    const subjNP = s.children.find((c) => c.label === "NP");
     const vp = s.children.find((c) => c.label === "VP");
     if (!vp)
         throw new Error(`lower: unsupported clause (no VP) in (${s.label} ...)`);
-    const subject = subjNP ? lowerNP(subjNP) : fallbackSubject; // relative clauses have a gapped subject
+    // The subject is the NP / gerund-or-infinitive S / noun-clause SBAR preceding the predicate.
+    const subjTree = s.children.find((c) => c !== vp && (c.label === "NP" || c.label === "S" || c.label === "SBAR"));
+    const subject = subjTree ? lowerSubjectConstituent(subjTree) ?? fallbackSubject : fallbackSubject; // relative clauses have a gapped subject
     if (!subject)
         throw new Error(`lower: unsupported clause (need NP + VP) in (${s.label} ...)`);
     const { verb, complement } = lowerPredicate(vp);
+    // Clause-level adverbs ("your team really needs") sit outside the VP — attach to the verb.
+    const advSibs = s.children.filter((c) => (c.label === "ADVP" || c.label === "RB") && c !== subjTree);
+    if (advSibs.length && "modifiers" in verb)
+        for (const a of advSibs)
+            verb.modifiers.push({ kind: "word", value: w(phrase(a)) });
     // Interjections ("Man,", "Wow!") float on a detached line above the diagram, unconnected.
     const detached = s.children.filter((c) => c.label === "INTJ").map((c) => w(phrase(c)));
     return { subject, verb, complement, ...(detached.length ? { detached } : {}) };
