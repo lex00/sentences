@@ -88,6 +88,10 @@
 "ptb": "(TOP (S (NP (PRP They)) (VP (VBD built) (NP (DT a) (NN house)) (PP (IN near) (NP (DT the) (NN river)))) (. .)))"
 },
 {
+"sentence": "The big dog sat on the little dog.",
+"ptb": "(TOP (S (NP (DT The) (JJ big) (NN dog)) (VP (VBD sat) (PP (IN on) (NP (DT the) (JJ little) (NN dog)))) (. .)))"
+},
+{
 "sentence": "Can a tap mechanic still feel like a puzzle if the player has to think about layers and chain reactions?",
 "ptb": "(TOP (SQ (MD Can) (NP (DT a) (NN tap) (NN mechanic)) (ADVP (RB still)) (VP (VB feel) (PP (IN like) (NP (DT a) (NN puzzle))) (SBAR (IN if) (S (NP (DT the) (NN player)) (VP (VBZ has) (S (VP (TO to) (VP (VB think) (PP (IN about) (NP (NP (NNS layers)) (CC and) (NP (NN chain) (NNS reactions))))))))))) (. ?)))"
 }

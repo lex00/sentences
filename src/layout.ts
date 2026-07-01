@@ -145,9 +145,11 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
       attaches.push(ax);
       ax += Math.max(style.minSlantSpacing, m.below.right - m.below.left) + style.pad; // breathing room between modifiers
     }
-    // The rail stays tight to the word; the modifier fan overhangs below-right (its width is in
-    // `below`, so the non-overlap rule pushes neighbors) instead of widening the baseline.
-    const segW = Math.max(headW, style.minSlantSpacing) + style.pad;
+    // The rail spans at least to the last modifier's attach point, so the divider that follows the
+    // word lands clear of the modifier fan (a short adjective slant must not cross the divider).
+    // Wide modifiers (PP/clause) still overhang further via `below`, so they keep pushing neighbors.
+    const lastAttach = attaches.length ? attaches[attaches.length - 1]! : 0;
+    const segW = Math.max(headW, lastAttach + style.minSlantSpacing) + style.pad;
 
     let below = box(0, 0, segW, 0);
     mm.forEach(({ m }, k) => {
