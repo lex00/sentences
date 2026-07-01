@@ -422,6 +422,14 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
           }
           ch.push(comp.measured.place(x + compLeft, y));
         }
+        // Absolute phrases: a detached noun + participle diagram floating above the subject.
+        let absTop = y;
+        (clause.absolutes ?? []).forEach((abs, i) => {
+          const am = measureHead(abs.head.text, abs.modifiers, `${idPrefix}/abs${i}`, "subject", abs.appositive?.text);
+          const ay = absTop - am.below.bottom - style.em * 2.5;
+          ch.push(am.place(x, ay));
+          absTop = ay - SZ;
+        });
         // Interjections / nominatives of address: a short horizontal line floating above the
         // subject, carrying the word, with no line connecting it to the rest of the diagram.
         (clause.detached ?? []).forEach((d, i) => {

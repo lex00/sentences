@@ -16,6 +16,7 @@ export type Clause = {
   verb: Predicate;
   complement: Complement | null; // direct object, predicate noun/adj, or null (intransitive)
   detached?: Word[]; // interjections / nominatives of address — floating line above, unconnected
+  absolutes?: Nominal[]; // absolute phrases ("Smoke alarms screaming, ...") — detached noun+participle above
 };
 
 export type Nominal = {

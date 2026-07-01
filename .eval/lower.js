@@ -292,6 +292,19 @@ function isParticipial(t) {
     const head = vp?.children[0];
     return !!head && (head.label === "VBG" || head.label === "VBN");
 }
+// An absolute phrase ("Smoke alarms screaming, ...") — a noun with a participial VP, grammatically
+// independent of the clause. Lowered to a nominal carrying the participle as a modifier.
+function isAbsolute(t) {
+    if (t.label !== "S" || !t.children.some((c) => c.label === "NP"))
+        return false;
+    const head = t.children.find((c) => c.label === "VP")?.children[0];
+    return !!head && (head.label === "VBG" || head.label === "VBN");
+}
+function lowerAbsolute(s) {
+    const nominal = asNominal(lowerNP(s.children.find((c) => c.label === "NP")));
+    nominal.modifiers.push(lowerParticipleVP(s.children.find((c) => c.label === "VP")));
+    return nominal;
+}
 // A gerund subject/object: (S (VP (VBG Running) (NP marathons) (PP ...))).
 function lowerGerund(vp) {
     const vbg = vp.children.find((c) => c.label === "VBG");
@@ -375,7 +388,9 @@ function lowerClause(s, fallbackSubject) {
     }
     // Interjections ("Man,", "Wow!") float on a detached line above the diagram, unconnected.
     const detached = s.children.filter((c) => c.label === "INTJ").map((c) => w(phrase(c)));
-    return { subject, verb, complement, ...(detached.length ? { detached } : {}) };
+    // Absolute phrases ("Smoke alarms screaming, ...") are grammatically independent — drawn detached.
+    const absolutes = s.children.filter((c) => c !== subjTree && c !== vp && isAbsolute(c)).map(lowerAbsolute);
+    return { subject, verb, complement, ...(detached.length ? { detached } : {}), ...(absolutes.length ? { absolutes } : {}) };
 }
 // Yes/no question: (SQ (VBZ Is) (NP the sky) (ADJP blue)) — un-invert to subject + predicate.
 function lowerSQ(sq) {

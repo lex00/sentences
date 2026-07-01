@@ -216,6 +216,13 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
     expect((c.subject as Nominal).appositive?.text).toBe("Beowulf");
   });
 
+  it("absolute phrase is captured detached, not dropped ('Smoke alarms screaming, ...')", () => {
+    const c = lower("(S (S (NP (NN Smoke) (NNS alarms)) (VP (VBG screaming))) (, ,) (NP (PRP$ my) (NN family)) (VP (VBD awoke)))");
+    expect((c.subject as Nominal).head.text).toBe("family");
+    expect(c.absolutes?.[0]?.head.text).toBe("alarms");
+    expect(c.absolutes?.[0]?.modifiers.some((m) => m.kind === "participle")).toBe(true);
+  });
+
   it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
     const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");
     expect((c.subject as Nominal).head.text).toBe("dog");
