@@ -13,6 +13,7 @@ export type Clause = {
   subject: Subject;
   verb: Predicate;
   complement: Complement | null; // direct object, predicate noun/adj, or null (intransitive)
+  detached?: Word[]; // interjections / nominatives of address — floating line above, unconnected
 };
 
 export type Nominal = {

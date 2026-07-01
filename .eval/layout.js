@@ -273,6 +273,14 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
                     }
                     ch.push(comp.measured.place(x + compLeft, y));
                 }
+                // Interjections / nominatives of address: a short horizontal line floating above the
+                // subject, carrying the word, with no line connecting it to the rest of the diagram.
+                (clause.detached ?? []).forEach((d, i) => {
+                    const lineW = w(d.text) + style.pad * 2;
+                    const ly = y - style.em * 3 - i * style.em * 1.8; // stack multiples upward
+                    ch.push({ kind: "seg", a: { x, y: ly }, b: { x: x + lineW, y: ly }, role: "baseline" });
+                    ch.push({ kind: "lbl", text: d.text, anchor: { x: x + style.pad, y: ly - 4 }, angle: 0, role: "word" });
+                });
                 return { id: idPrefix, role, children: ch, bounds: childrenBox(ch) };
             },
         };

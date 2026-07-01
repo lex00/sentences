@@ -188,7 +188,9 @@ function lowerClause(s: Tree, fallbackSubject?: Subject): Clause {
   const subject = subjNP ? lowerNP(subjNP) : fallbackSubject; // relative clauses have a gapped subject
   if (!subject) throw new Error(`lower: unsupported clause (need NP + VP) in (${s.label} ...)`);
   const { verb, complement } = lowerPredicate(vp);
-  return { subject, verb, complement };
+  // Interjections ("Man,", "Wow!") float on a detached line above the diagram, unconnected.
+  const detached = s.children.filter((c) => c.label === "INTJ").map((c) => w(phrase(c)));
+  return { subject, verb, complement, ...(detached.length ? { detached } : {}) };
 }
 
 // Yes/no question: (SQ (VBZ Is) (NP the sky) (ADJP blue)) — un-invert to subject + predicate.
