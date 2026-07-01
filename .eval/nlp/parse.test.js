@@ -1,0 +1,121 @@
+import { describe, it, expect } from "vitest";
+import { parse } from "./parse.js";
+import { lower, lowerSentence } from "../lower.js";
+import { layout } from "../layout.js";
+import { isNode } from "../scene.js";
+const ir = (s) => lower(parse(s));
+const modWords = (n) => n.modifiers.filter((m) => m.kind === "word").map((m) => m.value.text);
+describe("in-browser parser -> IR", () => {
+    it("intransitive: determiner + adjective + head, verb + adverb", () => {
+        const c = ir("The small dog barked loudly.");
+        expect(c.subject.head.text).toBe("dog");
+        expect(modWords(c.subject)).toEqual(["The", "small"]);
+        expect(c.verb.head.text).toBe("barked");
+        expect(modWords(c.verb)).toEqual(["loudly"]);
+    });
+    it("compound subject + transitive object", () => {
+        const c = ir("Dogs and cats chase mice.");
+        expect("items" in c.subject).toBe(true);
+        if ("items" in c.subject)
+            expect(c.subject.items.map((i) => i.head.text)).toEqual(["Dogs", "cats"]);
+        expect(c.complement?.kind).toBe("directObject");
+    });
+    it("copula -> predicate adjective vs predicate nominative", () => {
+        expect(ir("The sky is blue.").complement).toMatchObject({ kind: "predicateAdj", value: { text: "blue" } });
+        expect(ir("She is a teacher.").complement?.kind).toBe("predicateNoun");
+    });
+    it("PP attaches to the subject (man in the house), not the verb", () => {
+        const c = ir("The man in the house slept.");
+        expect(c.subject.head.text).toBe("man");
+        const pp = c.subject.modifiers.find((m) => m.kind === "prep");
+        expect(pp && pp.kind === "prep" && pp.object.head.text).toBe("house");
+    });
+    it("subordinate clause on the verb", () => {
+        const c = ir("The dog slept because dogs barked.");
+        const m = c.verb.modifiers.find((x) => x.kind === "clause");
+        expect(m && m.kind === "clause" && m.connector.text).toBe("because");
+    });
+    it("handles irregular verbs + an -ly head noun (compromise POS)", () => {
+        // Regression: the hand-rolled tagger mis-tagged "sally" (->adverb) and missed "sold".
+        const c = ir("sally sold seashells by the seashore");
+        expect(c.subject.head.text.toLowerCase()).toBe("sally");
+        expect(c.verb.head.text).toBe("sold");
+        expect(c.complement?.kind).toBe("directObject");
+    });
+    it("throws when there isn't even a subject+verb (graceful failure for the UI)", () => {
+        expect(() => parse("seashells")).toThrow(); // single noun — no predicate
+    });
+});
+describe("infinitives and 'to' disambiguation", () => {
+    it("infinitive is its own construction, not joined to the verb: 'I need to take a big old walk'", () => {
+        const c = ir("i need to take a big old walk");
+        expect(c.verb.head.text).toBe("need"); // "need" is the verb...
+        expect(c.complement?.kind).toBe("directObject");
+        if (c.complement?.kind === "directObject" && "kind" in c.complement.value) {
+            expect(c.complement.value.verb.text).toBe("take"); // ...and "to take a walk" is an infinitive object
+            expect(c.complement.value.object?.head.text).toBe("walk");
+        }
+    });
+    it("a verb-lexicon word is a NOUN head when it heads a determiner-led NP: 'a big old walk is nice'", () => {
+        const c = ir("a big old walk is nice");
+        expect(c.subject.head.text).toBe("walk");
+        expect(c.complement?.kind).toBe("predicateAdj");
+    });
+    it("'to' + noun stays a preposition: 'I went to the store'", () => {
+        const c = ir("I went to the store");
+        const pp = c.verb.modifiers.find((m) => m.kind === "prep");
+        expect(pp && pp.kind === "prep" && pp.object.head.text).toBe("store");
+    });
+});
+describe("questions (subject-auxiliary inversion)", () => {
+    it("yes/no question un-inverts: 'Can dogs bark'", () => {
+        const c = ir("Can dogs bark");
+        expect(c.subject.head.text).toBe("dogs");
+        expect(c.verb.head.text.toLowerCase()).toContain("bark");
+    });
+    it("copula question: 'Is the sky blue' -> predicate adjective", () => {
+        const c = ir("Is the sky blue");
+        expect(c.subject.head.text).toBe("sky");
+        expect(c.complement?.kind).toBe("predicateAdj");
+    });
+    it("wh-object question: 'What did the dog eat'", () => {
+        const c = ir("What did the dog eat");
+        expect(c.subject.head.text).toBe("dog");
+        expect(c.complement?.kind).toBe("directObject");
+    });
+    it("negation joins the verb chain: 'Why can the dog not run'", () => {
+        const c = ir("Why can the dog not run");
+        expect(c.verb.head.text).toContain("run");
+        expect(modWords(c.verb)).toContain("not");
+    });
+});
+describe("clause coordination (compound sentences)", () => {
+    it("splits independent clauses into a compound sentence", () => {
+        const s = lowerSentence(parse("Birds sing and dogs bark"));
+        expect(s.clauses).toHaveLength(2);
+        expect(s.conjunctions.map((c) => c?.text)).toEqual(["and"]);
+        expect(s.clauses[0].subject.head.text).toBe("Birds");
+        expect(s.clauses[1].subject.head.text).toBe("dogs");
+    });
+    it("does NOT split NP coordination or VP coordination into clauses", () => {
+        expect(lowerSentence(parse("Dogs and cats chase mice")).clauses).toHaveLength(1); // compound subject
+        expect(lowerSentence(parse("the dog runs and barks")).clauses).toHaveLength(1); // compound predicate
+    });
+});
+describe("parser -> existing pipeline", () => {
+    const metrics = { measure: (t, sz) => ({ width: t.length * sz * 0.55, ascent: sz * 0.8, descent: sz * 0.2 }) };
+    const ids = (s) => {
+        const out = [];
+        (function w(n) {
+            out.push(n.id);
+            for (const c of n.children)
+                if (isNode(c))
+                    w(c);
+        })(s.root);
+        return out;
+    };
+    it("a typed sentence lays out through the same engine", () => {
+        const s = layout(ir("The small dog barked loudly."), metrics);
+        expect(ids(s)).toEqual(["c", "c/subj", "c/subj/m0", "c/subj/m1", "c/verb", "c/verb/m0"]);
+    });
+});

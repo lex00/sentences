@@ -1,0 +1,362 @@
+[
+{
+"sentence": "Running is my favorite sport.",
+"ptb": "(TOP (S (NP (NN Running)) (VP (VBZ is) (NP (PRP$ my) (JJ favorite) (NN sport))) (. .)))"
+},
+{
+"sentence": "Running marathons is fun.",
+"ptb": "(TOP (S (S (VP (VBG Running) (NP (NNS marathons)))) (VP (VBZ is) (NP (NN fun))) (. .)))"
+},
+{
+"sentence": "My sister and I enjoy laughing.",
+"ptb": "(TOP (S (NP (NP (PRP$ My) (NN sister)) (CC and) (NP (PRP I))) (VP (VBP enjoy) (S (VP (VBG laughing)))) (. .)))"
+},
+{
+"sentence": "Jumping rope for twenty minutes is good for your heart.",
+"ptb": "(TOP (S (S (VP (VBG Jumping) (NP (NN rope)) (PP (IN for) (NP (CD twenty) (NNS minutes))))) (VP (VBZ is) (ADJP (JJ good) (PP (IN for) (NP (PRP$ your) (NN heart))))) (. .)))"
+},
+{
+"sentence": "My favorite game is throwing frisbees to my dog.",
+"ptb": "(TOP (S (NP (PRP$ My) (JJ favorite) (NN game)) (VP (VBZ is) (S (VP (VBG throwing) (NP (NNS frisbees)) (PP (IN to) (NP (PRP$ my) (NN dog)))))) (. .)))"
+},
+{
+"sentence": "I dream of diving to the bottom of the ocean.",
+"ptb": "(TOP (S (NP (PRP I)) (VP (VBP dream) (PP (IN of) (S (VP (VBG diving) (PP (IN to) (NP (NP (DT the) (NN bottom)) (PP (IN of) (NP (DT the) (NN ocean))))))))) (. .)))"
+},
+{
+"sentence": "My whole family enjoyed watching the fireworks display.",
+"ptb": "(TOP (S (NP (PRP$ My) (JJ whole) (NN family)) (VP (VBD enjoyed) (S (VP (VBG watching) (NP (DT the) (NNS fireworks) (NN display))))) (. .)))"
+},
+{
+"sentence": "You win this game by popping five balloons.",
+"ptb": "(TOP (S (NP (PRP You)) (VP (VBP win) (NP (DT this) (NN game)) (PP (IN by) (S (VP (VBG popping) (NP (CD five) (NNS balloons)))))) (. .)))"
+},
+{
+"sentence": "Marsha dreams of competing in the Olympics.",
+"ptb": "(TOP (S (NP (NNP Marsha)) (VP (VBZ dreams) (PP (IN of) (S (VP (VBG competing) (PP (IN in) (NP (DT the) (NNPS Olympics))))))) (. .)))"
+},
+{
+"sentence": "Throwing rocks across the water, my friend smiled.",
+"ptb": "(TOP (S (S (VP (VBG Throwing) (NP (NNS rocks)) (PP (IN across) (NP (DT the) (NN water))))) (, ,) (NP (PRP$ my) (NN friend)) (VP (VBD smiled)) (. .)))"
+},
+{
+"sentence": "I threw the ball to the girl running across the field.",
+"ptb": "(TOP (S (NP (PRP I)) (VP (VBD threw) (NP (DT the) (NN ball)) (PP (IN to) (NP (NP (DT the) (NN girl)) (VP (VBG running) (PP (IN across) (NP (DT the) (NN field))))))) (. .)))"
+},
+{
+"sentence": "The plants growing near the window need water.",
+"ptb": "(TOP (S (NP (NP (DT The) (NNS plants)) (VP (VBG growing) (PP (IN near) (NP (DT the) (NN window))))) (VP (VBP need) (NP (NN water))) (. .)))"
+},
+{
+"sentence": "I hate burned toast.",
+"ptb": "(TOP (S (NP (PRP I)) (VP (VBP hate) (NP (VBN burned) (NN toast))) (. .)))"
+},
+{
+"sentence": "Growling, the monster charged the wounded hero.",
+"ptb": "(TOP (S (S (VP (VBG Growling))) (, ,) (NP (DT the) (NN monster)) (VP (VBD charged) (NP (DT the) (VBN wounded) (NN hero))) (. .)))"
+},
+{
+"sentence": "Cheerfully whistling a tune, Jacob walked to the store.",
+"ptb": "(TOP (S (S (ADVP (RB Cheerfully)) (VP (VBG whistling) (NP (DT a) (NN tune)))) (, ,) (NP (NNP Jacob)) (VP (VBD walked) (PP (IN to) (NP (DT the) (NN store)))) (. .)))"
+},
+{
+"sentence": "The dog, barking furiously, chased the frightened boy.",
+"ptb": "(TOP (S (NP (DT The) (NN dog)) (, ,) (S (VP (VBG barking) (ADVP (RB furiously)))) (, ,) (VP (VBD chased) (NP (DT the) (JJ frightened) (NN boy))) (. .)))"
+},
+{
+"sentence": "Jacob, holding his breath, opened the gate.",
+"ptb": "(TOP (S (NP (NNP Jacob)) (, ,) (S (VP (VBG holding) (NP (PRP$ his) (NN breath)))) (, ,) (VP (VBD opened) (NP (DT the) (NN gate))) (. .)))"
+},
+{
+"sentence": "To master a new skill takes patience.",
+"ptb": "(TOP (S (S (VP (TO To) (VP (VB master) (NP (DT a) (JJ new) (NN skill))))) (VP (VBZ takes) (NP (NN patience))) (. .)))"
+},
+{
+"sentence": "Jessica entered the race to win.",
+"ptb": "(TOP (S (NP (NNP Jessica)) (VP (VBD entered) (NP (DT the) (NN race)) (S (VP (TO to) (VP (VB win))))) (. .)))"
+},
+{
+"sentence": "My goal is to live happily!",
+"ptb": "(TOP (S (NP (PRP$ My) (NN goal)) (VP (VBZ is) (S (VP (TO to) (VP (VB live) (ADVP (RB happily)))))) (. !)))"
+},
+{
+"sentence": "The puppies barked to get my attention.",
+"ptb": "(TOP (S (NP (DT The) (NNS puppies)) (VP (VBD barked) (S (VP (TO to) (VP (VB get) (NP (PRP$ my) (NN attention)))))) (. .)))"
+},
+{
+"sentence": "To buy a secondhand bike was a wise decision.",
+"ptb": "(TOP (S (S (VP (TO To) (VP (VB buy) (NP (DT a) (JJ secondhand) (NN bike))))) (VP (VBD was) (NP (DT a) (JJ wise) (NN decision))) (. .)))"
+},
+{
+"sentence": "Alicia's hobby is to ride trail horses.",
+"ptb": "(TOP (S (NP (NP (NNP Alicia) (POS 's)) (NN hobby)) (VP (VBZ is) (S (VP (TO to) (VP (VB ride) (NP (NN trail) (NNS horses)))))) (. .)))"
+},
+{
+"sentence": "Parkhurst, a fearless driver, could handle almost any horse.",
+"ptb": "(TOP (S (NP (NP (NNP Parkhurst)) (, ,) (NP (DT a) (JJ fearless) (NN driver)) (, ,)) (VP (MD could) (VP (VB handle) (NP (QP (RB almost) (DT any)) (NN horse)))) (. .)))"
+},
+{
+"sentence": "Charley Parkhurst was really Charlotte Parkhurst, an orphan.",
+"ptb": "(TOP (S (NP (NNP Charley) (NNP Parkhurst)) (VP (VBD was) (ADVP (RB really)) (NP (NP (NNP Charlotte) (NNP Parkhurst)) (, ,) (NP (DT an) (NN orphan)))) (. .)))"
+},
+{
+"sentence": "I love the person who cleaned the house!",
+"ptb": "(TOP (S (NP (PRP I)) (VP (VBP love) (NP (NP (DT the) (NN person)) (SBAR (WHNP (WP who)) (S (VP (VBD cleaned) (NP (DT the) (NN house))))))) (. !)))"
+},
+{
+"sentence": "This is the house that Jack built.",
+"ptb": "(TOP (S (NP (DT This)) (VP (VBZ is) (NP (NP (DT the) (NN house)) (SBAR (WHNP (WDT that)) (S (NP (NNP Jack)) (VP (VBD built)))))) (. .)))"
+},
+{
+"sentence": "The boy with whom I spoke drew that picture.",
+"ptb": "(TOP (S (NP (NP (DT The) (NN boy)) (SBAR (WHPP (IN with) (WHNP (WP whom))) (S (NP (PRP I)) (VP (VBD spoke))))) (VP (VBD drew) (NP (DT that) (NN picture))) (. .)))"
+},
+{
+"sentence": "Teachers whose students are motivated happily work overtime.",
+"ptb": "(TOP (S (NP (NP (NNS Teachers)) (SBAR (WHNP (WP$ whose) (NNS students)) (S (VP (VBP are) (VP (VBN motivated)))))) (ADVP (RB happily)) (VP (VBP work) (ADVP (RB overtime))) (. .)))"
+},
+{
+"sentence": "The presents, which were wrapped in blue and green paper, looked perfect!",
+"ptb": "(TOP (S (NP (NP (DT The) (NNS presents)) (, ,) (SBAR (WHNP (WDT which)) (S (VP (VBD were) (VP (VBN wrapped) (PP (IN in) (NP (ADJP (JJ blue) (CC and) (JJ green)) (NN paper))))))) (, ,)) (VP (VBD looked) (ADJP (JJ perfect))) (. !)))"
+},
+{
+"sentence": "The woman who looks so happy danced on the dance floor until the club closed.",
+"ptb": "(TOP (S (NP (NP (DT The) (NN woman)) (SBAR (WHNP (WP who)) (S (VP (VBZ looks) (ADJP (RB so) (JJ happy)))))) (VP (VBD danced) (PP (IN on) (NP (DT the) (NN dance) (NN floor))) (SBAR (IN until) (S (NP (DT the) (NN club)) (VP (VBD closed))))) (. .)))"
+},
+{
+"sentence": "Evidence that is found in rocks shows changes in the earth.",
+"ptb": "(TOP (S (NP (NP (NN Evidence)) (SBAR (WHNP (WDT that)) (S (VP (VBZ is) (VP (VBN found) (PP (IN in) (NP (NNS rocks)))))))) (VP (VBZ shows) (NP (NP (NNS changes)) (PP (IN in) (NP (DT the) (NN earth))))) (. .)))"
+},
+{
+"sentence": "Continents move because massive plates under them shift.",
+"ptb": "(TOP (S (NP (NNS Continents)) (VP (VBP move) (SBAR (IN because) (S (NP (NP (JJ massive) (NNS plates)) (PP (IN under) (NP (PRP them)))) (VP (VBP shift))))) (. .)))"
+},
+{
+"sentence": "He likes Marge more than I.",
+"ptb": "(TOP (S (NP (PRP He)) (VP (VBZ likes) (NP (NNP Marge)) (ADVP (ADVP (RBR more)) (PP (IN than) (NP (PRP I))))) (. .)))"
+},
+{
+"sentence": "Whatever you want is fine with me.",
+"ptb": "(TOP (S (SBAR (WHNP (WP Whatever)) (S (NP (PRP you)) (VP (VBP want)))) (VP (VBZ is) (ADJP (JJ fine) (PP (IN with) (NP (PRP me))))) (. .)))"
+},
+{
+"sentence": "Does your mom know where you are going?",
+"ptb": "(TOP (SQ (VBZ Does) (NP (PRP$ your) (NN mom)) (VP (VB know) (SBAR (WHADVP (WRB where)) (S (NP (PRP you)) (VP (VBP are) (VP (VBG going)))))) (. ?)))"
+},
+{
+"sentence": "Where the sock had gone was a mystery.",
+"ptb": "(TOP (S (SBAR (WHADVP (WRB Where)) (S (NP (DT the) (NN sock)) (VP (VBD had) (VP (VBN gone))))) (VP (VBD was) (NP (DT a) (NN mystery))) (. .)))"
+},
+{
+"sentence": "Whoever made this pottery did a good job.",
+"ptb": "(TOP (S (SBAR (WHNP (WP Whoever)) (S (VP (VBD made) (NP (DT this) (NN pottery))))) (VP (VBD did) (NP (DT a) (JJ good) (NN job))) (. .)))"
+},
+{
+"sentence": "The engineers finally discovered who caused the oil spill.",
+"ptb": "(TOP (S (NP (DT The) (NNS engineers)) (ADVP (RB finally)) (VP (VBD discovered) (SBAR (WHNP (WP who)) (S (VP (VBD caused) (NP (DT the) (NN oil) (NN spill)))))) (. .)))"
+},
+{
+"sentence": "That dog licks whomever it meets.",
+"ptb": "(TOP (S (NP (DT That) (NN dog)) (VP (VBZ licks) (SBAR (WHNP (WP whomever)) (S (NP (PRP it)) (VP (VBZ meets))))) (. .)))"
+},
+{
+"sentence": "The reporter noted that Rocky fouled fourteen pitches in a row.",
+"ptb": "(TOP (S (NP (DT The) (NN reporter)) (VP (VBD noted) (SBAR (IN that) (S (NP (NNP Rocky)) (VP (VBD fouled) (NP (NP (CD fourteen) (NNS pitches)) (PP (IN in) (NP (DT a) (NN row)))))))) (. .)))"
+},
+{
+"sentence": "I read a book about how organic food is grown.",
+"ptb": "(TOP (S (NP (PRP I)) (VP (VBD read) (NP (NP (DT a) (NN book)) (PP (IN about) (SBAR (WHADVP (WRB how)) (S (NP (JJ organic) (NN food)) (VP (VBZ is) (VP (VBN grown)))))))) (. .)))"
+},
+{
+"sentence": "The kitten ran to whoever rang the bell.",
+"ptb": "(TOP (S (NP (DT The) (NN kitten)) (VP (VBD ran) (PP (IN to) (SBAR (WHNP (WP whoever)) (S (VP (VBD rang) (NP (DT the) (NN bell))))))) (. .)))"
+},
+{
+"sentence": "In very old English tales, Grendel was a terrible monster, and his mother was equally horrible.",
+"ptb": "(TOP (S (PP (IN In) (NP (ADJP (RB very) (JJ old)) (JJ English) (NNS tales))) (, ,) (S (NP (NNP Grendel)) (VP (VBD was) (NP (DT a) (JJ terrible) (NN monster)))) (, ,) (CC and) (S (NP (PRP$ his) (NN mother)) (VP (VBD was) (ADJP (RB equally) (JJ horrible)))) (. .)))"
+},
+{
+"sentence": "Grendel terrorized the countryside, but finally the hero Beowulf stopped him.",
+"ptb": "(TOP (S (S (NP (NNP Grendel)) (VP (VBD terrorized) (NP (DT the) (NN countryside)))) (, ,) (CC but) (S (ADVP (RB finally)) (NP (DT the) (NN hero) (NP (NNP Beowulf))) (VP (VBD stopped) (NP (PRP him)))) (. .)))"
+},
+{
+"sentence": "We named our daughter Alice.",
+"ptb": "(TOP (S (NP (PRP We)) (VP (VBD named) (NP (PRP$ our) (NN daughter)) (S (NP (NNP Alice)))) (. .)))"
+},
+{
+"sentence": "They elected my uncle mayor.",
+"ptb": "(TOP (S (NP (PRP They)) (VP (VBD elected) (NP (PRP$ my) (NN uncle)) (S (NP (NN mayor)))) (. .)))"
+},
+{
+"sentence": "This music makes me happy.",
+"ptb": "(TOP (S (NP (DT This) (NN music)) (VP (VBZ makes) (S (NP (PRP me)) (ADJP (JJ happy)))) (. .)))"
+},
+{
+"sentence": "I painted my room red.",
+"ptb": "(TOP (S (NP (PRP I)) (VP (VBD painted) (NP (PRP$ my) (NN room)) (S (ADJP (JJ red)))) (. .)))"
+},
+{
+"sentence": "The students kept the room tidy.",
+"ptb": "(TOP (S (NP (DT The) (NNS students)) (VP (VBD kept) (NP (DT the) (NN room)) (S (ADJP (JJ tidy)))) (. .)))"
+},
+{
+"sentence": "Margo dyed her hair pink.",
+"ptb": "(TOP (S (NP (NNP Margo)) (VP (VBD dyed) (NP (PRP$ her) (NN hair)) (S (ADJP (JJ pink)))) (. .)))"
+},
+{
+"sentence": "Both Max and I hit homers.",
+"ptb": "(TOP (S (NP (DT Both) (NNP Max) (CC and) (PRP I)) (VP (VBD hit) (NP (NNS homers))) (. .)))"
+},
+{
+"sentence": "She either complains or criticizes.",
+"ptb": "(TOP (S (NP (PRP She)) (VP (CC either) (VBZ complains) (CC or) (VBZ criticizes)) (. .)))"
+},
+{
+"sentence": "Teddy Roosevelt was both a strong president and a memorable public figure.",
+"ptb": "(TOP (S (NP (NNP Teddy) (NNP Roosevelt)) (VP (VBD was) (NP (DT both) (NP (DT a) (JJ strong) (NN president)) (CC and) (NP (DT a) (JJ memorable) (JJ public) (NN figure)))) (. .)))"
+},
+{
+"sentence": "Mrs. Doubtfire gave the children homework.",
+"ptb": "(TOP (S (NP (NNP Mrs.) (NNP Doubtfire)) (VP (VBD gave) (NP (DT the) (NNS children)) (NP (NN homework))) (. .)))"
+},
+{
+"sentence": "A travel agency sent the curious students information.",
+"ptb": "(TOP (S (NP (DT A) (NN travel) (NN agency)) (VP (VBD sent) (NP (DT the) (JJ curious) (NNS students)) (NP (NN information))) (. .)))"
+},
+{
+"sentence": "We gave my mother a book for her birthday.",
+"ptb": "(TOP (S (NP (PRP We)) (VP (VBD gave) (NP (PRP$ my) (NN mother)) (NP (NP (DT a) (NN book)) (PP (IN for) (NP (PRP$ her) (NN birthday))))) (. .)))"
+},
+{
+"sentence": "Heitor, address the class now.",
+"ptb": "(TOP (S (NP (NN Heitor)) (, ,) (VP (VB address) (NP (DT the) (NN class)) (ADVP (RB now))) (. .)))"
+},
+{
+"sentence": "Man, that hurt!",
+"ptb": "(TOP (S (INTJ (UH Man)) (, ,) (NP (DT that)) (VP (VBD hurt)) (. !)))"
+},
+{
+"sentence": "Wow! You will run a marathon on Sunday?",
+"ptb": "(TOP (SBARQ (INTJ (UH Wow)) (. !) (NP (PRP You)) (VP (MD will) (VP (VB run) (NP (DT a) (NN marathon)) (PP (IN on) (NP (NNP Sunday))))) (. ?)))"
+},
+{
+"sentence": "There are never enough hot dogs at the annual picnic.",
+"ptb": "(TOP (S (NP (EX There)) (VP (VBP are) (ADVP (RB never)) (NP (JJ enough) (JJ hot) (NNS dogs)) (PP (IN at) (NP (DT the) (JJ annual) (NN picnic)))) (. .)))"
+},
+{
+"sentence": "There is no one working with Albert.",
+"ptb": "(TOP (S (NP (EX There)) (VP (VBZ is) (NP (NP (DT no) (NN one)) (VP (VBG working) (PP (IN with) (NP (NNP Albert)))))) (. .)))"
+},
+{
+"sentence": "Sit!",
+"ptb": "(TOP (S (VP (VB Sit)) (. !)))"
+},
+{
+"sentence": "Water the begonias, those flowers with shiny leaves.",
+"ptb": "(TOP (S (VP (VB Water) (NP (NP (DT the) (NNS begonias)) (, ,) (NP (NP (DT those) (NNS flowers)) (PP (IN with) (NP (JJ shiny) (NNS leaves)))))) (. .)))"
+},
+{
+"sentence": "Hand it in now.",
+"ptb": "(TOP (S (VP (VB Hand) (NP (PRP it)) (PRT (RP in)) (ADVP (RB now))) (. .)))"
+},
+{
+"sentence": "Smoke alarms screaming, my family awoke to a fire.",
+"ptb": "(TOP (S (S (NP (NN Smoke) (NNS alarms)) (VP (VBG screaming))) (, ,) (NP (PRP$ my) (NN family)) (VP (VBD awoke) (PP (IN to) (NP (DT a) (NN fire)))) (. .)))"
+},
+{
+"sentence": "The burglar was shot.",
+"ptb": "(TOP (S (NP (DT The) (NN burglar)) (VP (VBD was) (VP (VBN shot))) (. .)))"
+},
+{
+"sentence": "Mary was awarded the Smith Case.",
+"ptb": "(TOP (S (NP (NNP Mary)) (VP (VBD was) (VP (VBN awarded) (NP (DT the) (NNP Smith) (NNP Case)))) (. .)))"
+},
+{
+"sentence": "Professor Villa made her students read four novels.",
+"ptb": "(TOP (S (NP (NNP Professor) (NNP Villa)) (VP (VBD made) (S (NP (PRP$ her) (NNS students)) (VP (VB read) (NP (CD four) (NNS novels))))) (. .)))"
+},
+{
+"sentence": "Where are you going?",
+"ptb": "(TOP (SBARQ (WHADVP (WRB Where)) (SQ (VBP are) (NP (PRP you)) (VP (VBG going))) (. ?)))"
+},
+{
+"sentence": "May I postpone this assignment?",
+"ptb": "(TOP (SQ (MD May) (NP (PRP I)) (VP (VB postpone) (NP (DT this) (NN assignment))) (. ?)))"
+},
+{
+"sentence": "Can ducks fly?",
+"ptb": "(TOP (SQ (MD Can) (NP (NNS ducks)) (VP (VB fly)) (. ?)))"
+},
+{
+"sentence": "Does your sister like black cats?",
+"ptb": "(TOP (SQ (VBZ Does) (NP (PRP$ your) (NN sister)) (VP (VB like) (NP (JJ black) (NNS cats))) (. ?)))"
+},
+{
+"sentence": "Do you know the man?",
+"ptb": "(TOP (SQ (VBP Do) (NP (PRP you)) (VP (VB know) (NP (DT the) (NN man))) (. ?)))"
+},
+{
+"sentence": "Our first president, George Washington, had been a military commander.",
+"ptb": "(TOP (S (NP (NP (PRP$ Our) (JJ first) (NN president)) (, ,) (NP (NNP George) (NNP Washington)) (, ,)) (VP (VBD had) (VP (VBN been) (NP (DT a) (JJ military) (NN commander)))) (. .)))"
+},
+{
+"sentence": "The sixteenth U.S. president was Abraham Lincoln, a Republican.",
+"ptb": "(TOP (S (NP (DT The) (JJ sixteenth) (NNP U.S.) (NN president)) (VP (VBD was) (NP (NP (NNP Abraham) (NNP Lincoln)) (, ,) (NP (DT a) (NNP Republican)))) (. .)))"
+},
+{
+"sentence": "My son Carl is a medical technician.",
+"ptb": "(TOP (S (NP (PRP$ My) (NN son) (NNP Carl)) (VP (VBZ is) (NP (DT a) (JJ medical) (NN technician))) (. .)))"
+},
+{
+"sentence": "Look at those flowers next to the walk!",
+"ptb": "(TOP (S (VP (VB Look) (PP (IN at) (NP (NP (DT those) (NNS flowers)) (ADVP (JJ next) (PP (IN to) (NP (DT the) (NN walk))))))) (. !)))"
+},
+{
+"sentence": "Those immense houses on the west side of town were built recently.",
+"ptb": "(TOP (S (NP (NP (DT Those) (JJ immense) (NNS houses)) (PP (IN on) (NP (NP (DT the) (JJ west) (NN side)) (PP (IN of) (NP (NN town)))))) (VP (VBD were) (VP (VBN built) (ADVP (RB recently)))) (. .)))"
+},
+{
+"sentence": "What your team really needs is a strong quarterback.",
+"ptb": "(TOP (S (SBAR (WHNP (WP What)) (S (NP (PRP$ your) (NN team)) (ADVP (RB really)) (VP (VBZ needs)))) (VP (VBZ is) (NP (DT a) (JJ strong) (NN quarterback))) (. .)))"
+},
+{
+"sentence": "We know that this fact is true.",
+"ptb": "(TOP (S (NP (PRP We)) (VP (VBP know) (SBAR (IN that) (S (NP (DT this) (NN fact)) (VP (VBZ is) (ADJP (JJ true)))))) (. .)))"
+},
+{
+"sentence": "Tell whoever arrives late about the schedule change.",
+"ptb": "(TOP (S (VP (VB Tell) (SBAR (WHNP (WP whoever)) (S (VP (VBZ arrives) (ADVP (RB late))))) (PP (IN about) (NP (DT the) (NN schedule) (NN change)))) (. .)))"
+},
+{
+"sentence": "Neither Laura nor Carla could come.",
+"ptb": "(TOP (S (NP (CC Neither) (NNP Laura) (CC nor) (NNP Carla)) (VP (MD could) (VP (VB come))) (. .)))"
+},
+{
+"sentence": "Either we wash the walls, or we paint them.",
+"ptb": "(TOP (S (CC Either) (S (NP (PRP we)) (VP (VBP wash) (NP (DT the) (NNS walls)))) (, ,) (CC or) (S (NP (PRP we)) (VP (VBP paint) (NP (PRP them)))) (. .)))"
+},
+{
+"sentence": "Today Darren left his office earlier than he usually does.",
+"ptb": "(TOP (S (NP (NN Today)) (NP (NNP Darren)) (VP (VBD left) (NP (PRP$ his) (NN office)) (ADVP (ADVP (RBR earlier)) (SBAR (IN than) (S (NP (PRP he)) (ADVP (RB usually)) (VP (VBZ does)))))) (. .)))"
+},
+{
+"sentence": "As soon as the guest of honor arrives, the award ceremony will begin.",
+"ptb": "(TOP (S (ADVP (ADVP (RB As) (RB soon)) (SBAR (IN as) (S (NP (NP (DT the) (NN guest)) (PP (IN of) (NP (NN honor)))) (VP (VBZ arrives))))) (, ,) (NP (DT the) (NN award) (NN ceremony)) (VP (MD will) (VP (VB begin))) (. .)))"
+},
+{
+"sentence": "You can wear whatever you want, but come on time!",
+"ptb": "(TOP (S (NP (PRP You)) (VP (VP (MD can) (VP (VB wear) (SBAR (WHNP (WDT whatever)) (S (NP (PRP you)) (VP (VBP want)))))) (, ,) (CC but) (VP (VB come) (PP (IN on) (NP (NN time))))) (. !)))"
+},
+{
+"sentence": "Students elected Ann president.",
+"ptb": "(TOP (S (NP (NNS Students)) (VP (VBD elected) (NP (NNP Ann) (NN president))) (. .)))"
+},
+{
+"sentence": "Kim proved Sam wrong.",
+"ptb": "(TOP (S (NP (NNP Kim)) (VP (VBD proved) (S (NP (NNP Sam)) (ADJP (JJ wrong)))) (. .)))"
+},
+{
+"sentence": "The mayor declared today a holiday.",
+"ptb": "(TOP (S (NP (DT The) (NN mayor)) (VP (VBD declared) (NP (NN today)) (NP (DT a) (NN holiday))) (. .)))"
+}
+]

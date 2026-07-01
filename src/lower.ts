@@ -209,7 +209,11 @@ function lowerSQ(sq: Tree): Clause {
 function lowerSBARQ(sbarq: Tree): Clause {
   const wh = sbarq.children.find((c) => ["WHNP", "WHADVP", "WHPP"].includes(c.label));
   const sq = sbarq.children.find((c) => c.label === "SQ" || c.label === "S");
-  if (!sq) throw new Error("lower: SBARQ without SQ");
+  if (!sq) {
+    // declarative-order question, often interjection-prefixed: SBARQ holds NP + VP directly
+    if (sbarq.children.some((c) => c.label === "VP")) return lowerClause(sbarq);
+    throw new Error("lower: SBARQ without a clause");
+  }
   const whWord = wh ? phrase(wh) : "what";
   const sqKids = sq.children.filter((c) => c.label !== "." && c.label !== ",");
   if (sqKids[0]?.label === "VP") {
@@ -225,6 +229,12 @@ function lowerSBARQ(sbarq: Tree): Clause {
 function lowerTop(t: Tree): Clause {
   if (t.label === "SQ") return lowerSQ(t);
   if (t.label === "SBARQ") return lowerSBARQ(t);
+  // Imperative: a top-level clause with a VP but NO subject constituent at all -> implied "(you)".
+  // (A gerund/infinitive/noun-clause subject is an S/SBAR, so those are NOT imperatives.)
+  const SUBJECTY = new Set(["NP", "S", "SBAR", "SQ", "SBARQ"]);
+  if ((t.label === "S" || t.label === "VP") && t.children.some((c) => c.label === "VP") && !t.children.some((c) => SUBJECTY.has(c.label))) {
+    return lowerClause(t, { head: w("(you)"), modifiers: [] });
+  }
   return lowerClause(t);
 }
 
