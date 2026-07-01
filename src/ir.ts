@@ -40,7 +40,10 @@ export type Infinitive = {
 export type Complement =
   | { kind: "directObject"; value: Nominal | Compound<Nominal> | Infinitive } // half-vertical (or a stand for an infinitive)
   | { kind: "predicateNoun"; value: Nominal | Compound<Nominal> } // divider: lean-left
-  | { kind: "predicateAdj"; value: Word | Compound<Word> }; // divider: lean-left ("tiny and loud" -> fork)
+  | { kind: "predicateAdj"; value: Word | Compound<Word> } // divider: lean-left ("tiny and loud" -> fork)
+  // objective complement ("elected my uncle mayor", "painted my room red"): the direct object,
+  // then a back-leaning divider, then the complement noun/adjective — all on the baseline.
+  | { kind: "objectComplement"; object: Nominal | Compound<Nominal>; oc: Nominal | Word; ocIsAdj: boolean };
 
 export type Modifier =
   | { kind: "word"; value: Word } // adj/article/adverb/possessive -> slant

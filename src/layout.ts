@@ -256,8 +256,35 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
     };
   }
 
+  // An objective complement lays out as one horizontal unit: the direct object, a back-leaning
+  // divider (tilting toward the object it describes), then the complement noun/adjective.
+  function measureObjectComplement(oc: Extract<NonNullable<Clause["complement"]>, { kind: "objectComplement" }>, idPath: NodeId): Measured {
+    const objM = measureFiller(oc.object, `${idPath}/do`, "object", false);
+    const ocM = oc.ocIsAdj
+      ? measureHead((oc.oc as Word).text, [], `${idPath}/oc`, "complement")
+      : measureFiller(oc.oc as Nominal, `${idPath}/oc`, "complement", false);
+    const ocLeft = objM.width + style.dividerGap;
+    const width = ocLeft + ocM.width;
+    const below = unionB(objM.below, box(ocLeft + ocM.below.left, ocM.below.top, ocLeft + ocM.below.right, ocM.below.bottom));
+    return {
+      width,
+      below,
+      place: (x, y) => {
+        const dx = x + objM.width + style.dividerGap / 2;
+        const len = style.halfDividerRise / Math.sin(style.leanLeftAngle);
+        const ch: Array<SceneNode | Prim> = [
+          objM.place(x, y),
+          { kind: "seg", a: { x: dx, y }, b: { x: dx - len * Math.cos(style.leanLeftAngle), y: y - len * Math.sin(style.leanLeftAngle) }, role: "divider.lean" },
+          ocM.place(x + ocLeft, y),
+        ];
+        return { id: idPath, role: "complement", children: ch, bounds: childrenBox(ch) };
+      },
+    };
+  }
+
   type CompM = { divider: "half" | "lean"; measured: Measured };
   function measureComplement(c: NonNullable<Clause["complement"]>, idPrefix: NodeId): CompM {
+    if (c.kind === "objectComplement") return { divider: "half", measured: measureObjectComplement(c, `${idPrefix}/oc`) };
     if (c.kind === "directObject") {
       if ("kind" in c.value) return { divider: "half", measured: measureInfinitive(c.value, `${idPrefix}/inf`) }; // only Infinitive has `kind`
       return { divider: "half", measured: measureFiller(c.value, `${idPrefix}/obj`, "object", false) };

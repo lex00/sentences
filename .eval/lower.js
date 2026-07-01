@@ -133,6 +133,7 @@ function lowerPredicate(vp) {
     const modifiers = [];
     const objNPs = []; // object NPs in order; two => indirect + direct object
     let indirectObject;
+    const ocClauses = []; // verbless small clauses carrying an objective complement
     let complement = null;
     const walk = (node) => {
         for (const c of node.children) {
@@ -140,10 +141,13 @@ function lowerPredicate(vp) {
                 verbWords.push(c.word); // incl. infinitive "to"
             else if (c.label === "VP")
                 walk(c); // auxiliary chain: "has been running"
-            else if (c.label === "S" && !c.children.some((x) => x.label === "NP")) {
+            else if (c.label === "S" && c.children.some((x) => x.label === "VP") && !c.children.some((x) => x.label === "NP")) {
                 const inner = c.children.find((x) => x.label === "VP"); // subjectless S = infinitive: "has to think about X"
                 if (inner)
                     walk(inner);
+            }
+            else if (c.label === "S" && !c.children.some((x) => x.label === "VP")) {
+                ocClauses.push(c); // verbless small clause = objective complement ("named our daughter Alice")
             }
             else if (c.label === "ADVP" || c.label === "RB")
                 modifiers.push({ kind: "word", value: w(phrase(c)) });
@@ -169,8 +173,36 @@ function lowerPredicate(vp) {
         }
     };
     walk(vp);
-    // Resolve object NPs, unless an ADJP/INF already claimed the complement slot (predicate adj /
-    // objective complement — the latter is handled separately).
+    // Objective complement: a verbless small clause. It may carry both the object and the
+    // complement ("makes [me happy]"), or just the complement, with the object as the preceding
+    // sibling NP ("painted my room [red]").
+    const ocClause = ocClauses[0];
+    if (ocClause) {
+        const scNPs = ocClause.children.filter((x) => x.label === "NP");
+        const scAdj = ocClause.children.find((x) => x.label === "ADJP" || x.label === "JJ");
+        let objectTree;
+        let ocIsAdj;
+        let ocTree;
+        if (scNPs.length >= 1 && (scAdj || scNPs.length >= 2)) {
+            objectTree = scNPs[0]; // small clause holds both DO and OC
+            ocIsAdj = !!scAdj;
+            ocTree = scAdj ?? scNPs[1];
+        }
+        else {
+            objectTree = objNPs.pop(); // OC only; DO is the preceding sibling NP
+            ocIsAdj = !!scAdj;
+            ocTree = scAdj ?? scNPs[0];
+        }
+        if (objectTree && ocTree) {
+            complement = {
+                kind: "objectComplement",
+                object: lowerNP(objectTree),
+                oc: ocIsAdj ? w(phrase(ocTree)) : asNominal(lowerNP(ocTree)),
+                ocIsAdj,
+            };
+        }
+    }
+    // Resolve object NPs, unless an ADJP/INF/objective-complement already claimed the complement slot.
     if (complement === null && objNPs.length) {
         if (isCopula(verbWords)) {
             complement = { kind: "predicateNoun", value: lowerNP(objNPs[objNPs.length - 1]) };
