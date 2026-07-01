@@ -15,6 +15,7 @@ sents=[
  "The book on the table is mine.","I want to go home.","He said that she was right.",
  "The quick brown fox jumps over the lazy dog.","We will meet at the station before noon.",
  "The dog that barked ran away.","A small bird sang sweetly.","They built a house near the river.",
+ "Can a tap mechanic still feel like a puzzle if the player has to think about layers and chain reactions?",
 ]
 out=[]
 for s in sents:
