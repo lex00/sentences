@@ -100,6 +100,13 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
         expect(c.subject.head.text).toBe("that");
         expect(c.detached?.map((d) => d.text)).toEqual(["Man"]);
     });
+    it("possessive noun is a determiner-like modifier, not dropped", () => {
+        const c = lower("(S (NP (NP (NNP Alicia) (POS 's)) (NN hobby)) (VP (VBZ sleeps)))");
+        const subj = c.subject;
+        expect(subj.head.text).toBe("hobby");
+        const poss = subj.modifiers.find((m) => m.kind === "word");
+        expect(poss?.value.text).toBe("Alicia's");
+    });
     it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
         const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");
         expect(c.subject.head.text).toBe("dog");

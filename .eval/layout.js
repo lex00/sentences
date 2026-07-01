@@ -184,7 +184,10 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
             const branches = items.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role));
             return measureCompound(branches, slot.conjunction.text, idPath, openRight);
         }
-        return measureHead(slot.head.text, slot.modifiers, idPath, role);
+        // An indirect object hangs below the verb on a slant + rail — an implied-preposition PP.
+        const io = "indirectObject" in slot ? slot.indirectObject : undefined;
+        const mods = io ? [...slot.modifiers, { kind: "prep", prep: { text: "" }, object: io }] : slot.modifiers;
+        return measureHead(slot.head.text, mods, idPath, role);
     }
     // An infinitive object on a STAND: a post rises from the object slot to a raised rail that
     // carries "to" (on a slant) + the verb, with the verb's own object after a half-divider.

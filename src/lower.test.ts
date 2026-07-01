@@ -123,6 +123,13 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
     expect(poss?.value.text).toBe("Alicia's");
   });
 
+  it("ditransitive verb: first of two object NPs is the indirect object", () => {
+    const c = lower("(S (NP (NNP Mrs.) (NNP Doubtfire)) (VP (VBD gave) (NP (DT the) (NNS children)) (NP (NN homework))))");
+    expect((c.verb as Verbal).indirectObject?.head.text).toBe("children");
+    expect(c.complement?.kind).toBe("directObject");
+    if (c.complement?.kind === "directObject") expect((c.complement.value as Nominal).head.text).toBe("homework");
+  });
+
   it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
     const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");
     expect((c.subject as Nominal).head.text).toBe("dog");

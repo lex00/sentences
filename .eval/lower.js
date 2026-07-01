@@ -131,6 +131,8 @@ function lowerPredicate(vp) {
     }
     const verbWords = [];
     const modifiers = [];
+    const objNPs = []; // object NPs in order; two => indirect + direct object
+    let indirectObject;
     let complement = null;
     const walk = (node) => {
         for (const c of node.children) {
@@ -149,10 +151,8 @@ function lowerPredicate(vp) {
                 modifiers.push(lowerPP(c));
             else if (c.label === "SBAR")
                 modifiers.push(lowerSBAR(c));
-            else if (c.label === "NP") {
-                const nom = lowerNP(c);
-                complement = isCopula(verbWords) ? { kind: "predicateNoun", value: nom } : { kind: "directObject", value: nom };
-            }
+            else if (c.label === "NP")
+                objNPs.push(c); // resolved after the walk (copula / IO+DO / DO)
             else if (c.label === "INF") {
                 complement = { kind: "directObject", value: lowerInfinitive(c) }; // infinitive object on a stand
             }
@@ -169,7 +169,22 @@ function lowerPredicate(vp) {
         }
     };
     walk(vp);
-    return { verb: { head: w(verbWords.join(" ") || phrase(vp)), modifiers }, complement };
+    // Resolve object NPs, unless an ADJP/INF already claimed the complement slot (predicate adj /
+    // objective complement — the latter is handled separately).
+    if (complement === null && objNPs.length) {
+        if (isCopula(verbWords)) {
+            complement = { kind: "predicateNoun", value: lowerNP(objNPs[objNPs.length - 1]) };
+        }
+        else if (objNPs.length >= 2) {
+            // ditransitive "gave the children homework": first NP is the indirect object.
+            indirectObject = asNominal(lowerNP(objNPs[0]));
+            complement = { kind: "directObject", value: lowerNP(objNPs[objNPs.length - 1]) };
+        }
+        else {
+            complement = { kind: "directObject", value: lowerNP(objNPs[0]) };
+        }
+    }
+    return { verb: { head: w(verbWords.join(" ") || phrase(vp)), modifiers, ...(indirectObject ? { indirectObject } : {}) }, complement };
 }
 function lowerInfinitive(inf) {
     const verb = inf.children.find((c) => c.label === "VB");
