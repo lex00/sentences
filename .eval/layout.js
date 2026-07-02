@@ -36,7 +36,6 @@ const unionB = (a, b) => ({
     right: Math.max(a.right, b.right),
     bottom: Math.max(a.bottom, b.bottom),
 });
-const isCompound = (x) => "items" in x;
 export function layout(input, metrics, style = defaultLayoutStyle) {
     const SZ = style.em;
     const w = (t) => metrics.measure(t, SZ).width;
@@ -248,6 +247,33 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
             },
         };
     }
+    // A compound-predicate branch: a verb rail then its OWN complement (each conjunct of "has black
+    // fur and can jump high" carries its object). Mirrors the verb+complement spacing of a clause.
+    function measurePredicatePart(part, idPath) {
+        const verbM = measureHead(part.verb.head.text, part.verb.modifiers, `${idPath}/v`, "verb");
+        if (!part.complement)
+            return verbM;
+        const c = measureComplement(part.complement, idPath);
+        const cLeft = Math.max(verbM.width + style.dividerGap, verbM.below.right + MARGIN - c.measured.below.left);
+        const dx = (verbM.width + cLeft) / 2;
+        const below = unionB(verbM.below, box(cLeft + c.measured.below.left, c.measured.below.top, cLeft + c.measured.below.right, c.measured.below.bottom));
+        return {
+            width: cLeft + c.measured.width,
+            below,
+            place: (x, y) => {
+                const ch = [verbM.place(x, y)];
+                const dxa = x + dx;
+                if (c.divider === "half")
+                    ch.push({ kind: "seg", a: { x: dxa, y: y - style.halfDividerRise }, b: { x: dxa, y }, role: "divider.half" });
+                else {
+                    const len = style.halfDividerRise / Math.sin(style.leanLeftAngle);
+                    ch.push({ kind: "seg", a: { x: dxa, y }, b: { x: dxa - len * Math.cos(style.leanLeftAngle), y: y - len * Math.sin(style.leanLeftAngle) }, role: "divider.lean" });
+                }
+                ch.push(c.measured.place(x + cLeft, y));
+                return { id: idPath, role: "verb", children: ch, bounds: childrenBox(ch) };
+            },
+        };
+    }
     // --- a head slot that may be single or compound, or a stand-mounted verbal/clause ---
     function measureFiller(slot, idPath, role, openRight) {
         if ("kind" in slot) {
@@ -257,14 +283,22 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
         }
         if ("subject" in slot)
             return measureOnStand(measureClause(slot, `${idPath}/nc`, "clause"), idPath, role, openRight); // noun clause
-        if (isCompound(slot)) {
+        if ("items" in slot) {
             const items = slot.items;
-            const appOf = (it) => ("appositive" in it ? it.appositive?.text : undefined);
-            if (items.length === 1) {
-                const it = items[0];
-                return measureHead(it.head.text, it.modifiers, idPath, role, appOf(it));
+            // compound predicate: each branch is a verb + its own complement
+            if (items.length && "verb" in items[0]) {
+                const parts = items;
+                if (parts.length === 1)
+                    return measurePredicatePart(parts[0], idPath);
+                const branches = parts.map((p, i) => measurePredicatePart(p, `${idPath}/b${i}`));
+                return measureCompound(branches, slot.conjunction.text, idPath, openRight);
             }
-            const branches = items.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role, appOf(it)));
+            // compound of nominals (subject / object)
+            const noms = items;
+            const appOf = (it) => it.appositive?.text;
+            if (noms.length === 1)
+                return measureHead(noms[0].head.text, noms[0].modifiers, idPath, role, appOf(noms[0]));
+            const branches = noms.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role, appOf(it)));
             return measureCompound(branches, slot.conjunction.text, idPath, openRight);
         }
         // An indirect object hangs below the verb on a slant + rail — an implied-preposition PP.

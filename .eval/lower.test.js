@@ -155,7 +155,7 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
     it("correlative bare-verb coordination: 'either complains or criticizes'", () => {
         const c = lower("(S (NP (PRP She)) (VP (CC either) (VBZ complains) (CC or) (VBZ criticizes)))");
         const v = c.verb;
-        expect(v.items.map((i) => i.head.text)).toEqual(["complains", "criticizes"]);
+        expect(v.items.map((i) => i.verb.head.text)).toEqual(["complains", "criticizes"]);
         expect(v.conjunction.text).toBe("either...or");
     });
     it("set-off participial phrase modifies the subject, not mistaken for the subject", () => {

@@ -175,8 +175,8 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
 
   it("correlative bare-verb coordination: 'either complains or criticizes'", () => {
     const c = lower("(S (NP (PRP She)) (VP (CC either) (VBZ complains) (CC or) (VBZ criticizes)))");
-    const v = c.verb as { items: Verbal[]; conjunction: { text: string } };
-    expect(v.items.map((i) => i.head.text)).toEqual(["complains", "criticizes"]);
+    const v = c.verb as { items: { verb: Verbal }[]; conjunction: { text: string } };
+    expect(v.items.map((i) => i.verb.head.text)).toEqual(["complains", "criticizes"]);
     expect(v.conjunction.text).toBe("either...or");
   });
 
@@ -221,6 +221,21 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
     expect((c.subject as Nominal).head.text).toBe("family");
     expect(c.absolutes?.[0]?.head.text).toBe("alarms");
     expect(c.absolutes?.[0]?.modifiers.some((m) => m.kind === "participle")).toBe(true);
+  });
+
+  it("compound predicate keeps each conjunct's own complement ('has black fur and can jump high')", () => {
+    const c = lower("(S (NP (PRP$ my) (NN dog)) (VP (VP (VBZ has) (NP (JJ black) (NN fur))) (CC and) (VP (MD can) (VP (VB jump) (ADVP (RB high))))))");
+    const parts = (c.verb as { items: { verb: Verbal; complement: unknown }[] }).items;
+    expect(parts.map((p) => p.verb.head.text)).toEqual(["has", "can jump"]);
+    expect((parts[0]!.complement as { value: Nominal }).value.head.text).toBe("fur"); // NOT dropped
+    expect(parts[1]!.complement).toBeNull();
+  });
+
+  it("an adverb qualifying a preposition is not dropped ('especially in the winter')", () => {
+    const c = lower("(S (NP (PRP I)) (VP (VBP grow) (NP (NNS plants)) (PP (ADVP (RB especially)) (IN in) (NP (DT the) (NN winter)))))");
+    const pp = (c.verb as Verbal).modifiers.find((m): m is Extract<Modifier, { kind: "prep" }> => m.kind === "prep");
+    expect(pp?.prep.text).toBe("especially in");
+    expect(pp?.object.head.text).toBe("winter");
   });
 
   it("relative clause: the wh-word is the gapped subject, no separate connector", () => {

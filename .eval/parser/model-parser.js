@@ -4,7 +4,7 @@
 // part that only runs in a real browser — verify there.
 import * as ort from "onnxruntime-web";
 import { T5Tokenizer } from "./tokenizer.js";
-import { ckyDecode, ckyKBest } from "./cky.js";
+import { ckyDecode, ckyKBestScored } from "./cky.js";
 // Treebank-ish word tokenization (peel punctuation, split contractions: won't -> wo n't).
 export function tokenizeWords(text) {
     return text
@@ -24,7 +24,9 @@ export class ModelParser {
         this.tok = tok;
         this.vocab = vocab;
     }
-    static async load(base = "/models") {
+    // `base` serves the small tokenizer/vocab configs; `modelUrl` the 72 MB weights (which may live
+    // on a different origin, e.g. a GitHub Release asset, so the source repo stays lean).
+    static async load(base = "/models", modelUrl = `${base}/benepar.int8.onnx`) {
         // Single-threaded wasm: no SharedArrayBuffer / cross-origin isolation (COOP/COEP) required,
         // so it works on a plain static host and the Vite dev server.
         ort.env.wasm.numThreads = 1;
@@ -33,17 +35,21 @@ export class ModelParser {
             fetch(`${base}/t5-unigram.json`).then((r) => r.json()),
             fetch(`${base}/vocab.json`).then((r) => r.json()),
         ]);
-        const session = await ort.InferenceSession.create(`${base}/benepar.int8.onnx`, { executionProviders: ["wasm"] });
+        const session = await ort.InferenceSession.create(modelUrl, { executionProviders: ["wasm"] });
         return new ModelParser(session, new T5Tokenizer(unigram), vocab);
     }
     async parse(text) {
         const { spanScores, tagIds, words } = await this.score(text);
         return ckyDecode(spanScores, tagIds, words, this.vocab); // (TOP (S ...))
     }
-    // k-best parses (over attachment ambiguity) from a single forward pass. k=1 == parse().
-    async parseNBest(text, k) {
+    // k-best parses from one forward pass, pruned to genuine near-ties: only parses within `margin`
+    // logits of the best survive, so an unambiguous sentence yields one parse and a real attachment
+    // ambiguity yields a few. (Observed degenerate label-drop parses sit ~1.9+ below the best.)
+    async parseNBest(text, k, margin = 1.2) {
         const { spanScores, tagIds, words } = await this.score(text);
-        return ckyKBest(spanScores, tagIds, words, this.vocab, k);
+        const scored = ckyKBestScored(spanScores, tagIds, words, this.vocab, k);
+        const best = scored[0]?.score ?? 0;
+        return scored.filter((r) => best - r.score <= margin).map((r) => r.tree);
     }
     // The forward pass: tokenize -> ORT-Web -> span-label logits + per-word POS tag ids.
     async score(text) {

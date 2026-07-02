@@ -9,7 +9,10 @@ export type Word = {
 // whole clause used nominally ("Running marathons is fun", "Whoever made this did a good job"),
 // drawn raised on a stand.
 export type Subject = Nominal | Compound<Nominal> | Clause | Infinitive | Gerund;
-export type Predicate = Verbal | Compound<Verbal>;
+// A compound predicate forks into parts, each carrying its OWN complement ("[has black fur] and
+// [can jump high]") — a single clause-level complement can't hold per-conjunct objects.
+export type PredicatePart = { verb: Verbal; complement: Complement | null };
+export type Predicate = Verbal | Compound<PredicatePart>;
 
 export type Clause = {
   subject: Subject;

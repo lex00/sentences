@@ -5,7 +5,7 @@
 // clause with no special-casing. Every Measured bakes its id + NodeRole at measure time and
 // exposes place(x, y) -> SceneNode. The engine is closed over an injected TextMetrics port.
 
-import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Sentence, Infinitive, Subject } from "./ir.js";
+import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Sentence, Infinitive, Subject, PredicatePart } from "./ir.js";
 import type { Scene, SceneNode, Prim, BBox, Pt, NodeId, NodeRole } from "./scene.js";
 import type { LayoutStyle } from "./theme.js";
 import { defaultLayoutStyle } from "./theme.js";
@@ -53,10 +53,6 @@ const unionB = (a: BBox, b: BBox): BBox => ({
   right: Math.max(a.right, b.right),
   bottom: Math.max(a.bottom, b.bottom),
 });
-
-const isCompound = (
-  x: Nominal | Verbal | Compound<Nominal> | Compound<Verbal>,
-): x is Compound<Nominal | Verbal> => "items" in x;
 
 export function layout(input: Clause | Sentence, metrics: TextMetrics, style: LayoutStyle = defaultLayoutStyle): Scene {
   const SZ = style.em;
@@ -283,22 +279,54 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
     };
   }
 
+  // A compound-predicate branch: a verb rail then its OWN complement (each conjunct of "has black
+  // fur and can jump high" carries its object). Mirrors the verb+complement spacing of a clause.
+  function measurePredicatePart(part: PredicatePart, idPath: NodeId): Measured {
+    const verbM = measureHead(part.verb.head.text, part.verb.modifiers, `${idPath}/v`, "verb");
+    if (!part.complement) return verbM;
+    const c = measureComplement(part.complement, idPath);
+    const cLeft = Math.max(verbM.width + style.dividerGap, verbM.below.right + MARGIN - c.measured.below.left);
+    const dx = (verbM.width + cLeft) / 2;
+    const below = unionB(verbM.below, box(cLeft + c.measured.below.left, c.measured.below.top, cLeft + c.measured.below.right, c.measured.below.bottom));
+    return {
+      width: cLeft + c.measured.width,
+      below,
+      place: (x, y) => {
+        const ch: Array<SceneNode | Prim> = [verbM.place(x, y)];
+        const dxa = x + dx;
+        if (c.divider === "half") ch.push({ kind: "seg", a: { x: dxa, y: y - style.halfDividerRise }, b: { x: dxa, y }, role: "divider.half" });
+        else {
+          const len = style.halfDividerRise / Math.sin(style.leanLeftAngle);
+          ch.push({ kind: "seg", a: { x: dxa, y }, b: { x: dxa - len * Math.cos(style.leanLeftAngle), y: y - len * Math.sin(style.leanLeftAngle) }, role: "divider.lean" });
+        }
+        ch.push(c.measured.place(x + cLeft, y));
+        return { id: idPath, role: "verb", children: ch, bounds: childrenBox(ch) };
+      },
+    };
+  }
+
   // --- a head slot that may be single or compound, or a stand-mounted verbal/clause ---
-  function measureFiller(slot: Subject | Verbal | Compound<Verbal>, idPath: NodeId, role: NodeRole, openRight: boolean): Measured {
+  function measureFiller(slot: Subject | Verbal | Compound<PredicatePart>, idPath: NodeId, role: NodeRole, openRight: boolean): Measured {
     if ("kind" in slot) {
       // gerund / infinitive filling a nominal slot: a verbal core raised on a stand.
       const head = slot.kind === "infinitive" ? `to ${slot.verb.text}` : slot.verb.text;
       return measureOnStand(measureVerbalCore(head, slot.modifiers, slot.object, `${idPath}/v`), idPath, role, openRight);
     }
     if ("subject" in slot) return measureOnStand(measureClause(slot, `${idPath}/nc`, "clause"), idPath, role, openRight); // noun clause
-    if (isCompound(slot)) {
+    if ("items" in slot) {
       const items = slot.items;
-      const appOf = (it: Nominal | Verbal): string | undefined => ("appositive" in it ? it.appositive?.text : undefined);
-      if (items.length === 1) {
-        const it = items[0]!;
-        return measureHead(it.head.text, it.modifiers, idPath, role, appOf(it));
+      // compound predicate: each branch is a verb + its own complement
+      if (items.length && "verb" in items[0]!) {
+        const parts = items as PredicatePart[];
+        if (parts.length === 1) return measurePredicatePart(parts[0]!, idPath);
+        const branches = parts.map((p, i) => measurePredicatePart(p, `${idPath}/b${i}`));
+        return measureCompound(branches, slot.conjunction.text, idPath, openRight);
       }
-      const branches = items.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role, appOf(it)));
+      // compound of nominals (subject / object)
+      const noms = items as Nominal[];
+      const appOf = (it: Nominal): string | undefined => it.appositive?.text;
+      if (noms.length === 1) return measureHead(noms[0]!.head.text, noms[0]!.modifiers, idPath, role, appOf(noms[0]!));
+      const branches = noms.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role, appOf(it)));
       return measureCompound(branches, slot.conjunction.text, idPath, openRight);
     }
     // An indirect object hangs below the verb on a slant + rail — an implied-preposition PP.

@@ -102,6 +102,9 @@ function lowerCoordNP(np) {
 function lowerPP(pp) {
     const prepTok = pp.children.find((c) => c.label === "IN" || c.label === "TO");
     const objNP = pp.children.find((c) => c.label === "NP");
+    // an adverb qualifying the preposition ("especially in the winter") rides on the prep label
+    const isAdv = (c) => c.label === "ADVP" || c.label === "RB";
+    const adv = pp.children.filter(isAdv).map(phrase).join(" ");
     let object;
     if (objNP) {
         object = asNominal(lowerNP(objNP));
@@ -109,10 +112,11 @@ function lowerPP(pp) {
     else {
         // object is a clause/gerund ("after leaving Portugal") — use the words AFTER the preposition,
         // not phrase(pp), which would repeat the preposition itself.
-        const rest = pp.children.filter((c) => c !== prepTok).map(phrase).join(" ").trim();
+        const rest = pp.children.filter((c) => c !== prepTok && !isAdv(c)).map(phrase).join(" ").trim();
         object = { head: w(rest || phrase(pp)), modifiers: [] };
     }
-    return { kind: "prep", prep: w(prepTok?.word ?? phrase(pp).split(" ")[0] ?? "?"), object };
+    const prepWord = prepTok?.word ?? phrase(pp).split(" ")[0] ?? "?";
+    return { kind: "prep", prep: w(adv ? `${adv} ${prepWord}` : prepWord), object };
 }
 function lowerSBAR(sbar) {
     const wh = sbar.children.find((c) => ["WHNP", "WHADVP", "WHPP", "WDT", "WP", "WRB"].includes(c.label));
@@ -131,7 +135,7 @@ function lowerSBAR(sbar) {
 }
 // --- predicates ---
 function lowerPredicate(vp) {
-    // compound predicate: (VP (VP ...) (CC and) (VP ...))
+    // compound predicate: (VP (VP ...) (CC and) (VP ...)) — each conjunct keeps its own complement.
     const vpKids = vp.children.filter((c) => c.label === "VP");
     if (vp.children.some(isCC) && vpKids.length >= 2) {
         let conjunction = "and";
@@ -140,7 +144,8 @@ function lowerPredicate(vp) {
                 conjunction = c.word;
         const items = vpKids.map((v) => {
             const r = lowerPredicate(v);
-            return "items" in r.verb ? asVerbalFlat(r.verb) : r.verb;
+            const verb = "items" in r.verb ? asVerbalFlat(r.verb) : r.verb;
+            return { verb, complement: r.complement };
         });
         return { verb: { items, conjunction: w(conjunction) }, complement: null };
     }
@@ -155,7 +160,7 @@ function lowerPredicate(vp) {
         for (const c of vp.children)
             if (isCC(c) && c.word && !CORREL.has(c.word.toLowerCase()))
                 conjunction = c.word;
-        const items = bareVerbs.map((v) => ({ head: w(v.word), modifiers: [] }));
+        const items = bareVerbs.map((v) => ({ verb: { head: w(v.word), modifiers: [] }, complement: null }));
         return { verb: { items, conjunction: w(conjLabel(correlative, conjunction)) }, complement: null };
     }
     const verbWords = [];
@@ -262,7 +267,7 @@ function lowerInfinitive(inf) {
     }
     return { kind: "infinitive", verb: w(verb?.word ?? phrase(inf)), object: obj ? asNominal(lowerNP(obj)) : null, modifiers };
 }
-const asVerbalFlat = (c) => ({ head: w(c.items.map((i) => i.head.text).join(` ${c.conjunction.text} `)), modifiers: [] });
+const asVerbalFlat = (c) => ({ head: w(c.items.map((i) => i.verb.head.text).join(` ${c.conjunction.text} `)), modifiers: [] });
 const isCopula = (verbWords) => verbWords.some((v) => COPULA.has(v.toLowerCase()));
 // Gather adverb/PP modifiers from a verbal phrase (shared by gerund/infinitive lowering).
 function verbalModifiers(src) {
