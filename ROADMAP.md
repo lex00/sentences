@@ -163,11 +163,12 @@ executor.
 ## Phase 8 — Export (SVG first)  ◄ closes the clearest parity gap
 **Goal:** shareable, reusable output — the one capability RSyntaxTree and SentenceVizu have and
 this doesn't. SVG is the consensus target (RESEARCH.md).
-- `Scene → SVG` serializer: same geometry as Canvas, roles → styles via the existing Theme seam.
-- PNG via canvas raster; PDF optional.
-- Download control in `main.ts`.
-- Snapshot-test the SVG so geometry regressions are caught alongside the collision sweep.
-**Exit:** any diagram exports to a standalone SVG that renders identically offline.
+- ✅ `Scene → SVG` serializer (`src/svg.ts`): a second consumer of the same Scene + Theme the
+  Canvas renderer uses, so the download is geometry-identical to the screen. Pure/testable; scene
+  bounds → `viewBox` (self-scaling, no fit transform). 6 tests in `svg.test.ts`.
+- ✅ Download control in `main.ts` + `index.html` ("↓ SVG"), white ground, sentence-derived name.
+- ▢ PNG via canvas raster; PDF optional — deferred (SVG covers the parity gap).
+**Exit (met for SVG):** any diagram exports to a standalone, well-formed SVG that renders offline.
 
 ## Phase 9 — Ambiguity + correction  ◄ the manual-tool parity
 **Goal:** stop being confidently wrong with no recourse; present alternatives instead of guessing.

@@ -12,6 +12,7 @@ import "@fontsource/tinos"; // pinned serif — same font the collision tests me
 import { parseDocument } from "./document.js";
 import { lowerSentence } from "./lower.js";
 import { ModelParser } from "./parser/model-parser.js";
+import { sceneToSvg } from "./svg.js";
 const CSS_W = 900;
 const CSS_H = 500;
 void document.fonts.load("16px Tinos"); // request the pinned font early so layout measures it
@@ -80,6 +81,17 @@ canvas.addEventListener("click", (e) => {
     if (hit)
         scheduler.fireEvent("select", hit);
 });
+// Export the on-screen diagram as SVG (same Scene + Theme the canvas draws), on a white ground.
+function downloadSvg() {
+    const svg = sceneToSvg(current, themes[themeIdx], { background: "#fffdf8" });
+    const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(input.value.trim() || "diagram").replace(/[^\w]+/g, "-").slice(0, 40).replace(/^-|-$/g, "") || "diagram"}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+document.getElementById("export").addEventListener("click", downloadSvg);
 window.addEventListener("keydown", (e) => {
     // never hijack keys destined for a text field (paste, spaces, typing)
     const t = e.target;
