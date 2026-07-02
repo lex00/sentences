@@ -2,12 +2,12 @@
 // draw-on reveal + particle effects. Space cycles built-in examples; click a word for a burst;
 // T swaps theme. Parsing is pure TS (no server, no ML stack) — the tool ships as a static site.
 
-import { cycle } from "./fixtures.js";
+import { cycle, cycleSentences } from "./fixtures.js";
 import { Animator, wallClock } from "./anim.js";
 import { makeExecutor } from "./webgpu-renderer.js";
 import { layout, CanvasTextMetrics } from "./layout.js";
 import { defaultTheme, blueprintTheme, defaultLayoutStyle } from "./theme.js";
-import { EffectScheduler, hitTest } from "./scheduler.js";
+import { EffectScheduler } from "./scheduler.js";
 import { defaultBindings } from "./bindings.js";
 import "@fontsource/tinos"; // pinned serif — same font the collision tests measure against
 import { parseDocument } from "./document.js";
@@ -63,6 +63,7 @@ function show(scene: Scene): void {
   current = scene;
 }
 
+input.value = cycleSentences[exampleIdx] ?? ""; // show the first example's sentence in the field
 scheduler.fireEvent("enter", current.root); // reveal the first sentence on load
 
 // The neural parser (benepar ONNX, ~72MB) lazy-loads on first focus; rule-based is the fallback.
@@ -124,12 +125,6 @@ input.addEventListener("keydown", async (e) => {
 (document.getElementById("prev") as HTMLButtonElement).addEventListener("click", () => cycleCandidate(-1));
 (document.getElementById("next") as HTMLButtonElement).addEventListener("click", () => cycleCandidate(1));
 
-canvas.addEventListener("click", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const hit = hitTest(current, { x: e.clientX - rect.left, y: e.clientY - rect.top });
-  if (hit) scheduler.fireEvent("select", hit);
-});
-
 // Export the on-screen diagram as SVG (same Scene + Theme the canvas draws), on a white ground.
 function downloadSvg(): void {
   const svg = sceneToSvg(current, themes[themeIdx]!, { background: "#fffdf8" });
@@ -150,6 +145,7 @@ window.addEventListener("keydown", (e) => {
   if (e.key === " " || e.key === "Enter") {
     e.preventDefault();
     exampleIdx = (exampleIdx + 1) % examples.length;
+    input.value = cycleSentences[exampleIdx] ?? ""; // show the sentence the example diagrams
     setCandidates([examples[exampleIdx]!]); // a fixed example has a single parse
   } else if (e.key.toLowerCase() === "t") {
     themeIdx = (themeIdx + 1) % themes.length;

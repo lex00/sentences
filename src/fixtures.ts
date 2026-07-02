@@ -59,5 +59,13 @@ export const irSubclause: Clause = {
 // The sequence the Animator cycles through (each lowered through layout()).
 export const cycle: readonly Clause[] = [irA, irB, irCompound, irSubclause];
 
+// The sentence each cycle example diagrams, shown in the input as the examples cycle.
+export const cycleSentences: readonly string[] = [
+  "The small dog barked loudly.",
+  "The dog barked softly.",
+  "Dogs and cats chase mice.",
+  "The dog slept because dogs barked.",
+];
+
 // The morph pair the Animator toggles between (after lowering through layout()).
 export const morphPair: readonly [Clause, Clause] = [irA, irB];
