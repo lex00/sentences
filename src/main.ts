@@ -72,8 +72,8 @@ function ensureModel(): void {
   if (modelState !== "idle") return;
   modelState = "loading";
   status.textContent = "loading neural parser (~72 MB, first time)…";
-  // Configs resolve against the deploy base (root in dev, "/<repo>/" on Pages); the 72 MB weights
-  // come from VITE_MODEL_URL when set (a Release asset on the deployed site), else the local copy.
+  // Model + configs resolve against the deploy base (root in dev, "/<repo>/" on Pages), served
+  // same-origin. VITE_MODEL_URL can override the weights URL if ever hosted on a CORS-enabled CDN.
   const modelsBase = `${import.meta.env.BASE_URL}models`;
   const modelUrl = import.meta.env.VITE_MODEL_URL || `${modelsBase}/benepar.int8.onnx`;
   ModelParser.load(modelsBase, modelUrl)

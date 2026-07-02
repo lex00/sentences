@@ -3,7 +3,7 @@ dist/
 *.local
 .DS_Store
 
-# The 72 MB neural weights are a build artifact (regenerate via parser-export/, or fetch the
-# published Release asset at runtime). The small tokenizer/vocab configs ARE committed so a
-# static deploy can serve them from /models/.
+# The 72 MB neural weights stay OUT of git. They live as a GitHub Release asset; the deploy
+# workflow downloads them at build time (server-side, no CORS) and ships them in dist/models/ so
+# Pages serves them same-origin. Regenerate the weights via parser-export/. Small configs commit.
 public/models/*.onnx

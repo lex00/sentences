@@ -1,6 +1,6 @@
-# Build the static site and deploy it to GitHub Pages. The 72 MB model is NOT built or committed
-# here — the app fetches it at runtime from the Release asset named in VITE_MODEL_URL, while the
-# small tokenizer/vocab configs ship in dist/models/ from the committed public/models/.
+# Build the static site and deploy it to GitHub Pages. The 72 MB model is NOT in git — it's a
+# Release asset, downloaded here at build time (server-side, so no CORS) into public/models/ and
+# shipped in dist/models/. Pages then serves it same-origin, where the browser needs no CORS.
 name: Deploy to GitHub Pages
 
 on:
@@ -27,11 +27,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Fetch model weights from the Release asset (server-side; no CORS)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download models-v1 --repo "${{ github.repository }}" --pattern 'benepar.int8.onnx' --dir public/models --clobber
       - run: npm run build
         env:
-          # project Pages site is served under /<repo>/; weights come from the Release asset.
+          # project Pages site is served under /<repo>/; the model ships same-origin in dist/models/.
           VITE_BASE: /${{ github.event.repository.name }}/
-          VITE_MODEL_URL: https://github.com/${{ github.repository }}/releases/download/models-v1/benepar.int8.onnx
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
