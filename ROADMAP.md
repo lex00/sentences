@@ -45,7 +45,9 @@ from "unambiguously beats every available tool" — see **Capability position** 
   instanced soft-glow particles (WGSL). `makeExecutor()` falls back to Canvas when WebGPU
   absent. **⚠️ BUILT BUT UN-RUN** — no GPU/browser in the env; needs in-browser verification.
 
-180 tests across 22 files. 43 commits, **local git only — no GitHub remote, not deployed.**
+216 tests across 24 files. **Public at github.com/lex00/sentences (MIT); live at
+https://lex00.github.io/sentences/** via GitHub Pages. The 72 MB model is a Release asset the
+deploy workflow bakes in at build time (never committed — repo stays ~1 MB).
 
 ### Perf-wall finding (Phase 5)
 
@@ -193,15 +195,21 @@ still open.
   failure — never silently drop words** (the dropped-word detector already measures this).
 **Exit:** a defined real-text corpus runs with a measured, shrinking gap set and zero silent drops.
 
-## Phase 11 — Publish + deploy
+## Phase 11 — Publish + deploy  ✅
 **Goal:** make "delivered entirely via browser" literally reachable.
-- Push to GitHub; add a permissive license (matches the reusable-building-block framing in
-  RESEARCH.md; benepar/Stanza/RSyntaxTree precedent).
-- Static deploy; confirm the ~72 MB model lazy-loads and the single-thread ONNX path holds on
-  the host without COOP/COEP headers.
-- Minimal landing / usage note.
-**Exit:** a public URL diagrams a typed sentence with no install; the repo is browsable with a
-license.
+- ✅ Public repo `github.com/lex00/sentences`, MIT license, README.
+- ✅ GitHub Pages via Actions (`.github/workflows/deploy.yml`); Vite `base` from `VITE_BASE` so
+  the project site under `/sentences/` resolves assets + model. Single-thread ONNX (WASM from a
+  CDN) needs no COOP/COEP, so a plain static host works.
+- ✅ **Model hosting.** The 72 MB weights stay OUT of git (repo ~1 MB). They live as the
+  `models-v1` **Release asset**; the deploy workflow downloads them at build time (server-side,
+  no CORS) into `public/models/` so Pages serves them **same-origin**.
+  *Lesson:* Release assets (`release-assets.githubusercontent.com`) send **no
+  `Access-Control-Allow-Origin`**, so a runtime *browser* fetch of the model from the Release URL
+  is CORS-blocked — same-origin serving is required, and build-time download achieves it without
+  committing the weights.
+**Exit met:** live at **https://lex00.github.io/sentences/** — type a sentence, get a diagram; the
+neural parser loads same-origin. Repo browsable with an MIT license.
 
 ## Phase 12 — Reproducibility / export animation *(deferred)*
 **Goal:** deterministic + shareable *animation* (the original Phase 8 idea, now lower priority).
