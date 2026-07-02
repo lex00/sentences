@@ -53,6 +53,69 @@ export function ckyDecode(spanScores, tagIds, words, vocab) {
     }
     return uncollapse({ label: "TOP", children: chart[0][n].children });
 }
+// k-best variant: keep the top-K derivations per chart cell (over split points), so ambiguous
+// attachment (the canonical "I saw the man with the telescope" case) surfaces as alternative
+// trees instead of one guess. Labels stay argmax per span — attachment, not labeling, is the
+// ambiguity that changes an R-K diagram. ckyKBest(...,1)[0] reproduces ckyDecode exactly.
+export function ckyKBest(spanScores, tagIds, words, vocab, k) {
+    return ckyKBestScored(spanScores, tagIds, words, vocab, k).map((r) => r.tree);
+}
+// As ckyKBest, but each tree carries its total span score, so callers can prune alternatives that
+// score far below the best (a degenerate parse that dropped a constituent) and only surface
+// genuine near-ties (real attachment ambiguity).
+export function ckyKBestScored(spanScores, tagIds, words, vocab, k) {
+    const n = words.length;
+    const leaves = words.map((w, i) => ({ label: vocab.tag_from_index[String(tagIds[i])] ?? "X", word: w, children: [] }));
+    const chart = Array.from({ length: n + 1 }, () => new Array(n + 1));
+    for (let length = 1; length <= n; length++) {
+        for (let left = 0; left + length <= n; left++) {
+            const right = left + length;
+            const raw = spanScores[left][right - 1];
+            const ls = raw.map((x) => x - raw[0]);
+            const idx = length < n || !vocab.force_root_constituent ? argmax(ls) : argmax(ls, 1);
+            const label = vocab.label_from_index[idx] ?? "";
+            const labelScore = ls[idx];
+            if (length === 1) {
+                let tree = leaves[left];
+                if (label)
+                    tree = { label, children: [tree] };
+                chart[left][right] = [{ children: [tree], score: labelScore }];
+                continue;
+            }
+            const cands = [];
+            for (let split = left + 1; split < right; split++) {
+                for (const li of chart[left][split]) {
+                    for (const ri of chart[split][right]) {
+                        let children = [...li.children, ...ri.children];
+                        if (label)
+                            children = [{ label, children }];
+                        cands.push({ children, score: labelScore + li.score + ri.score });
+                    }
+                }
+            }
+            // Keep the top-K DISTINCT sub-derivations: different split orders can flatten (empty label)
+            // to the same bracketing, and those duplicates would otherwise crowd out real alternatives.
+            chart[left][right] = topKDistinct(cands, Math.max(1, k));
+        }
+    }
+    const roots = topKDistinct(chart[0][n], Math.max(1, k));
+    return roots.map((d) => ({ tree: uncollapse({ label: "TOP", children: d.children }), score: d.score }));
+}
+function topKDistinct(cands, k) {
+    cands.sort((a, b) => b.score - a.score);
+    const seen = new Set();
+    const kept = [];
+    for (const c of cands) {
+        const sig = c.children.map(treeToString).join(" ");
+        if (seen.has(sig))
+            continue;
+        seen.add(sig);
+        kept.push(c);
+        if (kept.length >= k)
+            break;
+    }
+    return kept;
+}
 // Expand collapsed unary chains ("A::B" -> (A (B ...))). Preterminals (word set) pass through.
 function uncollapse(t) {
     if (t.word !== undefined)

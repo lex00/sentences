@@ -36,6 +36,26 @@ let themeIdx = 0;
 let exampleIdx = 0;
 let current: Scene = examples[0]!;
 
+// Alternative parses for an ambiguous sentence — surfaced instead of silently picking one.
+const parsesUI = document.getElementById("parses") as HTMLSpanElement;
+const parseN = document.getElementById("parsen") as HTMLSpanElement;
+let candidates: Scene[] = [];
+let candIdx = 0;
+
+function setCandidates(scenes: Scene[]): void {
+  candidates = scenes;
+  candIdx = 0;
+  parsesUI.style.display = scenes.length > 1 ? "" : "none";
+  parseN.textContent = `1/${scenes.length}`;
+  show(scenes[0]!);
+}
+function cycleCandidate(delta: number): void {
+  if (candidates.length < 2) return;
+  candIdx = (candIdx + delta + candidates.length) % candidates.length;
+  parseN.textContent = `${candIdx + 1}/${candidates.length}`;
+  show(candidates[candIdx]!);
+}
+
 // Morph into a new scene: diff against what's on screen, fire enter/exit effects, retarget.
 function show(scene: Scene): void {
   scheduler.onTransitions(animator.diff(current, scene));
@@ -66,8 +86,22 @@ input.addEventListener("keydown", async (e) => {
 
   if (model) {
     try {
-      show(layout(lowerSentence(await model.parse(text)), metrics, defaultLayoutStyle)); // neural parse
-      status.textContent = "neural ✓";
+      // k-best parses -> distinct diagrams (ambiguous attachment surfaces as alternatives).
+      const trees = await model.parseNBest(text, 5);
+      const seen = new Set<string>();
+      const scenes: Scene[] = [];
+      for (const t of trees) {
+        try {
+          const ir = lowerSentence(t);
+          const key = JSON.stringify(ir);
+          if (seen.has(key)) continue; // different parse, same diagram
+          seen.add(key);
+          scenes.push(layout(ir, metrics, defaultLayoutStyle));
+        } catch { /* skip a candidate this lowering can't diagram */ }
+      }
+      if (!scenes.length) throw new Error("no candidate lowered");
+      setCandidates(scenes);
+      status.textContent = scenes.length > 1 ? `neural ✓ · ${scenes.length} parses` : "neural ✓";
       return;
     } catch (err) {
       console.error("[neural parse failed]", err);
@@ -75,13 +109,16 @@ input.addEventListener("keydown", async (e) => {
     }
   }
   try {
-    show(layout(parseDocument(text), metrics, defaultLayoutStyle)); // rule-based fallback
+    setCandidates([layout(parseDocument(text), metrics, defaultLayoutStyle)]); // rule-based fallback
     status.textContent = model ? "rule-based fallback" : modelState === "loading" ? "rule-based (model still loading…)" : modelState === "failed" ? "rule-based (model failed)" : "rule-based";
   } catch (err) {
     console.error("[rule-based parse failed]", err);
     status.textContent = "couldn't diagram that one — try a simpler sentence";
   }
 });
+
+(document.getElementById("prev") as HTMLButtonElement).addEventListener("click", () => cycleCandidate(-1));
+(document.getElementById("next") as HTMLButtonElement).addEventListener("click", () => cycleCandidate(1));
 
 canvas.addEventListener("click", (e) => {
   const rect = canvas.getBoundingClientRect();
@@ -109,7 +146,7 @@ window.addEventListener("keydown", (e) => {
   if (e.key === " " || e.key === "Enter") {
     e.preventDefault();
     exampleIdx = (exampleIdx + 1) % examples.length;
-    show(examples[exampleIdx]!);
+    setCandidates([examples[exampleIdx]!]); // a fixed example has a single parse
   } else if (e.key.toLowerCase() === "t") {
     themeIdx = (themeIdx + 1) % themes.length;
   }

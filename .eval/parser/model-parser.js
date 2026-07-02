@@ -4,7 +4,7 @@
 // part that only runs in a real browser — verify there.
 import * as ort from "onnxruntime-web";
 import { T5Tokenizer } from "./tokenizer.js";
-import { ckyDecode } from "./cky.js";
+import { ckyDecode, ckyKBest } from "./cky.js";
 // Treebank-ish word tokenization (peel punctuation, split contractions: won't -> wo n't).
 export function tokenizeWords(text) {
     return text
@@ -37,6 +37,16 @@ export class ModelParser {
         return new ModelParser(session, new T5Tokenizer(unigram), vocab);
     }
     async parse(text) {
+        const { spanScores, tagIds, words } = await this.score(text);
+        return ckyDecode(spanScores, tagIds, words, this.vocab); // (TOP (S ...))
+    }
+    // k-best parses (over attachment ambiguity) from a single forward pass. k=1 == parse().
+    async parseNBest(text, k) {
+        const { spanScores, tagIds, words } = await this.score(text);
+        return ckyKBest(spanScores, tagIds, words, this.vocab, k);
+    }
+    // The forward pass: tokenize -> ORT-Web -> span-label logits + per-word POS tag ids.
+    async score(text) {
         const words = tokenizeWords(text);
         if (words.length === 0)
             throw new Error("empty input");
@@ -82,6 +92,6 @@ export class ModelParser {
             }
             tagIds.push(bi);
         }
-        return ckyDecode(spanScores, tagIds, words, this.vocab); // (TOP (S ...))
+        return { spanScores, tagIds, words };
     }
 }

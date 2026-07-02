@@ -172,12 +172,18 @@ this doesn't. SVG is the consensus target (RESEARCH.md).
 
 ## Phase 9 — Ambiguity + correction  ◄ the manual-tool parity
 **Goal:** stop being confidently wrong with no recourse; present alternatives instead of guessing.
-- Surface `lowerNBest`: when parse/lowering yields alternatives (PP-attachment, etc.), show them
-  and let the user cycle/pick. 1AiWay emitted multiple diagrams; match that.
-- Minimal correction: re-attach a modifier, re-pick the head/subject — edit the IR and re-lay
-  out. The diff-and-tween morph (Phase 2) already animates a live relayout, so this is IR edits
-  + a small UI, not a new engine.
-**Exit:** a wrong auto-diagram can be fixed in place; ambiguous sentences offer alternatives.
+- ✅ **k-best parses surfaced.** `ckyKBest`/`ckyKBestScored` (`cky.ts`) keep the top-K *distinct*
+  derivations over split points from one forward pass; `ckyKBest(...,1)` reproduces the 1-best
+  exactly. `ModelParser.parseNBest(text, k, margin)` prunes to genuine near-ties (a 1.2-logit
+  margin drops the degenerate label-drop parses that sit ~1.9+ below the best). `main.ts` lowers
+  each candidate, dedups by diagram, drops unlowerable ones, and shows ◀ N/M ▶ nav. So an
+  unambiguous sentence shows one parse; a real attachment ambiguity shows a few.
+- ▢ **In-place correction** (remaining): re-attach a modifier / re-pick the head or subject by
+  editing the IR and re-laying out. The diff-and-tween morph (Phase 2) already animates a live
+  relayout, so this is IR edits + a small UI, not a new engine. Needed for the parity claim when
+  even the best parse is wrong.
+**Exit (ambiguity met):** ambiguous sentences offer alternatives instead of guessing. Correction
+still open.
 
 ## Phase 10 — Robustness beyond pedagogical
 **Goal:** hold up on real prose, not just lesson sentences.

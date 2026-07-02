@@ -5,7 +5,7 @@
 
 import * as ort from "onnxruntime-web";
 import { T5Tokenizer, type UnigramModel } from "./tokenizer.js";
-import { ckyDecode, type ParserVocab } from "./cky.js";
+import { ckyDecode, ckyKBestScored, type ParserVocab } from "./cky.js";
 import type { Tree } from "../ptb.js";
 
 // Treebank-ish word tokenization (peel punctuation, split contractions: won't -> wo n't).
@@ -40,6 +40,22 @@ export class ModelParser {
   }
 
   async parse(text: string): Promise<Tree> {
+    const { spanScores, tagIds, words } = await this.score(text);
+    return ckyDecode(spanScores, tagIds, words, this.vocab); // (TOP (S ...))
+  }
+
+  // k-best parses from one forward pass, pruned to genuine near-ties: only parses within `margin`
+  // logits of the best survive, so an unambiguous sentence yields one parse and a real attachment
+  // ambiguity yields a few. (Observed degenerate label-drop parses sit ~1.9+ below the best.)
+  async parseNBest(text: string, k: number, margin = 1.2): Promise<Tree[]> {
+    const { spanScores, tagIds, words } = await this.score(text);
+    const scored = ckyKBestScored(spanScores, tagIds, words, this.vocab, k);
+    const best = scored[0]?.score ?? 0;
+    return scored.filter((r) => best - r.score <= margin).map((r) => r.tree);
+  }
+
+  // The forward pass: tokenize -> ORT-Web -> span-label logits + per-word POS tag ids.
+  private async score(text: string): Promise<{ spanScores: number[][][]; tagIds: number[]; words: string[] }> {
     const words = tokenizeWords(text);
     if (words.length === 0) throw new Error("empty input");
     const f = this.tok.buildFeeds(words);
@@ -83,6 +99,6 @@ export class ModelParser {
       tagIds.push(bi);
     }
 
-    return ckyDecode(spanScores, tagIds, words, this.vocab); // (TOP (S ...))
+    return { spanScores, tagIds, words };
   }
 }
