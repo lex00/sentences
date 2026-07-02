@@ -26,7 +26,9 @@ export class ModelParser {
     private vocab: ParserVocab,
   ) {}
 
-  static async load(base = "/models"): Promise<ModelParser> {
+  // `base` serves the small tokenizer/vocab configs; `modelUrl` the 72 MB weights (which may live
+  // on a different origin, e.g. a GitHub Release asset, so the source repo stays lean).
+  static async load(base = "/models", modelUrl = `${base}/benepar.int8.onnx`): Promise<ModelParser> {
     // Single-threaded wasm: no SharedArrayBuffer / cross-origin isolation (COOP/COEP) required,
     // so it works on a plain static host and the Vite dev server.
     ort.env.wasm.numThreads = 1;
@@ -35,7 +37,7 @@ export class ModelParser {
       fetch(`${base}/t5-unigram.json`).then((r) => r.json() as Promise<UnigramModel>),
       fetch(`${base}/vocab.json`).then((r) => r.json() as Promise<ParserVocab>),
     ]);
-    const session = await ort.InferenceSession.create(`${base}/benepar.int8.onnx`, { executionProviders: ["wasm"] });
+    const session = await ort.InferenceSession.create(modelUrl, { executionProviders: ["wasm"] });
     return new ModelParser(session, new T5Tokenizer(unigram), vocab);
   }
 

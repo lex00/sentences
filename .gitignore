@@ -3,5 +3,7 @@ dist/
 *.local
 .DS_Store
 
-# model weights are build artifacts (72MB) — regenerate via parser-export/
-public/models/
+# The 72 MB neural weights are a build artifact (regenerate via parser-export/, or fetch the
+# published Release asset at runtime). The small tokenizer/vocab configs ARE committed so a
+# static deploy can serve them from /models/.
+public/models/*.onnx
