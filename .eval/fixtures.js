@@ -51,5 +51,12 @@ export const irSubclause = {
 };
 // The sequence the Animator cycles through (each lowered through layout()).
 export const cycle = [irA, irB, irCompound, irSubclause];
+// The sentence each cycle example diagrams, shown in the input as the examples cycle.
+export const cycleSentences = [
+    "The small dog barked loudly.",
+    "The dog barked softly.",
+    "Dogs and cats chase mice.",
+    "The dog slept because dogs barked.",
+];
 // The morph pair the Animator toggles between (after lowering through layout()).
 export const morphPair = [irA, irB];

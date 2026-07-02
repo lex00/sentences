@@ -138,15 +138,33 @@ function lowerPredicate(vp) {
     // compound predicate: (VP (VP ...) (CC and) (VP ...)) — each conjunct keeps its own complement.
     const vpKids = vp.children.filter((c) => c.label === "VP");
     if (vp.children.some(isCC) && vpKids.length >= 2) {
+        // Walk in order so a conjunctive adverb between the conjuncts ("barked loudly and [then]
+        // jumped") attaches to the conjunct it precedes, instead of being dropped.
         let conjunction = "and";
-        for (const c of vp.children)
-            if (isCC(c) && c.word)
-                conjunction = c.word;
-        const items = vpKids.map((v) => {
-            const r = lowerPredicate(v);
+        const items = [];
+        let pendingAdv = [];
+        for (const c of vp.children) {
+            if (isCC(c)) {
+                if (c.word)
+                    conjunction = c.word;
+                continue;
+            }
+            if (c.label === "ADVP" || c.label === "RB") {
+                pendingAdv.push({ kind: "word", value: w(phrase(c)) });
+                continue;
+            }
+            if (c.label !== "VP")
+                continue;
+            const r = lowerPredicate(c);
             const verb = "items" in r.verb ? asVerbalFlat(r.verb) : r.verb;
-            return { verb, complement: r.complement };
-        });
+            if (pendingAdv.length) {
+                verb.modifiers = [...pendingAdv, ...verb.modifiers];
+                pendingAdv = [];
+            }
+            items.push({ verb, complement: r.complement });
+        }
+        if (pendingAdv.length && items.length)
+            items[items.length - 1].verb.modifiers.push(...pendingAdv); // trailing
         return { verb: { items, conjunction: w(conjunction) }, complement: null };
     }
     // word-level coordinated verbs: "(VP (CC either) (VBZ complains) (CC or) (VBZ criticizes))" — no

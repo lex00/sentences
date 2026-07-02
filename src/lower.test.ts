@@ -231,6 +231,13 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
     expect(parts[1]!.complement).toBeNull();
   });
 
+  it("a conjunctive adverb between predicate conjuncts attaches to the next one ('and then jumped')", () => {
+    const c = lower("(S (NP (DT The) (NN dog)) (VP (VP (VBD barked)) (CC and) (ADVP (RB then)) (VP (VBD jumped))))");
+    const parts = (c.verb as { items: { verb: Verbal }[] }).items;
+    expect(parts.map((p) => p.verb.head.text)).toEqual(["barked", "jumped"]);
+    expect(parts[1]!.verb.modifiers.some((m) => m.kind === "word" && m.value.text === "then")).toBe(true);
+  });
+
   it("an adverb qualifying a preposition is not dropped ('especially in the winter')", () => {
     const c = lower("(S (NP (PRP I)) (VP (VBP grow) (NP (NNS plants)) (PP (ADVP (RB especially)) (IN in) (NP (DT the) (NN winter)))))");
     const pp = (c.verb as Verbal).modifiers.find((m): m is Extract<Modifier, { kind: "prep" }> => m.kind === "prep");

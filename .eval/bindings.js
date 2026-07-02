@@ -10,12 +10,6 @@ export const defaultBindings = [
         match: { on: "node", role: "*" },
         effect: { kind: "particles", emitter: { count: 14, lifetime: 700, speed: 120, spread: 1.2, gravity: 320 } },
     },
-    // Click a node -> a bigger omnidirectional burst at it.
-    {
-        event: "select",
-        match: { on: "node", role: "*" },
-        effect: { kind: "particles", emitter: { count: 44, lifetime: 950, speed: 210, spread: Math.PI, gravity: 180 } },
-    },
     // DEFERRED to WebGPU (Phase 7): a glow shader pass. Present in the model; the Canvas executor
     // reports supports("shader") === false and silently skips it. Proof that deferral is a
     // capability flag, not a missing feature.

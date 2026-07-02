@@ -195,6 +195,19 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
         expect(c.absolutes?.[0]?.head.text).toBe("alarms");
         expect(c.absolutes?.[0]?.modifiers.some((m) => m.kind === "participle")).toBe(true);
     });
+    it("compound predicate keeps each conjunct's own complement ('has black fur and can jump high')", () => {
+        const c = lower("(S (NP (PRP$ my) (NN dog)) (VP (VP (VBZ has) (NP (JJ black) (NN fur))) (CC and) (VP (MD can) (VP (VB jump) (ADVP (RB high))))))");
+        const parts = c.verb.items;
+        expect(parts.map((p) => p.verb.head.text)).toEqual(["has", "can jump"]);
+        expect(parts[0].complement.value.head.text).toBe("fur"); // NOT dropped
+        expect(parts[1].complement).toBeNull();
+    });
+    it("an adverb qualifying a preposition is not dropped ('especially in the winter')", () => {
+        const c = lower("(S (NP (PRP I)) (VP (VBP grow) (NP (NNS plants)) (PP (ADVP (RB especially)) (IN in) (NP (DT the) (NN winter)))))");
+        const pp = c.verb.modifiers.find((m) => m.kind === "prep");
+        expect(pp?.prep.text).toBe("especially in");
+        expect(pp?.object.head.text).toBe("winter");
+    });
     it("relative clause: the wh-word is the gapped subject, no separate connector", () => {
         const c = lower("(S (NP (NP (DT The) (NN dog)) (SBAR (WHNP (WDT that)) (S (VP (VBD barked))))) (VP (VBD ran) (ADVP (RB away))))");
         expect(c.subject.head.text).toBe("dog");
