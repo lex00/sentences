@@ -358,5 +358,97 @@
 {
 "sentence": "The mayor declared today a holiday.",
 "ptb": "(TOP (S (NP (DT The) (NN mayor)) (VP (VBD declared) (NP (NN today)) (NP (DT a) (NN holiday))) (. .)))"
+},
+{
+"sentence": "The dog has black fur and can jump high.",
+"ptb": "(TOP (S (NP (DT The) (NN dog)) (VP (VP (VBZ has) (NP (JJ black) (NN fur))) (CC and) (VP (MD can) (VP (VB jump) (ADVP (RB high))))) (. .)))"
+},
+{
+"sentence": "She bought fresh apples and ate them quickly.",
+"ptb": "(TOP (S (NP (PRP She)) (VP (VP (VBD bought) (NP (JJ fresh) (NNS apples))) (CC and) (VP (VBD ate) (NP (PRP them)) (ADVP (RB quickly)))) (. .)))"
+},
+{
+"sentence": "He opened the door and walked outside.",
+"ptb": "(TOP (S (NP (PRP He)) (VP (VP (VBD opened) (NP (DT the) (NN door))) (CC and) (VP (VBD walked) (ADVP (RB outside)))) (. .)))"
+},
+{
+"sentence": "The teacher graded the tests and returned them.",
+"ptb": "(TOP (S (NP (DT The) (NN teacher)) (VP (VP (VBD graded) (NP (DT the) (NNS tests))) (CC and) (VP (VBD returned) (NP (PRP them)))) (. .)))"
+},
+{
+"sentence": "The small dog barked loudly and then jumped out the window.",
+"ptb": "(TOP (S (NP (DT The) (JJ small) (NN dog)) (VP (VP (VBD barked) (ADVP (RB loudly))) (CC and) (ADVP (RB then)) (VP (VBD jumped) (PP (IN out) (NP (DT the) (NN window))))) (. .)))"
+},
+{
+"sentence": "He studied hard and finally passed the exam.",
+"ptb": "(TOP (S (NP (PRP He)) (VP (VP (VBD studied) (ADVP (RB hard))) (CC and) (ADVP (RB finally)) (VP (VBD passed) (NP (DT the) (NN exam)))) (. .)))"
+},
+{
+"sentence": "She quietly closed the book and slowly stood up.",
+"ptb": "(TOP (S (NP (PRP She)) (ADVP (RB quietly)) (VP (VP (VBD closed) (NP (DT the) (NN book))) (CC and) (ADVP (RB slowly)) (VP (VBD stood) (PRT (RP up)))) (. .)))"
+},
+{
+"sentence": "I like to grow plants especially in the winter.",
+"ptb": "(TOP (S (NP (PRP I)) (VP (VBP like) (S (VP (TO to) (VP (VB grow) (NP (NNS plants)) (PP (ADVP (RB especially)) (IN in) (NP (DT the) (NN winter))))))) (. .)))"
+},
+{
+"sentence": "The store opens right after dawn.",
+"ptb": "(TOP (S (NP (DT The) (NN store)) (VP (VBZ opens) (PP (ADVP (RB right)) (IN after) (NP (NN dawn)))) (. .)))"
+},
+{
+"sentence": "They played even without a coach.",
+"ptb": "(TOP (S (NP (PRP They)) (VP (VBD played) (PP (ADVP (RB even)) (IN without) (NP (DT a) (NN coach)))) (. .)))"
+},
+{
+"sentence": "A tall and handsome stranger entered.",
+"ptb": "(TOP (S (NP (DT A) (ADJP (JJ tall) (CC and) (JJ handsome)) (NN stranger)) (VP (VBD entered)) (. .)))"
+},
+{
+"sentence": "The soup was hot and salty.",
+"ptb": "(TOP (S (NP (DT The) (NN soup)) (VP (VBD was) (ADJP (JJ hot) (CC and) (JJ salty))) (. .)))"
+},
+{
+"sentence": "The book on the table in the corner is old.",
+"ptb": "(TOP (S (NP (NP (DT The) (NN book)) (PP (IN on) (NP (NP (DT the) (NN table)) (PP (IN in) (NP (DT the) (NN corner)))))) (VP (VBZ is) (ADJP (JJ old))) (. .)))"
+},
+{
+"sentence": "A bird flew over the house and into the trees.",
+"ptb": "(TOP (S (NP (DT A) (NN bird)) (VP (VBD flew) (PP (PP (IN over) (NP (DT the) (NN house))) (CC and) (PP (IN into) (NP (DT the) (NNS trees))))) (. .)))"
+},
+{
+"sentence": "The ball was thrown by the boy.",
+"ptb": "(TOP (S (NP (DT The) (NN ball)) (VP (VBD was) (VP (VBN thrown) (PP (IN by) (NP (DT the) (NN boy))))) (. .)))"
+},
+{
+"sentence": "The window was broken during the storm.",
+"ptb": "(TOP (S (NP (DT The) (NN window)) (VP (VBD was) (VP (VBN broken) (PP (IN during) (NP (DT the) (NN storm))))) (. .)))"
+},
+{
+"sentence": "The dog did not bark.",
+"ptb": "(TOP (S (NP (DT The) (NN dog)) (VP (VBD did) (RB not) (VP (VB bark))) (. .)))"
+},
+{
+"sentence": "She has never seen snow.",
+"ptb": "(TOP (S (NP (PRP She)) (VP (VBZ has) (ADVP (RB never)) (VP (VBN seen) (NP (NN snow)))) (. .)))"
+},
+{
+"sentence": "The bigger dog won the race.",
+"ptb": "(TOP (S (NP (DT The) (JJR bigger) (NN dog)) (VP (VBD won) (NP (DT the) (NN race))) (. .)))"
+},
+{
+"sentence": "This puzzle is harder than the last one.",
+"ptb": "(TOP (S (NP (DT This) (NN puzzle)) (VP (VBZ is) (ADJP (ADJP (JJR harder)) (PP (IN than) (NP (DT the) (JJ last) (CD one))))) (. .)))"
+},
+{
+"sentence": "There are three cookies on the plate.",
+"ptb": "(TOP (S (NP (EX There)) (VP (VBP are) (NP (CD three) (NNS cookies)) (PP (IN on) (NP (DT the) (NN plate)))) (. .)))"
+},
+{
+"sentence": "She not only sings but also dances.",
+"ptb": "(TOP (S (NP (PRP She)) (VP (CONJP (RB not) (RB only)) (VP (VBZ sings)) (CONJP (CC but) (RB also)) (VP (VBZ dances))) (. .)))"
+},
+{
+"sentence": "The rain fell, and because the field flooded, the game stopped.",
+"ptb": "(TOP (S (S (NP (DT The) (NN rain)) (VP (VBD fell))) (, ,) (CC and) (S (SBAR (IN because) (S (NP (DT the) (NN field)) (VP (VBD flooded)))) (, ,) (NP (DT the) (NN game)) (VP (VBD stopped))) (. .)))"
 }
 ]

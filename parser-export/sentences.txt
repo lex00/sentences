@@ -114,3 +114,38 @@ You can wear whatever you want, but come on time!
 Students elected Ann president.
 Kim proved Sam wrong.
 The mayor declared today a holiday.
+# --- batch 3: compound predicates, adverbials, coordination, and untested constructions ---
+# compound predicates carrying their own objects
+The dog has black fur and can jump high.
+She bought fresh apples and ate them quickly.
+He opened the door and walked outside.
+The teacher graded the tests and returned them.
+# conjunctive and placed adverbs
+The small dog barked loudly and then jumped out the window.
+He studied hard and finally passed the exam.
+She quietly closed the book and slowly stood up.
+# adverb qualifying a preposition
+I like to grow plants especially in the winter.
+The store opens right after dawn.
+They played even without a coach.
+# coordinated modifiers
+A tall and handsome stranger entered.
+The soup was hot and salty.
+# stacked prepositional phrases
+The book on the table in the corner is old.
+A bird flew over the house and into the trees.
+# passive voice
+The ball was thrown by the boy.
+The window was broken during the storm.
+# negation
+The dog did not bark.
+She has never seen snow.
+# comparatives
+The bigger dog won the race.
+This puzzle is harder than the last one.
+# expletive there
+There are three cookies on the plate.
+# correlative "not only ... but also"
+She not only sings but also dances.
+# compound-complex
+The rain fell, and because the field flooded, the game stopped.

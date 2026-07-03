@@ -141,14 +141,16 @@ function lowerSBAR(sbar: Tree): Modifier {
 function lowerPredicate(vp: Tree): { verb: Predicate; complement: Complement | null } {
   // compound predicate: (VP (VP ...) (CC and) (VP ...)) — each conjunct keeps its own complement.
   const vpKids = vp.children.filter((c) => c.label === "VP");
-  if (vp.children.some(isCC) && vpKids.length >= 2) {
+  if (vp.children.some((c) => isCC(c) || c.label === "CONJP") && vpKids.length >= 2) {
     // Walk in order so a conjunctive adverb between the conjuncts ("barked loudly and [then]
     // jumped") attaches to the conjunct it precedes, instead of being dropped.
     let conjunction = "and";
+    const conjps = vp.children.filter((c) => c.label === "CONJP").map(phrase); // "not only", "but also"
     const items: PredicatePart[] = [];
     let pendingAdv: Modifier[] = [];
     for (const c of vp.children) {
       if (isCC(c)) { if (c.word) conjunction = c.word; continue; }
+      if (c.label === "CONJP") continue; // correlative marker(s) -> folded into the label below
       if (c.label === "ADVP" || c.label === "RB") { pendingAdv.push({ kind: "word", value: w(phrase(c)) }); continue; }
       if (c.label !== "VP") continue;
       const r = lowerPredicate(c);
@@ -157,6 +159,7 @@ function lowerPredicate(vp: Tree): { verb: Predicate; complement: Complement | n
       items.push({ verb, complement: r.complement });
     }
     if (pendingAdv.length && items.length) items[items.length - 1]!.verb.modifiers.push(...pendingAdv); // trailing
+    if (conjps.length) conjunction = conjps.join("..."); // correlative "not only ... but also"
     return { verb: { items, conjunction: w(conjunction) }, complement: null };
   }
 
@@ -197,6 +200,7 @@ function lowerPredicate(vp: Tree): { verb: Predicate; complement: Complement | n
         complement = { kind: "directObject", value: lowerClause(c) }; // causative small clause ("made her students read four novels")
       }
       else if (c.label === "ADVP" || c.label === "RB") modifiers.push({ kind: "word", value: w(phrase(c)) });
+      else if (c.label === "PRT" || c.label === "RP") modifiers.push({ kind: "word", value: w(phrase(c)) }); // phrasal-verb particle ("stood up")
       else if (c.label === "PP") modifiers.push(lowerPP(c));
       else if (c.label === "SBAR") modifiers.push(lowerSBAR(c));
       else if (c.label === "NP") objNPs.push(c); // resolved after the walk (copula / IO+DO / DO)
@@ -384,12 +388,15 @@ function lowerClause(s: Tree, fallbackSubject?: Subject): Clause {
   if (participles.length && "modifiers" in subject) subject.modifiers.push(...participles);
   const { verb, complement } = lowerPredicate(vp);
   // Fronted / adverbial siblings outside the VP — a temporal noun ("Today"), a fronted PP ("In old
-  // tales, ..."), a clause-level adverb ("your team really needs") — attach to the verb.
-  if ("modifiers" in verb) {
+  // tales, ..."), a fronted adverb clause ("because the field flooded, ..."), a clause-level adverb
+  // ("your team really needs") — attach to the verb (the first conjunct if it is compound).
+  const advTarget: Verbal | null = "modifiers" in verb ? verb : verb.items[0] ? verb.items[0].verb : null;
+  if (advTarget) {
     for (const c of s.children) {
       if (c === subjTree || c === vp) continue;
-      if (c.label === "PP") verb.modifiers.push(lowerPP(c));
-      else if (c.label === "ADVP" || c.label === "RB" || c.label === "NP") verb.modifiers.push({ kind: "word", value: w(phrase(c)) });
+      if (c.label === "PP") advTarget.modifiers.push(lowerPP(c));
+      else if (c.label === "SBAR") advTarget.modifiers.push(lowerSBAR(c));
+      else if (c.label === "ADVP" || c.label === "RB" || c.label === "NP") advTarget.modifiers.push({ kind: "word", value: w(phrase(c)) });
     }
   }
   // Interjections ("Man,", "Wow!") float on a detached line above the diagram, unconnected.

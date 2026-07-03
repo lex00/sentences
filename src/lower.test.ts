@@ -238,6 +238,31 @@ describe("lower: questions and relative clauses (benepar structures)", () => {
     expect(parts[1]!.verb.modifiers.some((m) => m.kind === "word" && m.value.text === "then")).toBe(true);
   });
 
+  it("correlative CONJP predicate 'not only ... but also' is captured", () => {
+    const c = lower("(S (NP (PRP She)) (VP (CONJP (RB not) (RB only)) (VP (VBZ sings)) (CONJP (CC but) (RB also)) (VP (VBZ dances))))");
+    const v = c.verb as { items: { verb: Verbal }[]; conjunction: { text: string } };
+    expect(v.items.map((i) => i.verb.head.text)).toEqual(["sings", "dances"]);
+    expect(v.conjunction.text).toBe("not only...but also");
+  });
+
+  it("phrasal-verb particle is kept ('stood up')", () => {
+    const c = lower("(S (NP (PRP She)) (VP (VBD stood) (PRT (RP up))))");
+    expect((c.verb as Verbal).modifiers.some((m) => m.kind === "word" && m.value.text === "up")).toBe(true);
+  });
+
+  it("a clause-level adverb attaches to the first conjunct of a compound predicate", () => {
+    const c = lower("(S (NP (PRP She)) (ADVP (RB quietly)) (VP (VP (VBD closed) (NP (DT the) (NN book))) (CC and) (VP (VBD left))))");
+    const first = (c.verb as { items: { verb: Verbal }[] }).items[0]!.verb;
+    expect(first.modifiers.some((m) => m.kind === "word" && m.value.text === "quietly")).toBe(true);
+  });
+
+  it("a fronted adverb clause attaches to the verb ('because the field flooded, the game stopped')", () => {
+    const c = lower("(S (SBAR (IN because) (S (NP (DT the) (NN field)) (VP (VBD flooded)))) (, ,) (NP (DT the) (NN game)) (VP (VBD stopped)))");
+    const rel = (c.verb as Verbal).modifiers.find((m) => m.kind === "clause");
+    expect(rel?.kind).toBe("clause");
+    if (rel?.kind === "clause") expect(rel.connector.text).toBe("because");
+  });
+
   it("an adverb qualifying a preposition is not dropped ('especially in the winter')", () => {
     const c = lower("(S (NP (PRP I)) (VP (VBP grow) (NP (NNS plants)) (PP (ADVP (RB especially)) (IN in) (NP (DT the) (NN winter)))))");
     const pp = (c.verb as Verbal).modifiers.find((m): m is Extract<Modifier, { kind: "prep" }> => m.kind === "prep");

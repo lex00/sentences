@@ -26,6 +26,15 @@ sents=[
  "Grendel terrorized the countryside, but finally the hero Beowulf stopped him.",
  "Professor Villa made her students read four novels.","Smoke alarms screaming, my family awoke to a fire.",
  "Today Darren left his office earlier than he usually does.",
+ # batch 3: compound predicates, adverbials, coordination, passive, stacked PPs
+ "The dog has black fur and can jump high.",
+ "The small dog barked loudly and then jumped out the window.",
+ "She quietly closed the book and slowly stood up.",
+ "I like to grow plants especially in the winter.",
+ "She not only sings but also dances.",
+ "The rain fell, and because the field flooded, the game stopped.",
+ "The ball was thrown by the boy.",
+ "The book on the table in the corner is old.",
 ]
 out=[]
 for s in sents:
