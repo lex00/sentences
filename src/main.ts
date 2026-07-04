@@ -14,6 +14,8 @@ import { parseDocument } from "./document.js";
 import { lowerSentence } from "./lower.js";
 import { ModelParser } from "./parser/model-parser.js";
 import { sceneToSvg } from "./svg.js";
+import { fitView, screenToScene } from "./scene.js";
+import { describeAt } from "./inspect.js";
 import type { EffectExecutor } from "./effects.js";
 import type { Scene } from "./scene.js";
 
@@ -124,6 +126,32 @@ input.addEventListener("keydown", async (e) => {
 
 (document.getElementById("prev") as HTMLButtonElement).addEventListener("click", () => cycleCandidate(-1));
 (document.getElementById("next") as HTMLButtonElement).addEventListener("click", () => cycleCandidate(1));
+
+// Hover: name the word or line under the pointer (its grammatical role + what it means).
+const tip = document.createElement("div");
+tip.style.cssText =
+  "position:fixed;pointer-events:none;z-index:20;max-width:260px;padding:.4rem .55rem;border-radius:6px;" +
+  "background:#2b2b2b;color:#f7f6f2;font:12px/1.35 ui-sans-serif,system-ui,sans-serif;" +
+  "box-shadow:0 2px 10px rgba(0,0,0,.28);display:none";
+document.body.appendChild(tip);
+
+canvas.addEventListener("mousemove", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * (CSS_W / rect.width); // undo any CSS scaling of the canvas
+  const sy = (e.clientY - rect.top) * (CSS_H / rect.height);
+  const scenePt = screenToScene({ x: sx, y: sy }, fitView(current.bounds, CSS_W, CSS_H));
+  const info = describeAt(current, scenePt, metrics, defaultLayoutStyle.em);
+  if (!info) { tip.style.display = "none"; canvas.style.cursor = "default"; return; }
+  tip.textContent = "";
+  const t = document.createElement("div"); t.style.fontWeight = "600"; t.textContent = info.title;
+  const d = document.createElement("div"); d.style.opacity = ".82"; d.style.marginTop = "1px"; d.textContent = info.detail;
+  tip.append(t, d);
+  tip.style.left = `${e.clientX + 14}px`;
+  tip.style.top = `${e.clientY + 14}px`;
+  tip.style.display = "block";
+  canvas.style.cursor = "help";
+});
+canvas.addEventListener("mouseleave", () => { tip.style.display = "none"; });
 
 // Export the on-screen diagram as SVG (same Scene + Theme the canvas draws), on a white ground.
 function downloadSvg(): void {

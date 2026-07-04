@@ -6,7 +6,7 @@ import type { EffectExecutor, EffectInstance, EffectDesc } from "./effects.js";
 import type { RenderFrame } from "./anim.js";
 import type { Theme, FontSpec } from "./theme.js";
 import type { SceneNode, Prim, NodeId, Pt } from "./scene.js";
-import { isNode } from "./scene.js";
+import { isNode, fitView } from "./scene.js";
 import { spawnParticles, updateParticles, particleAlpha, type Particle } from "./particles.js";
 
 const fontStr = (f: FontSpec) =>
@@ -53,13 +53,8 @@ export class CanvasExecutor implements EffectExecutor {
     this.fit();
     this.g.clearRect(0, 0, this.cssW, this.cssH);
     // Fit + center the whole diagram in the canvas (only ever scales DOWN), so long sentences
-    // don't overflow / collide with the edges.
-    const b = frame.scene.bounds;
-    const pad = 28;
-    const bw = Math.max(1, b.right - b.left);
-    const bh = Math.max(1, b.bottom - b.top);
-    const s = Math.min(1, (this.cssW - 2 * pad) / bw, (this.cssH - 2 * pad) / bh);
-    this.view = { s, tx: (this.cssW - bw * s) / 2 - b.left * s, ty: (this.cssH - bh * s) / 2 - b.top * s };
+    // don't overflow / collide with the edges. Shared with pointer hit-testing via fitView().
+    this.view = fitView(frame.scene.bounds, this.cssW, this.cssH);
     this.g.save();
     this.applyView(this.g);
     this.walk(frame.scene.root, 1, frame.presence, theme);

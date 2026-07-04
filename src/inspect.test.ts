@@ -1,0 +1,72 @@
+import { describe, it, expect } from "vitest";
+import { describeAt } from "./inspect.js";
+import { layout, type TextMetrics } from "./layout.js";
+import { lower } from "./lower.js";
+import type { Scene, SceneNode, Prim } from "./scene.js";
+import { isNode } from "./scene.js";
+
+const metrics: TextMetrics = { measure: (t, sz) => ({ width: t.length * sz * 0.55, ascent: sz * 0.8, descent: sz * 0.2 }) };
+const SZ = 16;
+
+// find the anchor of a given word label, and the midpoint of the first segment of a given role
+// a point on the label's baseline, ~40% along its width — inside the box even when rotated
+const labelAnchor = (s: Scene, text: string): { x: number; y: number } | null => {
+  const holder: { hit: { x: number; y: number } | null } = { hit: null };
+  (function w(n: SceneNode): void {
+    for (const c of n.children) {
+      if (isNode(c)) w(c);
+      else if (c.kind === "lbl" && c.text === text && !holder.hit) {
+        const wpx = metrics.measure(text, SZ).width * 0.4;
+        holder.hit = { x: c.anchor.x + wpx * Math.cos(c.angle), y: c.anchor.y + wpx * Math.sin(c.angle) };
+      }
+    }
+  })(s.root);
+  return holder.hit;
+};
+const segMid = (s: Scene, role: Prim extends { role: infer R } ? R : never): { x: number; y: number } | null => {
+  let hit: { x: number; y: number } | null = null;
+  (function w(n: SceneNode): void {
+    for (const c of n.children) {
+      if (isNode(c)) w(c);
+      else if (c.kind === "seg" && c.role === role && !hit) hit = { x: (c.a.x + c.b.x) / 2, y: (c.a.y + c.b.y) / 2 };
+    }
+  })(s.root);
+  return hit;
+};
+
+describe("describeAt", () => {
+  const scene = layout(lower("(S (NP (DT The) (JJ small) (NN dog)) (VP (VBD chased) (NP (DT the) (NN ball))))"), metrics);
+
+  it("names the subject head word", () => {
+    const info = describeAt(scene, labelAnchor(scene, "dog")!, metrics, SZ);
+    expect(info?.kind).toBe("word");
+    expect(info?.title).toContain("dog");
+    expect(info?.title).toContain("Subject");
+  });
+
+  it("names the verb", () => {
+    const info = describeAt(scene, labelAnchor(scene, "chased")!, metrics, SZ);
+    expect(info?.title).toContain("chased");
+    expect(info?.title).toContain("Verb");
+  });
+
+  it("names the direct object", () => {
+    const info = describeAt(scene, labelAnchor(scene, "ball")!, metrics, SZ);
+    expect(info?.title).toContain("Direct object");
+  });
+
+  it("labels a modifier word", () => {
+    const info = describeAt(scene, labelAnchor(scene, "small")!, metrics, SZ);
+    expect(info?.title).toContain("Modifier");
+  });
+
+  it("identifies the full subject–predicate divider", () => {
+    const info = describeAt(scene, segMid(scene, "divider.full")!, metrics, SZ);
+    expect(info?.kind).toBe("line");
+    expect(info?.title).toContain("Subject | Predicate");
+  });
+
+  it("returns null in empty space", () => {
+    expect(describeAt(scene, { x: -9999, y: -9999 }, metrics, SZ)).toBeNull();
+  });
+});
