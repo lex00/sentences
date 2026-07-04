@@ -5,4 +5,10 @@ import { defineConfig } from "vite";
 // lazy-loaded model — resolves against import.meta.env.BASE_URL.
 export default defineConfig({
   base: process.env.VITE_BASE ?? "/",
+  build: {
+    rollupOptions: {
+      // two thin apps on one engine: the diagram tool (index) and the game (game.html)
+      input: { main: "index.html", game: "game.html" },
+    },
+  },
 });
