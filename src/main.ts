@@ -2,22 +2,22 @@
 // draw-on reveal + particle effects. Space cycles built-in examples; click a word for a burst;
 // T swaps theme. Parsing is pure TS (no server, no ML stack) — the tool ships as a static site.
 
+// Engine surface — the single import point for the diagramming core (see engine.ts).
+import {
+  layout, CanvasTextMetrics, lowerSentence, describeAt, sceneToSvg,
+  fitView, screenToScene, defaultTheme, blueprintTheme, defaultLayoutStyle,
+} from "./engine.js";
+import type { Scene } from "./engine.js";
+// App / presentation layer (not part of the engine): content, animation, renderers, effects.
 import { cycle, cycleSentences } from "./fixtures.js";
 import { Animator, wallClock } from "./anim.js";
 import { makeExecutor } from "./webgpu-renderer.js";
-import { layout, CanvasTextMetrics } from "./layout.js";
-import { defaultTheme, blueprintTheme, defaultLayoutStyle } from "./theme.js";
 import { EffectScheduler } from "./scheduler.js";
 import { defaultBindings } from "./bindings.js";
 import "@fontsource/tinos"; // pinned serif — same font the collision tests measure against
-import { parseDocument } from "./document.js";
-import { lowerSentence } from "./lower.js";
-import { ModelParser } from "./parser/model-parser.js";
-import { sceneToSvg } from "./svg.js";
-import { fitView, screenToScene } from "./scene.js";
-import { describeAt } from "./inspect.js";
+import { parseDocument } from "./document.js"; // rule-based fallback parser
+import { ModelParser } from "./parser/model-parser.js"; // neural parser (opt-in; pulls in onnxruntime)
 import type { EffectExecutor } from "./effects.js";
-import type { Scene } from "./scene.js";
 
 const CSS_W = 900;
 const CSS_H = 500;
