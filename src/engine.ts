@@ -18,7 +18,7 @@ export { lower, lowerSentence, lowerNBest } from "./lower.js";
 export { layout, CanvasTextMetrics, wordNominal } from "./layout.js";
 
 // --- derived views over a Scene ---
-export { describeAt } from "./inspect.js"; // name the word/line under a point (hover, "identify the type")
+export { describeAt, describeAll } from "./inspect.js"; // name the element under a point; enumerate all elements + roles + geometry
 export { sceneToSvg } from "./svg.js";
 export { collisions } from "./collisions.js"; // geometric overlap oracle / well-formedness check
 
@@ -36,7 +36,7 @@ export type {
 } from "./ir.js";
 export type { TextMetrics, Measured } from "./layout.js";
 export type { Scene, SceneNode, Prim, Role, NodeRole, NodeId, IrId, BBox, Pt, View } from "./scene.js";
-export type { Inspection } from "./inspect.js";
+export type { Inspection, SceneElement, WordElement, LineElement } from "./inspect.js";
 export type { SvgOptions } from "./svg.js";
 export type { Collision } from "./collisions.js";
 export type { Theme, LayoutStyle, StrokeSpec, FontSpec, Override, EmphasisState } from "./theme.js";

@@ -1,15 +1,43 @@
-// Inspector — given a point in scene space, describe the word or line under it. Pure and
-// renderer-agnostic: it reads the same Scene the renderer draws, using each element's role plus
-// its ancestor node roles (subject / verb / object / …) to name its grammatical function. Powers
-// hover tooltips, and is the metadata layer a game's "identify the type" mode would build on.
+// Inspector — read a laid-out Scene and describe its parts by grammatical role. Two entry points
+// over one walk:
+//   describeAll(scene) -> every word and line, with role + geometry + owning node id. The
+//     game-agnostic "truth" layer: an "identify the type" mode picks quiz targets from it; a
+//     "drag the words in" or "fill your own words" mode reads word slots (anchor + role) from it.
+//   describeAt(scene, point) -> the single element under a point (hover tooltips).
+// Pure and renderer-agnostic: role comes from each element's own role plus its ancestor node roles.
 
-import type { Scene, SceneNode, Pt, NodeRole, Role } from "./scene.js";
+import type { Scene, SceneNode, Pt, NodeRole, Role, NodeId, BBox } from "./scene.js";
 import { isNode } from "./scene.js";
 import type { TextMetrics } from "./layout.js";
 
 export type Inspection = { title: string; detail: string; kind: "word" | "line" };
 
-// What each grammatical slot means, keyed by the node role a label sits in.
+// A word slot: its correct text, its role, where it sits, and its owning node.
+export type WordElement = {
+  kind: "word";
+  text: string;
+  role: string; // human name, e.g. "Direct object"
+  roleKey: NodeRole; // machine key, e.g. "object"
+  detail: string;
+  nodeId: NodeId;
+  anchor: Pt;
+  angle: number;
+  width: number;
+  bbox: BBox; // axis-aligned bounds (hotspots / drop targets)
+};
+export type LineElement = {
+  kind: "line";
+  role: string;
+  roleKey: Role;
+  detail: string;
+  nodeId: NodeId;
+  a: Pt;
+  b: Pt;
+  bbox: BBox;
+};
+export type SceneElement = WordElement | LineElement;
+
+// What each grammatical slot means, keyed by the node role a word sits in.
 const ROLE: Partial<Record<NodeRole, { name: string; detail: string }>> = {
   subject: { name: "Subject", detail: "The noun or pronoun the sentence is about." },
   verb: { name: "Verb", detail: "The predicate — the action or state, right of the subject divider." },
@@ -23,7 +51,7 @@ const ROLE: Partial<Record<NodeRole, { name: string; detail: string }>> = {
   sentence: { name: "Sentence", detail: "The whole diagram." },
 };
 
-// What each line means, keyed by the segment role (slant is refined by context below).
+// What each line means, keyed by the segment role (slant refined by context below).
 const LINE: Record<Role, { name: string; detail: string }> = {
   baseline: { name: "Baseline", detail: "The horizontal line the words sit on." },
   rail: { name: "Rail", detail: "A supporting horizontal line (a stand or a raised platform)." },
@@ -35,20 +63,30 @@ const LINE: Record<Role, { name: string; detail: string }> = {
   "connector.dotted": { name: "Connector", detail: "Links a subordinate/relative clause or a conjunction." },
   fork: { name: "Fork", detail: "Joins the coordinated parts of a compound." },
 };
+const PREP_LINE = { name: "Preposition line", detail: "Carries the preposition; its object sits on the line at the foot." };
 
 const nearestRole = (chain: NodeRole[]): NodeRole => {
   for (let i = chain.length - 1; i >= 0; i--) if (ROLE[chain[i]!]) return chain[i]!;
   return "sentence";
 };
 
-function pointInLabel(p: Pt, anchor: Pt, angle: number, width: number, m: TextMetrics, text: string, sizePx: number): boolean {
-  const { ascent, descent } = m.measure(text, sizePx);
+function wordCorners(anchor: Pt, angle: number, width: number, ascent: number, descent: number): Pt[] {
   const c = Math.cos(angle), s = Math.sin(angle);
   const local: Array<[number, number]> = [[0, -ascent], [width, -ascent], [width, descent], [0, descent]];
-  const corners: Pt[] = local.map(([lx, ly]) => ({ x: anchor.x + lx * c - ly * s, y: anchor.y + lx * s + ly * c }));
+  return local.map(([lx, ly]) => ({ x: anchor.x + lx * c - ly * s, y: anchor.y + lx * s + ly * c }));
+}
+
+const aabb = (pts: Pt[]): BBox => ({
+  left: Math.min(...pts.map((p) => p.x)),
+  top: Math.min(...pts.map((p) => p.y)),
+  right: Math.max(...pts.map((p) => p.x)),
+  bottom: Math.max(...pts.map((p) => p.y)),
+});
+
+function pointInQuad(p: Pt, q: Pt[]): boolean {
   let sign = 0;
   for (let i = 0; i < 4; i++) {
-    const a = corners[i]!, b = corners[(i + 1) % 4]!;
+    const a = q[i]!, b = q[(i + 1) % 4]!;
     const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
     if (cross !== 0) {
       const sg = Math.sign(cross);
@@ -66,29 +104,42 @@ function distToSeg(p: Pt, a: Pt, b: Pt): number {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
-export function describeAt(scene: Scene, p: Pt, m: TextMetrics, sizePx: number, lineTol = 5): Inspection | null {
-  const state: { best: { d: number; info: Inspection } | null } = { best: null };
-  const consider = (d: number, info: Inspection) => { if (!state.best || d < state.best.d) state.best = { d, info }; };
-
+// Every word and line in the scene, with its role and geometry.
+export function describeAll(scene: Scene, m: TextMetrics, sizePx: number): SceneElement[] {
+  const out: SceneElement[] = [];
   (function walk(n: SceneNode, roles: NodeRole[]): void {
     const chain = [...roles, n.role];
     for (const c of n.children) {
       if (isNode(c)) walk(c, chain);
       else if (c.kind === "lbl" && c.text) {
-        if (pointInLabel(p, c.anchor, c.angle, m.measure(c.text, sizePx).width, m, c.text, sizePx)) {
-          const r = ROLE[nearestRole(chain)]!;
-          consider(0, { title: `${c.text} · ${r.name}`, detail: r.detail, kind: "word" }); // words win over lines
-        }
+        const rk = nearestRole(chain);
+        const r = ROLE[rk]!;
+        const { width, ascent, descent } = m.measure(c.text, sizePx);
+        const corners = wordCorners(c.anchor, c.angle, width, ascent, descent);
+        out.push({ kind: "word", text: c.text, role: r.name, roleKey: rk, detail: r.detail, nodeId: n.id, anchor: c.anchor, angle: c.angle, width, bbox: aabb(corners) });
       } else if (c.kind === "seg") {
-        const d = distToSeg(p, c.a, c.b);
-        if (d <= lineTol) {
-          let line = LINE[c.role];
-          if (c.role === "slant" && chain.includes("pp")) line = { name: "Preposition line", detail: "Carries the preposition; its object sits on the line at the foot." };
-          consider(1 + d, { title: line.name, detail: line.detail, kind: "line" });
-        }
+        const r = c.role === "slant" && chain.includes("pp") ? PREP_LINE : LINE[c.role];
+        out.push({ kind: "line", role: r.name, roleKey: c.role, detail: r.detail, nodeId: n.id, a: c.a, b: c.b, bbox: aabb([c.a, c.b]) });
       }
     }
   })(scene.root, []);
+  return out;
+}
 
-  return state.best?.info ?? null;
+// The element under a point (word boxes win over nearby lines). Reuses describeAll's records.
+export function describeAt(scene: Scene, p: Pt, m: TextMetrics, sizePx: number, lineTol = 5): Inspection | null {
+  const state: { best: { d: number; el: SceneElement } | null } = { best: null };
+  const consider = (d: number, el: SceneElement) => { if (!state.best || d < state.best.d) state.best = { d, el }; };
+  for (const el of describeAll(scene, m, sizePx)) {
+    if (el.kind === "word") {
+      const { ascent, descent } = m.measure(el.text, sizePx);
+      if (pointInQuad(p, wordCorners(el.anchor, el.angle, el.width, ascent, descent))) consider(0, el);
+    } else {
+      const d = distToSeg(p, el.a, el.b);
+      if (d <= lineTol) consider(1 + d, el); // words (d=0) win over lines
+    }
+  }
+  const el = state.best?.el;
+  if (!el) return null;
+  return { title: el.kind === "word" ? `${el.text} · ${el.role}` : el.role, detail: el.detail, kind: el.kind };
 }

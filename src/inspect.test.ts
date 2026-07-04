@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { describeAt } from "./inspect.js";
+import { describeAt, describeAll } from "./inspect.js";
 import { layout, type TextMetrics } from "./layout.js";
 import { lower } from "./lower.js";
 import type { Scene, SceneNode, Prim } from "./scene.js";
@@ -68,5 +68,39 @@ describe("describeAt", () => {
 
   it("returns null in empty space", () => {
     expect(describeAt(scene, { x: -9999, y: -9999 }, metrics, SZ)).toBeNull();
+  });
+});
+
+describe("describeAll", () => {
+  const scene = layout(lower("(S (NP (DT The) (JJ small) (NN dog)) (VP (VBD chased) (NP (DT the) (NN ball))))"), metrics);
+  const els = describeAll(scene, metrics, SZ);
+
+  it("enumerates every word as a slot with role, text, anchor, and owning node id", () => {
+    const words = els.filter((e) => e.kind === "word");
+    const byText = new Map(words.map((w) => [w.text, w]));
+    for (const t of ["dog", "chased", "ball", "small", "the"]) expect(byText.has(t)).toBe(true);
+    const dog = byText.get("dog")!;
+    expect(dog.roleKey).toBe("subject");
+    expect(dog.role).toBe("Subject");
+    expect(dog.nodeId).toBeTruthy();
+    expect(dog.bbox.right).toBeGreaterThan(dog.bbox.left);
+    expect(byText.get("ball")!.roleKey).toBe("object");
+    expect(byText.get("chased")!.roleKey).toBe("verb");
+    expect(byText.get("small")!.roleKey).toBe("modifier");
+  });
+
+  it("enumerates lines including the full divider, with endpoints", () => {
+    const lines = els.filter((e) => e.kind === "line");
+    const full = lines.find((l) => l.roleKey === "divider.full");
+    expect(full).toBeTruthy();
+    expect(full!.a).toBeTruthy();
+    expect(full!.b).toBeTruthy();
+  });
+
+  it("a fill-your-own-words mode can read one slot per input word", () => {
+    // 5 content words in "The small dog chased the ball": the two articles + small + dog + chased + ball = 6 labels
+    const words = els.filter((e) => e.kind === "word");
+    expect(words.length).toBe(6);
+    expect(words.every((w) => typeof w.text === "string" && w.role.length > 0)).toBe(true);
   });
 });
