@@ -6,6 +6,7 @@ import { lowerSentence, layout, CanvasTextMetrics, describeAll, posName, fitView
 import type { Scene, SceneElement } from "../engine.js";
 import { CanvasExecutor } from "../canvas-renderer.js";
 import { BANK } from "./bank.js";
+import { record } from "./progress.js";
 import "@fontsource/tinos";
 
 const W = 760, H = 360;
@@ -118,6 +119,7 @@ function answer(choice: string, btn: HTMLButtonElement): void {
   answered = true; asked++;
   const correct = choice === q.answer;
   if (correct) { score++; streak++; } else { streak = 0; }
+  record("identify", correct, streak);
   for (const b of Array.from(choicesEl.children) as HTMLButtonElement[]) {
     b.disabled = true;
     if (b.textContent === q.answer) b.classList.add("correct");

@@ -7,6 +7,7 @@
 import { analyze, posTags, ModelParser, CanvasTextMetrics, defaultTheme, defaultLayoutStyle } from "../engine.js";
 import type { SceneElement, Analysis } from "../engine.js";
 import { CanvasExecutor } from "../canvas-renderer.js";
+import { record } from "./progress.js";
 import "@fontsource/tinos";
 
 const W = 780, H = 340;
@@ -111,6 +112,7 @@ async function check(): Promise<void> {
     const results = challenge.parts.map((p) => ({ feature: p.feature, ok: p.ok(a) }));
     const pass = results.every((r) => r.ok);
     statusEl.textContent = "";
+    record("write", pass);
     if (pass) {
       verdictEl.textContent = "✓ Yes — that fits the challenge!";
       solved++; nextEl.style.visibility = "visible";

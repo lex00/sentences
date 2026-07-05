@@ -6,6 +6,7 @@
 import { lowerSentence, layout, CanvasTextMetrics, describeAll, fitView, screenToScene, isNode, defaultTheme, defaultLayoutStyle } from "../engine.js";
 import type { Scene, WordElement, Pt } from "../engine.js";
 import { BANK } from "./bank.js";
+import { record } from "./progress.js";
 import "@fontsource/tinos";
 
 const W = 780, H = 360;
@@ -181,6 +182,7 @@ function attachDrag(chip: HTMLDivElement): void {
 
 function win(): void {
   solvedTotal++;
+  record("build", true);
   flash("Solved!", true);
   nextEl.style.visibility = "visible";
   scoreEl.textContent = `${solvedTotal} solved`;
