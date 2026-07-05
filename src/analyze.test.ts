@@ -24,6 +24,14 @@ describe("analyze (game-facing parse -> roles)", () => {
     for (let i = 1; i < slots.length; i++) expect(slots[i]!.anchor.x).toBeGreaterThanOrEqual(slots[i - 1]!.anchor.x); // non-decreasing x
   });
 
+  it("exposes the parse tree so POS criteria can read tags", async () => {
+    const { posTags } = await import("./ptb.js");
+    const a = await analyze(stub("(S (NP (DT A) (JJ tall) (JJ dark) (NN stranger)) (VP (VBD arrived)))"), "x", metrics);
+    const adjectives = posTags(a.tree).filter((t) => t.tag.startsWith("JJ")).length;
+    expect(adjectives).toBe(2); // "two adjectives" criterion
+    expect(posTags(a.tree).some((t) => t.tag === "VBD")).toBe(true); // past-tense criterion
+  });
+
   it("a criteria check can count roles for a free-write mode", async () => {
     // "must contain a direct object" -> at least one word with roleKey 'object'
     const a = await analyze(stub("(S (NP (PRP She)) (VP (VBZ reads) (NP (NNS books))))"), "She reads books", metrics);

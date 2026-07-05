@@ -17,13 +17,14 @@ export interface Parser {
   parse(text: string): Promise<Tree>;
 }
 
-export type Analysis = { scene: Scene; elements: SceneElement[] };
+export type Analysis = { tree: Tree; scene: Scene; elements: SceneElement[] };
 
-// Parse `text` with the supplied parser (typically ModelParser) and return the diagram plus every
-// word/line with its grammatical role and geometry.
+// Parse `text` with the supplied parser (typically ModelParser) and return the parse tree (which
+// keeps the fine POS tags), the diagram, and every word/line with its grammatical role + geometry.
 export async function analyze(parser: Parser, text: string, m: TextMetrics, sizePx: number = defaultLayoutStyle.em): Promise<Analysis> {
-  const scene = layout(lowerSentence(await parser.parse(text)), m, defaultLayoutStyle);
-  return { scene, elements: describeAll(scene, m, sizePx) };
+  const tree = await parser.parse(text);
+  const scene = layout(lowerSentence(tree), m, defaultLayoutStyle);
+  return { tree, scene, elements: describeAll(scene, m, sizePx) };
 }
 
 // The fillable word slots (the leaf words), left-to-right — what a fill-your-own / drag mode maps

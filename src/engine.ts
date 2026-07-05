@@ -12,7 +12,7 @@
 // (Importing the barrel does not bundle onnxruntime unless ModelParser/analyze's model is used.)
 
 // --- pipeline: bracket/tree -> IR -> layout -> Scene ---
-export { parseBracket, phrase } from "./ptb.js";
+export { parseBracket, phrase, posTags } from "./ptb.js";
 export { lower, lowerSentence, lowerNBest } from "./lower.js";
 export { layout, CanvasTextMetrics, wordNominal } from "./layout.js";
 
