@@ -32,12 +32,22 @@
       #score { color: #6a6a6a; font-size: .85rem; }
       #next { padding: .5rem .9rem; border: 1px solid #d8d2c4; border-radius: 7px; background: #fffdf8; color: #2b2b2b; font: 14px ui-sans-serif, system-ui; cursor: pointer; visibility: hidden; }
       a.home { color: #8a8473; font-size: .8rem; text-decoration: none; }
+      .tier { padding: .25rem .6rem; border: 1px solid #d8d2c4; background: #fffdf8; color: #6a6a6a; font: .82rem ui-sans-serif, system-ui; cursor: pointer; }
+      .tier:first-child { border-radius: 6px 0 0 6px; } .tier:last-child { border-radius: 0 6px 6px 0; } .tier:not(:first-child) { border-left: 0; }
+      .tier.on { background: #efe7d8; color: #2b2b2b; font-weight: 600; }
     </style>
   </head>
   <body>
     <main>
       <h1>Name that part</h1>
       <p class="sub">A part of the diagram is highlighted. What is it? &nbsp;·&nbsp; <a class="home" href="./">← diagram tool</a></p>
+      <div id="opts" style="display:flex;gap:1rem;align-items:center;justify-content:center;margin-bottom:.6rem;font-size:.82rem;color:#6a6a6a">
+        <span id="diff" role="group">
+          <button class="tier" data-tier="easy">easy</button><button class="tier on" data-tier="normal">normal</button><button class="tier" data-tier="hard">hard</button>
+        </span>
+        <label style="cursor:pointer"><input type="checkbox" id="showsent" /> show sentence</label>
+      </div>
+      <p id="sentence" style="min-height:1.1rem;margin:.1rem 0 .3rem;color:#8a8473;font:14px ui-serif,Georgia,serif"></p>
       <canvas id="stage" width="760" height="360"></canvas>
       <p id="q">…</p>
       <div id="choices"></div>
