@@ -8,7 +8,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       // thin apps on one engine: the diagram tool (index) and the game modes
-      input: { main: "index.html", game: "game.html", drag: "drag.html" },
+      input: { main: "index.html", game: "game.html", drag: "drag.html", free: "free.html" },
     },
   },
 });

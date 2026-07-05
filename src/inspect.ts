@@ -17,7 +17,8 @@ export type WordElement = {
   kind: "word";
   text: string;
   role: string; // human name, e.g. "Direct object"
-  roleKey: NodeRole; // machine key, e.g. "object"
+  roleKey: NodeRole; // machine key of the nearest role, e.g. "object"
+  roles: NodeRole[]; // full ancestor chain (root -> element), so callers can tell a direct object from a preposition's object
   detail: string;
   nodeId: NodeId;
   anchor: Pt;
@@ -29,6 +30,7 @@ export type LineElement = {
   kind: "line";
   role: string;
   roleKey: Role;
+  roles: NodeRole[];
   detail: string;
   nodeId: NodeId;
   a: Pt;
@@ -116,10 +118,10 @@ export function describeAll(scene: Scene, m: TextMetrics, sizePx: number): Scene
         const r = ROLE[rk]!;
         const { width, ascent, descent } = m.measure(c.text, sizePx);
         const corners = wordCorners(c.anchor, c.angle, width, ascent, descent);
-        out.push({ kind: "word", text: c.text, role: r.name, roleKey: rk, detail: r.detail, nodeId: n.id, anchor: c.anchor, angle: c.angle, width, bbox: aabb(corners) });
+        out.push({ kind: "word", text: c.text, role: r.name, roleKey: rk, roles: chain, detail: r.detail, nodeId: n.id, anchor: c.anchor, angle: c.angle, width, bbox: aabb(corners) });
       } else if (c.kind === "seg") {
         const r = c.role === "slant" && chain.includes("pp") ? PREP_LINE : LINE[c.role];
-        out.push({ kind: "line", role: r.name, roleKey: c.role, detail: r.detail, nodeId: n.id, a: c.a, b: c.b, bbox: aabb([c.a, c.b]) });
+        out.push({ kind: "line", role: r.name, roleKey: c.role, roles: chain, detail: r.detail, nodeId: n.id, a: c.a, b: c.b, bbox: aabb([c.a, c.b]) });
       }
     }
   })(scene.root, []);

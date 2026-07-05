@@ -89,6 +89,18 @@ describe("describeAll", () => {
     expect(byText.get("small")!.roleKey).toBe("modifier");
   });
 
+  it("the roles chain distinguishes a direct object from a preposition's object", () => {
+    const isDO = (ptb: string, word: string) => {
+      const els = describeAll(layout(lower(ptb), metrics), metrics, SZ);
+      const w = els.find((e) => e.kind === "word" && e.text === word) as { roleKey: string; roles: string[] } | undefined;
+      return w?.roleKey === "object" && !w.roles.includes("pp");
+    };
+    // "ball" is a real direct object
+    expect(isDO("(S (NP (DT The) (NN dog)) (VP (VBD chased) (NP (DT the) (NN ball))))", "ball")).toBe(true);
+    // "house" is the object OF a preposition, not a direct object
+    expect(isDO("(S (NP (DT The) (NN dog)) (VP (VBD slept) (PP (IN in) (NP (DT the) (NN house)))))", "house")).toBe(false);
+  });
+
   it("enumerates lines including the full divider, with endpoints", () => {
     const lines = els.filter((e) => e.kind === "line");
     const full = lines.find((l) => l.roleKey === "divider.full");

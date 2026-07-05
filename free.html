@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sentences · write to the challenge</title>
+    <style>
+      :root { color-scheme: light dark; }
+      html, body { margin: 0; min-height: 100%; }
+      body { display: grid; place-items: start center; background: #f7f6f2; font-family: ui-sans-serif, system-ui, sans-serif; color: #2b2b2b; }
+      main { width: min(780px, 94vw); padding: 1.2rem 0 3rem; text-align: center; }
+      h1 { font-size: 1.15rem; font-weight: 600; margin: .2rem 0 .1rem; }
+      .sub { color: #8a8473; font-size: .8rem; margin: 0 0 .9rem; }
+      #challenge { font-size: 1.05rem; margin: .2rem 0 .1rem; }
+      #challenge b { color: #b4451f; }
+      #hint { color: #8a8473; font-size: .82rem; margin: 0 0 .7rem; }
+      .row { display: flex; gap: .5rem; justify-content: center; margin-bottom: .7rem; }
+      #sentence { width: 460px; max-width: 72vw; padding: .55rem .7rem; border: 1px solid #d8d2c4; border-radius: 6px; font: 15px ui-serif, Georgia, serif; background: #fffdf8; color: #2b2b2b; }
+      button { padding: .55rem .9rem; border: 1px solid #d8d2c4; border-radius: 6px; background: #fffdf8; color: #2b2b2b; font: 14px ui-sans-serif, system-ui; cursor: pointer; }
+      #stage { background: #fffdf8; border: 1px solid #e2ddd0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); max-width: 100%; display: none; }
+      #verdict { min-height: 1.4rem; margin: .7rem 0 0; font-size: .98rem; }
+      #verdict.right { color: #2e7d32; } #verdict.no { color: #b4451f; }
+      #status { color: #8a8473; font-size: .8rem; min-height: 1rem; }
+      #next { margin-top: .5rem; visibility: hidden; }
+      a.home { color: #8a8473; font-size: .8rem; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Write to the challenge</h1>
+      <p class="sub">Write a sentence that fits the goal. It's parsed and diagrammed to check. &nbsp;·&nbsp; <a class="home" href="./">← diagram tool</a></p>
+      <p id="challenge">…</p>
+      <p id="hint"></p>
+      <div class="row">
+        <input id="sentence" type="text" placeholder="Type your sentence and press Enter…" />
+        <button id="check">Check</button>
+      </div>
+      <p id="status"></p>
+      <canvas id="stage" width="780" height="340"></canvas>
+      <p id="verdict"></p>
+      <button id="next">New challenge →</button>
+    </main>
+    <script type="module" src="/src/game/free.ts"></script>
+  </body>
+</html>
