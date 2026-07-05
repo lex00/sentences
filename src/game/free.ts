@@ -26,60 +26,32 @@ const wordsOf = (els: SceneElement[]) => els.filter((e): e is Extract<SceneEleme
 // count words whose POS tag starts with any prefix (JJ -> JJ/JJR/JJS, etc.)
 const countTag = (a: Analysis, prefixes: string[]) => posTags(a.tree).filter((t) => prefixes.some((p) => t.tag.startsWith(p))).length;
 
-type Challenge = { prompt: string; hint: string; ok: (a: Analysis) => boolean };
+// `feature` is a short noun phrase used both as the goal and, on a miss, to tell the player what
+// their sentence DID have ("no direct object — but it has a prepositional phrase").
+type Challenge = { feature: string; hint: string; ok: (a: Analysis) => boolean };
 const CHALLENGES: Challenge[] = [
-  {
-    prompt: "Write a sentence with a <b>direct object</b>.",
-    hint: "the noun that receives the action — “the dog chased the ball”",
-    // a direct object is an "object" NOT sitting inside a prepositional phrase
-    ok: (a) => wordsOf(a.elements).some((w) => w.roleKey === "object" && !w.roles.includes("pp")),
-  },
-  {
-    prompt: "Write a sentence with a <b>prepositional phrase</b>.",
-    hint: "“in the house”, “on the table”, “with a friend”",
-    ok: (a) => wordsOf(a.elements).some((w) => w.roleKey === "pp"),
-  },
-  {
-    prompt: "Write a sentence with a <b>predicate adjective or noun</b>.",
-    hint: "use a linking verb — “the sky is blue”, “she is a doctor”",
-    ok: (a) => wordsOf(a.elements).some((w) => w.roleKey === "complement"),
-  },
-  {
-    prompt: "Write a sentence with a <b>subordinate clause</b>.",
-    hint: "starts with because, that, who, when… — “I left because it rained”",
-    ok: (a) => a.elements.some((e) => e.roles.includes("subclause")),
-  },
-  {
-    prompt: "Write a <b>compound</b> (join with “and” or “or”).",
-    hint: "compound subject or predicate — “dogs and cats”, “ran and jumped”",
-    ok: (a) => a.elements.some((e) => e.kind === "line" && e.roleKey === "fork"),
-  },
+  // --- function-level (from the diagram's roles) ---
+  { feature: "a direct object", hint: "the noun that receives the action — “the dog chased the ball”",
+    ok: (a) => wordsOf(a.elements).some((w) => w.roleKey === "object" && !w.roles.includes("pp")) },
+  { feature: "a prepositional phrase", hint: "“in the house”, “on the table”, “with a friend”",
+    ok: (a) => wordsOf(a.elements).some((w) => w.roleKey === "pp") },
+  { feature: "a predicate adjective or noun", hint: "use a linking verb — “the sky is blue”, “she is a doctor”",
+    ok: (a) => wordsOf(a.elements).some((w) => w.roleKey === "complement") },
+  { feature: "a subordinate clause", hint: "starts with because, that, who, when… — “I left because it rained”",
+    ok: (a) => a.elements.some((e) => e.roles.includes("subclause")) },
+  { feature: "a compound", hint: "join with “and” or “or” — “dogs and cats”, “ran and jumped”",
+    ok: (a) => a.elements.some((e) => e.kind === "line" && e.roleKey === "fork") },
   // --- part-of-speech (from the parse tags) ---
-  {
-    prompt: "Write a sentence with <b>two adjectives</b>.",
-    hint: "describing words — “a tall, dark stranger”",
-    ok: (a) => countTag(a, ["JJ"]) >= 2,
-  },
-  {
-    prompt: "Write a sentence with an <b>adverb</b>.",
-    hint: "how/when/where — often ends in -ly — “she sang loudly”",
-    ok: (a) => countTag(a, ["RB"]) >= 1,
-  },
-  {
-    prompt: "Write a sentence with a <b>proper noun</b>.",
-    hint: "a name, capitalized — “Maria”, “Paris”",
-    ok: (a) => countTag(a, ["NNP"]) >= 1,
-  },
-  {
-    prompt: "Write a sentence in the <b>past tense</b>.",
-    hint: "a past-tense verb — “walked”, “ran”, “was”",
-    ok: (a) => countTag(a, ["VBD"]) >= 1,
-  },
-  {
-    prompt: "Write a sentence with a <b>plural noun</b>.",
-    hint: "more than one — “dogs”, “children”",
-    ok: (a) => countTag(a, ["NNS", "NNPS"]) >= 1,
-  },
+  { feature: "two adjectives", hint: "describing words — “a tall, dark stranger”", ok: (a) => countTag(a, ["JJ"]) >= 2 },
+  { feature: "an adverb", hint: "how/when/where — often ends in -ly — “she sang loudly”", ok: (a) => countTag(a, ["RB"]) >= 1 },
+  { feature: "a proper noun", hint: "a name, capitalized — “Maria”, “Paris”", ok: (a) => countTag(a, ["NNP"]) >= 1 },
+  { feature: "a past-tense verb", hint: "“walked”, “ran”, “was”", ok: (a) => countTag(a, ["VBD"]) >= 1 },
+  { feature: "a plural noun", hint: "more than one — “dogs”, “children”", ok: (a) => countTag(a, ["NNS", "NNPS"]) >= 1 },
+  { feature: "a comparative", hint: "bigger, faster, more careful — “the bigger dog won”", ok: (a) => countTag(a, ["JJR", "RBR"]) >= 1 },
+  { feature: "a superlative", hint: "biggest, fastest, most careful — “the fastest runner”", ok: (a) => countTag(a, ["JJS", "RBS"]) >= 1 },
+  { feature: "a pronoun", hint: "he, she, it, they, we — “they found it”", ok: (a) => countTag(a, ["PRP"]) >= 1 },
+  { feature: "a number", hint: "a counting word — “three cats”, “ten miles”", ok: (a) => countTag(a, ["CD"]) >= 1 },
+  { feature: "at least eight words", hint: "a longer sentence", ok: (a) => posTags(a.tree).filter((t) => /^[A-Za-z]/.test(t.tag)).length >= 8 },
 ];
 
 let challenge: Challenge;
@@ -99,7 +71,7 @@ function ensureModel(): void {
 
 function newChallenge(): void {
   challenge = CHALLENGES[Math.floor(Math.random() * CHALLENGES.length)]!;
-  challengeEl.innerHTML = challenge.prompt;
+  challengeEl.innerHTML = `Write a sentence with <b>${challenge.feature}</b>.`;
   hintEl.textContent = challenge.hint;
   verdictEl.textContent = ""; verdictEl.className = "";
   canvas.style.display = "none";
@@ -118,9 +90,16 @@ async function check(): Promise<void> {
     canvas.style.display = "";
     const pass = challenge.ok(a);
     statusEl.textContent = "";
-    verdictEl.textContent = pass ? "✓ Yes — that fits the challenge!" : "✗ Not yet — the diagram doesn’t show it. Try again.";
+    if (pass) {
+      verdictEl.textContent = "✓ Yes — that fits the challenge!";
+      solved++; nextEl.style.visibility = "visible";
+    } else {
+      // teach on a miss: name what the sentence DOES have
+      const found = CHALLENGES.filter((c) => c.feature !== challenge.feature && c.ok(a)).map((c) => c.feature);
+      const also = found.length ? ` But it does have ${found.slice(0, 2).join(" and ")}.` : "";
+      verdictEl.textContent = `✗ Not yet — no ${challenge.feature} in the diagram.${also} Try again.`;
+    }
     verdictEl.className = pass ? "right" : "no";
-    if (pass) { solved++; nextEl.style.visibility = "visible"; }
   } catch (err) {
     console.error("[parse failed]", err);
     statusEl.textContent = "couldn’t parse that one — try rephrasing";
