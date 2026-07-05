@@ -80,6 +80,7 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
   function measureMod(m: Modifier, idPath: NodeId): MeasuredMod {
     if (m.kind === "word") {
       const text = m.value.text;
+      const pos = m.value.pos;
       const L = w(text) + style.pad;
       const dx = L * cos;
       const dy = L * sin;
@@ -87,7 +88,7 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
         below: box(0, 0, dx, dy),
         place: (ax, by) => {
           const slant: Prim = { kind: "seg", a: { x: ax, y: by }, b: { x: ax + dx, y: by + dy }, role: "slant" };
-          const lbl: Prim = { kind: "lbl", text, anchor: { x: ax + 6 * cos, y: by + 6 * sin }, angle: style.slantAngle, role: "word" };
+          const lbl: Prim = { kind: "lbl", text, anchor: { x: ax + 6 * cos, y: by + 6 * sin }, angle: style.slantAngle, role: "word", ...(pos ? { pos } : {}) };
           const ch: Array<SceneNode | Prim> = [slant, lbl];
           return { id: idPath, role: "modifier", children: ch, bounds: childrenBox(ch) };
         },
@@ -148,7 +149,7 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
   }
 
   // --- a head word + its hanging modifiers, occupying [x, x+width] on the baseline ---
-  function measureHead(headText: string, mods: Modifier[], idPath: NodeId, role: NodeRole, appositive?: string): Measured {
+  function measureHead(headText: string, mods: Modifier[], idPath: NodeId, role: NodeRole, appositive?: string, headPos?: string): Measured {
     if (appositive) headText = `${headText} (${appositive})`; // R-K: apposition in parens on the rail
     const headW = w(headText);
     const mm = mods.map((m, i) => ({ i, m: measureMod(m, `${idPath}/m${i}`) }));
@@ -177,7 +178,7 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
       below,
       place: (x, y) => {
         const rail: Prim = { kind: "seg", a: { x, y }, b: { x: x + segW, y }, role: "baseline" };
-        const headLbl: Prim = { kind: "lbl", text: headText, anchor: { x: x + segW / 2 - headW / 2, y: y - 4 }, angle: 0, role: "word" };
+        const headLbl: Prim = { kind: "lbl", text: headText, anchor: { x: x + segW / 2 - headW / 2, y: y - 4 }, angle: 0, role: "word", ...(headPos ? { pos: headPos } : {}) };
         const modNodes = mm.map(({ m }, k) => m.place(x + attaches[k]!, y));
         const ch: Array<SceneNode | Prim> = [rail, headLbl, ...modNodes];
         return { id: idPath, role, children: ch, bounds: childrenBox(ch) };
@@ -325,14 +326,14 @@ export function layout(input: Clause | Sentence, metrics: TextMetrics, style: La
       // compound of nominals (subject / object)
       const noms = items as Nominal[];
       const appOf = (it: Nominal): string | undefined => it.appositive?.text;
-      if (noms.length === 1) return measureHead(noms[0]!.head.text, noms[0]!.modifiers, idPath, role, appOf(noms[0]!));
-      const branches = noms.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role, appOf(it)));
+      if (noms.length === 1) return measureHead(noms[0]!.head.text, noms[0]!.modifiers, idPath, role, appOf(noms[0]!), noms[0]!.head.pos);
+      const branches = noms.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role, appOf(it), it.head.pos));
       return measureCompound(branches, slot.conjunction.text, idPath, openRight);
     }
     // An indirect object hangs below the verb on a slant + rail — an implied-preposition PP.
     const io = "indirectObject" in slot ? slot.indirectObject : undefined;
     const mods: Modifier[] = io ? [...slot.modifiers, { kind: "prep", prep: { text: "" }, object: io }] : slot.modifiers;
-    return measureHead(slot.head.text, mods, idPath, role, "appositive" in slot ? slot.appositive?.text : undefined);
+    return measureHead(slot.head.text, mods, idPath, role, "appositive" in slot ? slot.appositive?.text : undefined, slot.head.pos);
   }
 
   // An infinitive object on a STAND: a post rises from the object slot to a raised rail that

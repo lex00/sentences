@@ -3,6 +3,7 @@
 
 export type Word = {
   text: string;
+  pos?: string; // Penn-Treebank POS tag from the parse (NN, JJ, RB, VBD…), when the word is a single leaf
 };
 
 // Head slots may be single or compound ("dogs and cats run"). A subject may also be a verbal or a

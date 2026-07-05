@@ -109,6 +109,14 @@ describe("describeAll", () => {
     expect(full!.b).toBeTruthy();
   });
 
+  it("carries the POS tag onto head words and word modifiers", () => {
+    const byText = new Map(els.filter((e) => e.kind === "word").map((w) => [w.text, w]));
+    expect(byText.get("dog")!.pos).toBe("NN");   // head noun
+    expect(byText.get("small")!.pos).toBe("JJ"); // adjective modifier
+    expect(byText.get("chased")!.pos).toBe("VBD"); // verb
+    expect(byText.get("the")!.pos).toBe("DT");   // article modifier
+  });
+
   it("a fill-your-own-words mode can read one slot per input word", () => {
     // 5 content words in "The small dog chased the ball": the two articles + small + dog + chased + ball = 6 labels
     const words = els.filter((e) => e.kind === "word");

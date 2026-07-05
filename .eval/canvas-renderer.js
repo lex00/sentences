@@ -1,7 +1,7 @@
 // Canvas2D EffectExecutor — the research-spike renderer (Phase 2). The ONLY renderer-specific
 // code in the system: it consumes a RenderFrame (pure-geometry Scene + per-node presence) and
 // a Theme, and knows nothing about grammar. The WebGPU executor (Phase 7) swaps in here.
-import { isNode } from "./scene.js";
+import { isNode, fitView } from "./scene.js";
 import { spawnParticles, updateParticles, particleAlpha } from "./particles.js";
 const fontStr = (f) => `${f.style ?? "normal"} ${f.weight ?? 400} ${f.size}px ${f.family}`;
 const lerpPt = (a, b, u) => ({ x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u });
@@ -42,13 +42,8 @@ export class CanvasExecutor {
         this.fit();
         this.g.clearRect(0, 0, this.cssW, this.cssH);
         // Fit + center the whole diagram in the canvas (only ever scales DOWN), so long sentences
-        // don't overflow / collide with the edges.
-        const b = frame.scene.bounds;
-        const pad = 28;
-        const bw = Math.max(1, b.right - b.left);
-        const bh = Math.max(1, b.bottom - b.top);
-        const s = Math.min(1, (this.cssW - 2 * pad) / bw, (this.cssH - 2 * pad) / bh);
-        this.view = { s, tx: (this.cssW - bw * s) / 2 - b.left * s, ty: (this.cssH - bh * s) / 2 - b.top * s };
+        // don't overflow / collide with the edges. Shared with pointer hit-testing via fitView().
+        this.view = fitView(frame.scene.bounds, this.cssW, this.cssH);
         this.g.save();
         this.applyView(this.g);
         this.walk(frame.scene.root, 1, frame.presence, theme);

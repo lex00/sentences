@@ -10,37 +10,18 @@
 // The IR (ir.ts) is the contract: it is both the diagram's source of truth and a game's answer key.
 // `analyze()` + ModelParser are the game-facing path: parse a player's sentence and read its roles.
 // (Importing the barrel does not bundle onnxruntime unless ModelParser/analyze's model is used.)
-
 // --- pipeline: bracket/tree -> IR -> layout -> Scene ---
 export { parseBracket, phrase, posTags } from "./ptb.js";
 export { lower, lowerSentence, lowerNBest } from "./lower.js";
 export { layout, CanvasTextMetrics, wordNominal } from "./layout.js";
-
 // --- neural parser + the game-facing "parse a player's sentence, read its roles" call ---
 export { ModelParser, tokenizeWords } from "./parser/model-parser.js";
 export { analyze, wordSlots } from "./analyze.js";
-
 // --- derived views over a Scene ---
-export { describeAt, describeAll, posName } from "./inspect.js"; // name the element under a point; enumerate all elements + roles + geometry; POS tag -> friendly name
+export { describeAt, describeAll } from "./inspect.js"; // name the element under a point; enumerate all elements + roles + geometry
 export { sceneToSvg } from "./svg.js";
 export { collisions } from "./collisions.js"; // geometric overlap oracle / well-formedness check
-
 // --- scene helpers + fit-to-canvas transform (shared by renderers and pointer hit-testing) ---
 export { isNode, emptyBBox, fitView, screenToScene } from "./scene.js";
-
 // --- theme (role -> appearance) and the geometric layout style ---
 export { defaultTheme, blueprintTheme, defaultLayoutStyle } from "./theme.js";
-
-// --- types ---
-export type { Tree } from "./ptb.js";
-export type {
-  Word, Subject, Predicate, PredicatePart, Clause, Nominal, Verbal,
-  Infinitive, Gerund, Complement, Modifier, Compound, Sentence,
-} from "./ir.js";
-export type { TextMetrics, Measured } from "./layout.js";
-export type { Scene, SceneNode, Prim, Role, NodeRole, NodeId, IrId, BBox, Pt, View } from "./scene.js";
-export type { Inspection, SceneElement, WordElement, LineElement } from "./inspect.js";
-export type { Parser, Analysis } from "./analyze.js";
-export type { SvgOptions } from "./svg.js";
-export type { Collision } from "./collisions.js";
-export type { Theme, LayoutStyle, StrokeSpec, FontSpec, Override, EmphasisState } from "./theme.js";

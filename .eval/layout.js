@@ -55,6 +55,7 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
     function measureMod(m, idPath) {
         if (m.kind === "word") {
             const text = m.value.text;
+            const pos = m.value.pos;
             const L = w(text) + style.pad;
             const dx = L * cos;
             const dy = L * sin;
@@ -62,7 +63,7 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
                 below: box(0, 0, dx, dy),
                 place: (ax, by) => {
                     const slant = { kind: "seg", a: { x: ax, y: by }, b: { x: ax + dx, y: by + dy }, role: "slant" };
-                    const lbl = { kind: "lbl", text, anchor: { x: ax + 6 * cos, y: by + 6 * sin }, angle: style.slantAngle, role: "word" };
+                    const lbl = { kind: "lbl", text, anchor: { x: ax + 6 * cos, y: by + 6 * sin }, angle: style.slantAngle, role: "word", ...(pos ? { pos } : {}) };
                     const ch = [slant, lbl];
                     return { id: idPath, role: "modifier", children: ch, bounds: childrenBox(ch) };
                 },
@@ -122,7 +123,7 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
         };
     }
     // --- a head word + its hanging modifiers, occupying [x, x+width] on the baseline ---
-    function measureHead(headText, mods, idPath, role, appositive) {
+    function measureHead(headText, mods, idPath, role, appositive, headPos) {
         if (appositive)
             headText = `${headText} (${appositive})`; // R-K: apposition in parens on the rail
         const headW = w(headText);
@@ -150,7 +151,7 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
             below,
             place: (x, y) => {
                 const rail = { kind: "seg", a: { x, y }, b: { x: x + segW, y }, role: "baseline" };
-                const headLbl = { kind: "lbl", text: headText, anchor: { x: x + segW / 2 - headW / 2, y: y - 4 }, angle: 0, role: "word" };
+                const headLbl = { kind: "lbl", text: headText, anchor: { x: x + segW / 2 - headW / 2, y: y - 4 }, angle: 0, role: "word", ...(headPos ? { pos: headPos } : {}) };
                 const modNodes = mm.map(({ m }, k) => m.place(x + attaches[k], y));
                 const ch = [rail, headLbl, ...modNodes];
                 return { id: idPath, role, children: ch, bounds: childrenBox(ch) };
@@ -297,14 +298,14 @@ export function layout(input, metrics, style = defaultLayoutStyle) {
             const noms = items;
             const appOf = (it) => it.appositive?.text;
             if (noms.length === 1)
-                return measureHead(noms[0].head.text, noms[0].modifiers, idPath, role, appOf(noms[0]));
-            const branches = noms.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role, appOf(it)));
+                return measureHead(noms[0].head.text, noms[0].modifiers, idPath, role, appOf(noms[0]), noms[0].head.pos);
+            const branches = noms.map((it, i) => measureHead(it.head.text, it.modifiers, `${idPath}/b${i}`, role, appOf(it), it.head.pos));
             return measureCompound(branches, slot.conjunction.text, idPath, openRight);
         }
         // An indirect object hangs below the verb on a slant + rail — an implied-preposition PP.
         const io = "indirectObject" in slot ? slot.indirectObject : undefined;
         const mods = io ? [...slot.modifiers, { kind: "prep", prep: { text: "" }, object: io }] : slot.modifiers;
-        return measureHead(slot.head.text, mods, idPath, role, "appositive" in slot ? slot.appositive?.text : undefined);
+        return measureHead(slot.head.text, mods, idPath, role, "appositive" in slot ? slot.appositive?.text : undefined, slot.head.pos);
     }
     // An infinitive object on a STAND: a post rises from the object slot to a raised rail that
     // carries "to" (on a slant) + the verb, with the verb's own object after a half-divider.

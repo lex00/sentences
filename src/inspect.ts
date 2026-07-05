@@ -16,6 +16,7 @@ export type Inspection = { title: string; detail: string; kind: "word" | "line" 
 export type WordElement = {
   kind: "word";
   text: string;
+  pos?: string; // Penn-Treebank POS tag (NN, JJ, RB…) when the word is a single leaf
   role: string; // human name, e.g. "Direct object"
   roleKey: NodeRole; // machine key of the nearest role, e.g. "object"
   roles: NodeRole[]; // full ancestor chain (root -> element), so callers can tell a direct object from a preposition's object
@@ -66,6 +67,16 @@ const LINE: Record<Role, { name: string; detail: string }> = {
   fork: { name: "Fork", detail: "Joins the coordinated parts of a compound." },
 };
 const PREP_LINE = { name: "Preposition line", detail: "Carries the preposition; its object sits on the line at the foot." };
+
+// Friendly name for a Penn-Treebank POS tag (prefix-matched), for tooltips and "what part of
+// speech is this?" prompts.
+const POS_NAMES: Array<[string, string]> = [
+  ["NNP", "proper noun"], ["NN", "noun"], ["JJ", "adjective"], ["RB", "adverb"],
+  ["PRP$", "possessive"], ["PRP", "pronoun"], ["VB", "verb"], ["MD", "modal verb"],
+  ["DT", "article"], ["IN", "preposition"], ["TO", "to"], ["CC", "conjunction"],
+  ["CD", "number"], ["WP", "wh-word"], ["WDT", "wh-word"], ["WRB", "wh-word"],
+];
+export const posName = (tag?: string): string | undefined => (tag ? POS_NAMES.find(([p]) => tag.startsWith(p))?.[1] : undefined);
 
 const nearestRole = (chain: NodeRole[]): NodeRole => {
   for (let i = chain.length - 1; i >= 0; i--) if (ROLE[chain[i]!]) return chain[i]!;
@@ -118,7 +129,7 @@ export function describeAll(scene: Scene, m: TextMetrics, sizePx: number): Scene
         const r = ROLE[rk]!;
         const { width, ascent, descent } = m.measure(c.text, sizePx);
         const corners = wordCorners(c.anchor, c.angle, width, ascent, descent);
-        out.push({ kind: "word", text: c.text, role: r.name, roleKey: rk, roles: chain, detail: r.detail, nodeId: n.id, anchor: c.anchor, angle: c.angle, width, bbox: aabb(corners) });
+        out.push({ kind: "word", text: c.text, ...(c.pos ? { pos: c.pos } : {}), role: r.name, roleKey: rk, roles: chain, detail: r.detail, nodeId: n.id, anchor: c.anchor, angle: c.angle, width, bbox: aabb(corners) });
       } else if (c.kind === "seg") {
         const r = c.role === "slant" && chain.includes("pp") ? PREP_LINE : LINE[c.role];
         out.push({ kind: "line", role: r.name, roleKey: c.role, roles: chain, detail: r.detail, nodeId: n.id, a: c.a, b: c.b, bbox: aabb([c.a, c.b]) });
@@ -143,5 +154,7 @@ export function describeAt(scene: Scene, p: Pt, m: TextMetrics, sizePx: number, 
   }
   const el = state.best?.el;
   if (!el) return null;
-  return { title: el.kind === "word" ? `${el.text} · ${el.role}` : el.role, detail: el.detail, kind: el.kind };
+  if (el.kind === "line") return { title: el.role, detail: el.detail, kind: "line" };
+  const pn = posName(el.pos);
+  return { title: `${el.text} · ${el.role}`, detail: pn ? `${pn} — ${el.detail}` : el.detail, kind: "word" };
 }

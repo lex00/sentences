@@ -31,3 +31,6 @@ export function parseBracket(input) {
 // All terminal words under a subtree, in order.
 export const leaves = (t) => (t.word !== undefined ? [t.word] : t.children.flatMap(leaves));
 export const phrase = (t) => leaves(t).join(" ");
+// All (word, POS tag) preterminals under a subtree, in order — e.g. { word:"small", tag:"JJ" }.
+// The parse keeps the fine POS the IR drops, so criteria like "two adjectives" read straight off it.
+export const posTags = (t) => t.word !== undefined ? [{ word: t.word, tag: t.label }] : t.children.flatMap(posTags);

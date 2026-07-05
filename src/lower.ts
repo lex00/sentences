@@ -13,6 +13,7 @@ import type { Clause, Nominal, Verbal, Modifier, Word, Compound, Complement, Sen
 import { parseBracket, phrase, type Tree } from "./ptb.js";
 
 const w = (text: string): Word => ({ text });
+const wt = (leaf: Tree): Word => ({ text: leaf.word!, pos: leaf.label }); // a Word from a single leaf, carrying its POS tag
 
 const COPULA = new Set([
   "be", "am", "is", "are", "was", "were", "been", "being",
@@ -53,15 +54,15 @@ function lowerNP(np: Tree): Nominal | Compound<Nominal> {
 
   // flat NP: pre-modifiers, head noun (last noun wins; earlier nouns become noun-adjunct mods)
   const modifiers: Modifier[] = [];
-  let head: string | null = null;
+  let headLeaf: Tree | null = null;
   let appositive: string | undefined;
   for (const c of np.children) {
     if (c.word !== undefined) {
       if (NOUN.has(c.label)) {
-        if (head !== null) modifiers.push({ kind: "word", value: w(head) });
-        head = c.word;
+        if (headLeaf !== null) modifiers.push({ kind: "word", value: wt(headLeaf) });
+        headLeaf = c;
       } else if (PREMOD.has(c.label)) {
-        modifiers.push({ kind: "word", value: w(c.word) });
+        modifiers.push({ kind: "word", value: wt(c) });
       }
     } else if (c.label === "PP") modifiers.push(lowerPP(c));
     else if (c.label === "SBAR") modifiers.push(lowerSBAR(c));
@@ -71,7 +72,7 @@ function lowerNP(np: Tree): Nominal | Compound<Nominal> {
       modifiers.push({ kind: "word", value: w(phrase(c).replace(/ (['’]s?)\b/g, "$1")) });
     } else if (c.label === "NP") appositive = phrase(c); // trailing name ("the hero Beowulf")
   }
-  return { head: w(head ?? phrase(np)), modifiers, ...(appositive ? { appositive: w(appositive) } : {}) };
+  return { head: headLeaf ? wt(headLeaf) : w(phrase(np)), modifiers, ...(appositive ? { appositive: w(appositive) } : {}) };
 }
 
 function lowerCoordNP(np: Tree): Compound<Nominal> {
@@ -174,11 +175,12 @@ function lowerPredicate(vp: Tree): { verb: Predicate; complement: Complement | n
     let conjunction = "and";
     const correlative = isCorrelative(vp.children[0]) && isCC(vp.children[0]!) ? vp.children[0]!.word!.toLowerCase() : null;
     for (const c of vp.children) if (isCC(c) && c.word && !CORREL.has(c.word.toLowerCase())) conjunction = c.word;
-    const items: PredicatePart[] = bareVerbs.map((v) => ({ verb: { head: w(v.word!), modifiers: [] }, complement: null }));
+    const items: PredicatePart[] = bareVerbs.map((v) => ({ verb: { head: wt(v), modifiers: [] }, complement: null }));
     return { verb: { items, conjunction: w(conjLabel(correlative, conjunction)) }, complement: null };
   }
 
   const verbWords: string[] = [];
+  const verbLeaves: Tree[] = [];
   const modifiers: Modifier[] = [];
   const objNPs: Tree[] = []; // object NPs in order; two => indirect + direct object
   let indirectObject: Nominal | undefined;
@@ -187,7 +189,7 @@ function lowerPredicate(vp: Tree): { verb: Predicate; complement: Complement | n
 
   const walk = (node: Tree): void => {
     for (const c of node.children) {
-      if (c.word !== undefined && (isVerb(c.label) || c.label === "TO")) verbWords.push(c.word); // incl. infinitive "to"
+      if (c.word !== undefined && (isVerb(c.label) || c.label === "TO")) { verbWords.push(c.word); verbLeaves.push(c); } // incl. infinitive "to"
       else if (c.label === "VP") walk(c); // auxiliary chain: "has been running"
       else if (c.label === "S" && c.children.some((x) => x.label === "VP") && !c.children.some((x) => x.label === "NP")) {
         const inner = c.children.find((x) => x.label === "VP"); // subjectless S = infinitive: "has to think about X"
@@ -261,7 +263,8 @@ function lowerPredicate(vp: Tree): { verb: Predicate; complement: Complement | n
     }
   }
 
-  return { verb: { head: w(verbWords.join(" ") || phrase(vp)), modifiers, ...(indirectObject ? { indirectObject } : {}) }, complement };
+  const verbHead: Word = verbLeaves.length === 1 ? wt(verbLeaves[0]!) : w(verbWords.join(" ") || phrase(vp));
+  return { verb: { head: verbHead, modifiers, ...(indirectObject ? { indirectObject } : {}) }, complement };
 }
 
 function lowerInfinitive(inf: Tree): Infinitive {

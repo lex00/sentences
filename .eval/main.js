@@ -1,18 +1,17 @@
 // App entry. Type a sentence -> in-browser parse -> IR -> layout -> morph into view, with
 // draw-on reveal + particle effects. Space cycles built-in examples; click a word for a burst;
 // T swaps theme. Parsing is pure TS (no server, no ML stack) — the tool ships as a static site.
+// Engine surface — the single import point for the diagramming core (see engine.ts).
+import { layout, CanvasTextMetrics, lowerSentence, describeAt, sceneToSvg, fitView, screenToScene, defaultTheme, blueprintTheme, defaultLayoutStyle, } from "./engine.js";
+// App / presentation layer (not part of the engine): content, animation, renderers, effects.
 import { cycle, cycleSentences } from "./fixtures.js";
 import { Animator, wallClock } from "./anim.js";
 import { makeExecutor } from "./webgpu-renderer.js";
-import { layout, CanvasTextMetrics } from "./layout.js";
-import { defaultTheme, blueprintTheme, defaultLayoutStyle } from "./theme.js";
 import { EffectScheduler } from "./scheduler.js";
 import { defaultBindings } from "./bindings.js";
 import "@fontsource/tinos"; // pinned serif — same font the collision tests measure against
-import { parseDocument } from "./document.js";
-import { lowerSentence } from "./lower.js";
-import { ModelParser } from "./parser/model-parser.js";
-import { sceneToSvg } from "./svg.js";
+import { parseDocument } from "./document.js"; // rule-based fallback parser
+import { ModelParser } from "./parser/model-parser.js"; // neural parser (opt-in; pulls in onnxruntime)
 const CSS_W = 900;
 const CSS_H = 500;
 void document.fonts.load("16px Tinos"); // request the pinned font early so layout measures it
@@ -118,6 +117,39 @@ input.addEventListener("keydown", async (e) => {
 });
 document.getElementById("prev").addEventListener("click", () => cycleCandidate(-1));
 document.getElementById("next").addEventListener("click", () => cycleCandidate(1));
+// Hover: name the word or line under the pointer (its grammatical role + what it means).
+const tip = document.createElement("div");
+tip.style.cssText =
+    "position:fixed;pointer-events:none;z-index:20;max-width:260px;padding:.4rem .55rem;border-radius:6px;" +
+        "background:#2b2b2b;color:#f7f6f2;font:12px/1.35 ui-sans-serif,system-ui,sans-serif;" +
+        "box-shadow:0 2px 10px rgba(0,0,0,.28);display:none";
+document.body.appendChild(tip);
+canvas.addEventListener("mousemove", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = (e.clientX - rect.left) * (CSS_W / rect.width); // undo any CSS scaling of the canvas
+    const sy = (e.clientY - rect.top) * (CSS_H / rect.height);
+    const scenePt = screenToScene({ x: sx, y: sy }, fitView(current.bounds, CSS_W, CSS_H));
+    const info = describeAt(current, scenePt, metrics, defaultLayoutStyle.em);
+    if (!info) {
+        tip.style.display = "none";
+        canvas.style.cursor = "default";
+        return;
+    }
+    tip.textContent = "";
+    const t = document.createElement("div");
+    t.style.fontWeight = "600";
+    t.textContent = info.title;
+    const d = document.createElement("div");
+    d.style.opacity = ".82";
+    d.style.marginTop = "1px";
+    d.textContent = info.detail;
+    tip.append(t, d);
+    tip.style.left = `${e.clientX + 14}px`;
+    tip.style.top = `${e.clientY + 14}px`;
+    tip.style.display = "block";
+    canvas.style.cursor = "help";
+});
+canvas.addEventListener("mouseleave", () => { tip.style.display = "none"; });
 // Export the on-screen diagram as SVG (same Scene + Theme the canvas draws), on a white ground.
 function downloadSvg() {
     const svg = sceneToSvg(current, themes[themeIdx], { background: "#fffdf8" });

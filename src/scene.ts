@@ -28,7 +28,7 @@ export type Role =
 
 export type Prim =
   | { kind: "seg"; a: Pt; b: Pt; role: Role; sourceId?: IrId }
-  | { kind: "lbl"; text: string; anchor: Pt; angle: number; role: Role; sourceId?: IrId };
+  | { kind: "lbl"; text: string; anchor: Pt; angle: number; role: Role; pos?: string; sourceId?: IrId }; // pos: POS tag when the label is a single leaf word
 
 export type NodeRole =
   | "sentence"
