@@ -26,10 +26,10 @@ const wordsOf = (els: SceneElement[]) => els.filter((e): e is Extract<SceneEleme
 // count words whose POS tag starts with any prefix (JJ -> JJ/JJR/JJS, etc.)
 const countTag = (a: Analysis, prefixes: string[]) => posTags(a.tree).filter((t) => prefixes.some((p) => t.tag.startsWith(p))).length;
 
-// `feature` is a short noun phrase used both as the goal and, on a miss, to tell the player what
-// their sentence DID have ("no direct object — but it has a prepositional phrase").
-type Challenge = { feature: string; hint: string; ok: (a: Analysis) => boolean };
-const CHALLENGES: Challenge[] = [
+// A reusable condition. `feature` is a short noun phrase used as the goal, in the per-part results
+// of a composed challenge, and, on a single miss, to tell the player what their sentence DID have.
+type Condition = { feature: string; hint: string; ok: (a: Analysis) => boolean };
+const CONDITIONS: Condition[] = [
   // --- function-level (from the diagram's roles) ---
   { feature: "a direct object", hint: "the noun that receives the action — “the dog chased the ball”",
     ok: (a) => wordsOf(a.elements).some((w) => w.roleKey === "object" && !w.roles.includes("pp")) },
@@ -54,6 +54,24 @@ const CHALLENGES: Challenge[] = [
   { feature: "at least eight words", hint: "a longer sentence", ok: (a) => posTags(a.tree).filter((t) => /^[A-Za-z]/.test(t.tag)).length >= 8 },
 ];
 
+// A challenge is one or more conditions that must all hold. Composed ones combine conditions and
+// report each part's pass/fail, so a near-miss is legible ("✓ compound · ✗ past-tense verb").
+type Challenge = { prompt: string; hint: string; parts: Condition[] };
+const cond = (feature: string): Condition => CONDITIONS.find((c) => c.feature === feature)!;
+const single = (c: Condition): Challenge => ({ prompt: `Write a sentence with <b>${c.feature}</b>.`, hint: c.hint, parts: [c] });
+const composed = (cs: Condition[]): Challenge => ({
+  prompt: `Write a sentence with <b>${cs.map((c) => c.feature).join("</b> and <b>")}</b>.`,
+  hint: cs.map((c) => c.hint).join("  ·  "),
+  parts: cs,
+});
+const COMPOSED: Challenge[] = [
+  composed([cond("a compound"), cond("a past-tense verb")]),
+  composed([cond("a direct object"), cond("a prepositional phrase")]),
+  composed([cond("two adjectives"), cond("an adverb")]),
+  composed([cond("a subordinate clause"), cond("a proper noun")]),
+  composed([cond("a direct object"), cond("a comparative")]),
+];
+
 let challenge: Challenge;
 let solved = 0;
 
@@ -69,9 +87,11 @@ function ensureModel(): void {
     .catch((err) => { modelState = "failed"; console.error("[model load failed]", err); statusEl.textContent = "parser failed to load (see console)"; });
 }
 
+const pick = <T>(a: T[]): T => a[Math.floor(Math.random() * a.length)]!;
+
 function newChallenge(): void {
-  challenge = CHALLENGES[Math.floor(Math.random() * CHALLENGES.length)]!;
-  challengeEl.innerHTML = `Write a sentence with <b>${challenge.feature}</b>.`;
+  challenge = Math.random() < 0.35 ? pick(COMPOSED) : single(pick(CONDITIONS));
+  challengeEl.innerHTML = challenge.prompt;
   hintEl.textContent = challenge.hint;
   verdictEl.textContent = ""; verdictEl.className = "";
   canvas.style.display = "none";
@@ -88,16 +108,20 @@ async function check(): Promise<void> {
     const a = await analyze(model, text, metrics);
     executor.drawScene({ scene: a.scene, presence: new Map() }, defaultTheme);
     canvas.style.display = "";
-    const pass = challenge.ok(a);
+    const results = challenge.parts.map((p) => ({ feature: p.feature, ok: p.ok(a) }));
+    const pass = results.every((r) => r.ok);
     statusEl.textContent = "";
     if (pass) {
       verdictEl.textContent = "✓ Yes — that fits the challenge!";
       solved++; nextEl.style.visibility = "visible";
+    } else if (challenge.parts.length > 1) {
+      // composed: show which parts are met
+      verdictEl.textContent = `✗ Not yet — ${results.map((r) => `${r.ok ? "✓" : "✗"} ${r.feature}`).join("  ·  ")}. Try again.`;
     } else {
-      // teach on a miss: name what the sentence DOES have
-      const found = CHALLENGES.filter((c) => c.feature !== challenge.feature && c.ok(a)).map((c) => c.feature);
+      // single: name what the sentence DOES have, to teach
+      const found = CONDITIONS.filter((c) => c.feature !== challenge.parts[0]!.feature && c.ok(a)).map((c) => c.feature);
       const also = found.length ? ` But it does have ${found.slice(0, 2).join(" and ")}.` : "";
-      verdictEl.textContent = `✗ Not yet — no ${challenge.feature} in the diagram.${also} Try again.`;
+      verdictEl.textContent = `✗ Not yet — no ${challenge.parts[0]!.feature} in the diagram.${also} Try again.`;
     }
     verdictEl.className = pass ? "right" : "no";
   } catch (err) {
