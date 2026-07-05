@@ -15,9 +15,11 @@ const feedbackEl = document.getElementById("feedback") as HTMLSpanElement;
 const scoreEl = document.getElementById("score") as HTMLSpanElement;
 const nextEl = document.getElementById("next") as HTMLButtonElement;
 
+const hintsEl = document.getElementById("hints") as HTMLInputElement;
 const metrics = new CanvasTextMetrics();
 const ctx = canvas.getContext("2d")!;
 const dpr = window.devicePixelRatio || 1;
+let pulse: { cx: number; cy: number; start: number } | null = null; // correct-placement flourish
 canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
 canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
 
@@ -98,12 +100,26 @@ function draw(): void {
       ctx.strokeStyle = "#c9a98f"; ctx.lineWidth = 1; ctx.setLineDash([4, 3]);
       ctx.strokeRect(b.left - 3, b.top - 2, b.right - b.left + 6, b.bottom - b.top + 4);
       ctx.setLineDash([]);
-      ctx.fillStyle = "#b98a6e"; ctx.font = "9px ui-sans-serif, system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(s.el.role.toLowerCase(), (b.left + b.right) / 2, (b.top + b.bottom) / 2);
-      ctx.textAlign = "start";
+      if (hintsEl.checked) { // harder tier hides the role each slot wants
+        ctx.fillStyle = "#b98a6e"; ctx.font = "9px ui-sans-serif, system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(s.el.role.toLowerCase(), (b.left + b.right) / 2, (b.top + b.bottom) / 2);
+        ctx.textAlign = "start";
+      }
+    }
+  }
+  if (pulse) { // expanding, fading green ring where a word just landed correctly
+    const t = (performance.now() - pulse.start) / 420;
+    if (t >= 1) { pulse = null; }
+    else {
+      ctx.strokeStyle = "#2e7d32"; ctx.globalAlpha = 1 - t; ctx.lineWidth = 2;
+      const r = 6 + t * 22;
+      ctx.beginPath(); ctx.arc(pulse.cx, pulse.cy, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
 }
+
+function animatePulse(): void { if (pulse) { draw(); requestAnimationFrame(animatePulse); } }
 
 // --- pointer coords -> scene ---
 
@@ -151,10 +167,14 @@ function attachDrag(chip: HTMLDivElement): void {
       slot.filled = true;
       chip.classList.add("placed");
       remaining--;
-      draw();
-      if (remaining === 0) win();
+      const b = slot.el.bbox;
+      pulse = { cx: (b.left + b.right) / 2, cy: (b.top + b.bottom) / 2, start: performance.now() };
+      requestAnimationFrame(animatePulse);
+      if (remaining === 0) win(); else feedbackEl.textContent = "";
     } else if (slot) {
       flash(`that slot wants the ${slot.el.role.toLowerCase()}`, false);
+      chip.classList.add("shake");
+      chip.addEventListener("animationend", () => chip.classList.remove("shake"), { once: true });
     }
   });
 }
@@ -172,5 +192,6 @@ function flash(msg: string, good: boolean): void {
 }
 
 nextEl.addEventListener("click", setup);
+hintsEl.addEventListener("change", draw);
 document.fonts.ready.then(setup);
 void document.fonts.load(`${defaultLayoutStyle.em}px Tinos`);

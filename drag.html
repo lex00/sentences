@@ -22,6 +22,9 @@
       }
       .chip.placed { opacity: .28; pointer-events: none; text-decoration: line-through; }
       .chip:active { cursor: grabbing; }
+      .chip.shake { animation: shake .32s; }
+      @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+      #opts { display: flex; gap: 1rem; align-items: center; justify-content: center; margin-bottom: .5rem; font-size: .82rem; color: #6a6a6a; }
       #bar { display: flex; align-items: center; justify-content: center; gap: 1.2rem; margin-top: .9rem; min-height: 2rem; }
       #feedback { font-size: .9rem; min-height: 1.2rem; } #feedback.right { color: #2e7d32; } #feedback.no { color: #b4451f; }
       #score { color: #6a6a6a; font-size: .85rem; }
@@ -32,7 +35,8 @@
   <body>
     <main>
       <h1>Build the diagram</h1>
-      <p class="sub">Drag each word onto the slot where it belongs. Slots show the part they want. &nbsp;·&nbsp; <a class="home" href="./">← diagram tool</a></p>
+      <p class="sub">Drag each word onto the slot where it belongs. &nbsp;·&nbsp; <a class="home" href="./">← diagram tool</a></p>
+      <div id="opts"><label style="cursor:pointer"><input type="checkbox" id="hints" checked /> show the part each slot wants</label></div>
       <canvas id="stage" width="780" height="360"></canvas>
       <div id="tray"></div>
       <div id="bar">
