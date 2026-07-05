@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sentences · build the diagram</title>
+    <style>
+      :root { color-scheme: light dark; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        display: grid; place-items: start center; background: #f7f6f2;
+        font-family: ui-sans-serif, system-ui, sans-serif; color: #2b2b2b; touch-action: none;
+      }
+      main { width: min(780px, 94vw); padding: 1.2rem 0 3rem; text-align: center; }
+      h1 { font-size: 1.15rem; font-weight: 600; margin: .2rem 0 .1rem; }
+      .sub { color: #8a8473; font-size: .8rem; margin: 0 0 .9rem; }
+      #stage { background: #fffdf8; border: 1px solid #e2ddd0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); max-width: 100%; }
+      #tray { display: flex; flex-wrap: wrap; gap: .45rem; justify-content: center; margin: .9rem auto 0; max-width: 620px; min-height: 2.2rem; }
+      .chip {
+        padding: .4rem .7rem; border: 1px solid #d8d2c4; border-radius: 999px; background: #fffdf8;
+        font: 15px ui-serif, Georgia, serif; cursor: grab; user-select: none; touch-action: none; box-shadow: 0 1px 2px rgba(0,0,0,.06);
+      }
+      .chip.placed { opacity: .28; pointer-events: none; text-decoration: line-through; }
+      .chip:active { cursor: grabbing; }
+      #bar { display: flex; align-items: center; justify-content: center; gap: 1.2rem; margin-top: .9rem; min-height: 2rem; }
+      #feedback { font-size: .9rem; min-height: 1.2rem; } #feedback.right { color: #2e7d32; } #feedback.no { color: #b4451f; }
+      #score { color: #6a6a6a; font-size: .85rem; }
+      #next { padding: .5rem .9rem; border: 1px solid #d8d2c4; border-radius: 7px; background: #fffdf8; color: #2b2b2b; font: 14px ui-sans-serif, system-ui; cursor: pointer; visibility: hidden; }
+      a.home { color: #8a8473; font-size: .8rem; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Build the diagram</h1>
+      <p class="sub">Drag each word onto the slot where it belongs. Slots show the part they want. &nbsp;·&nbsp; <a class="home" href="./">← diagram tool</a></p>
+      <canvas id="stage" width="780" height="360"></canvas>
+      <div id="tray"></div>
+      <div id="bar">
+        <span id="feedback"></span>
+        <span id="score"></span>
+        <button id="next">Next →</button>
+      </div>
+    </main>
+    <script type="module" src="/src/game/drag.ts"></script>
+  </body>
+</html>

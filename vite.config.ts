@@ -7,8 +7,8 @@ export default defineConfig({
   base: process.env.VITE_BASE ?? "/",
   build: {
     rollupOptions: {
-      // two thin apps on one engine: the diagram tool (index) and the game (game.html)
-      input: { main: "index.html", game: "game.html" },
+      // thin apps on one engine: the diagram tool (index) and the game modes
+      input: { main: "index.html", game: "game.html", drag: "drag.html" },
     },
   },
 });
