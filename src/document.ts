@@ -8,6 +8,11 @@
 //     whose clauses stack, dropping the rest. Coordinated clauses inside a unit keep their
 //     conjunction; the gap BETWEEN units is null (separate sentences, drawn with no connector).
 //
+// Both are rule-based and synchronous — the zero-download default. The *With variants take the
+// same async Parser seam analyze() uses ({ parse(text): Promise<Tree> }), so a loaded ModelParser
+// gives the whole document neural-quality parses through one code path, falling back to the
+// rule-based chunker per unit rather than declaring the unit unparseable.
+//
 // Boundaries are found by scanning rather than String.split so every unit carries accurate char
 // offsets into the ORIGINAL text: text.slice(span.start, span.end) === unit, terminating
 // punctuation and surrounding whitespace excluded.
@@ -17,6 +22,7 @@ import { tag } from "./nlp/tagger.js";
 import { lowerSentence } from "./lower.js";
 import type { Sentence, Clause, Word } from "./ir.js";
 import type { Tree } from "./ptb.js";
+import type { Parser } from "./analyze.js";
 import type { DocUnit, Span } from "./lint/types.js";
 
 const isBoundary = (ch: string): boolean => ch === "." || ch === "!" || ch === "?" || ch === ";" || ch === ":";
@@ -113,3 +119,39 @@ function mergeUnits(results: UnitResult[]): Sentence {
 
 export const parseDocument = (text: string): Sentence =>
   mergeUnits(splitUnits(text).map((u) => readUnit(u.unit, u.span)));
+
+// --- parser-agnostic path ---
+
+// The rule-based chunker behind the async Parser seam: the zero-download default, and the
+// per-unit fallback when a supplied parser can't produce something that lowers.
+export const ruleBasedParser: Parser = { parse: async (text: string) => parse(text) };
+
+// One unit through a supplied parser, with the rule-based chunker as the fallback. A neural tree
+// that failed to lower is still better evidence than the chunker's guess (it labels the root
+// FRAG), so we keep its reason unless the fallback actually lowered the unit.
+async function readUnitWith(parser: Parser, unit: string, span: Span): Promise<UnitResult> {
+  let tree: Tree;
+  try {
+    tree = await parser.parse(unit);
+  } catch {
+    return readUnit(unit, span); // parser refused the input (or the model isn't there)
+  }
+  const r = fromTree(unit, span, tree);
+  if (r.sentence) return r;
+  const fallback = readUnit(unit, span);
+  return fallback.sentence ? fallback : r;
+}
+
+// Units run one at a time: a ModelParser is a single ONNX session, and document order is the
+// order rules read.
+async function readResultsWith(parser: Parser, text: string): Promise<UnitResult[]> {
+  const out: UnitResult[] = [];
+  for (const u of splitUnits(text)) out.push(await readUnitWith(parser, u.unit, u.span));
+  return out;
+}
+
+export const readDocumentWith = async (parser: Parser, text: string): Promise<DocUnit[]> =>
+  (await readResultsWith(parser, text)).map((r) => r.doc);
+
+export const parseDocumentWith = async (parser: Parser, text: string): Promise<Sentence> =>
+  mergeUnits(await readResultsWith(parser, text));

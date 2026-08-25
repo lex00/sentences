@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { parseDocument, readDocument, splitUnits } from "./document.js";
+import { parseDocument, parseDocumentWith, readDocument, readDocumentWith, ruleBasedParser, splitUnits } from "./document.js";
+import { parseBracket } from "./ptb.js";
+import type { Parser } from "./analyze.js";
 import type { Nominal } from "./ir.js";
 
 describe("parseDocument (split on . ! ? ; :)", () => {
@@ -68,5 +70,54 @@ describe("readDocument (fragments are data, not drops)", () => {
     expect(units).toHaveLength(2);
     expect(units[0]!.clauses).toHaveLength(2); // "Birds sing and dogs bark"
     expect(units[1]!.clauses).toHaveLength(1);
+  });
+});
+
+// Stub parser: a lookup table standing in for a loaded ModelParser (no onnxruntime in the test).
+// A unit that isn't in the table is one the "model" refuses.
+const stub = (trees: Record<string, string>): Parser => ({
+  parse: async (text) => {
+    const ptb = trees[text];
+    if (!ptb) throw new Error(`stub: no tree for ${JSON.stringify(text)}`);
+    return parseBracket(ptb);
+  },
+});
+
+describe("readDocumentWith / parseDocumentWith (parser-agnostic)", () => {
+  it("lowers a unit the rule-based chunker can't, when the parser can", async () => {
+    const text = "It's not bold. It's backwards.";
+    expect(readDocument(text).map((u) => u.outcome)).toEqual(["fragment", "fragment"]); // chunker loses the copula
+    const units = await readDocumentWith(
+      stub({
+        "It's not bold": "(S (NP (PRP It)) (VP (VBZ 's) (ADJP (RB not) (JJ bold))))",
+        "It's backwards": "(S (NP (PRP It)) (VP (VBZ 's) (ADJP (JJ backwards))))",
+      }),
+      text,
+    );
+    expect(units.map((u) => u.outcome)).toEqual(["lowered", "lowered"]);
+    expect(units.map((u) => u.span.start)).toEqual([0, 15]); // spans still index the original text
+  });
+
+  it("falls back to the rule-based parse per unit when the parser has nothing", async () => {
+    const units = await readDocumentWith(stub({ "The dog barked": "(S (NP (DT The) (NN dog)) (VP (VBD barked)))" }), "The dog barked. The cat slept.");
+    expect(units.map((u) => u.outcome)).toEqual(["lowered", "lowered"]); // second unit via the chunker
+    expect((units[1]!.clauses![0]!.subject as Nominal).head.text).toBe("cat");
+  });
+
+  it("falls back when the parser's tree doesn't lower", async () => {
+    const units = await readDocumentWith(stub({ "The dog barked": "(FRAG (NP (DT The) (NN dog)))" }), "The dog barked.");
+    expect(units[0]!.outcome).toBe("lowered");
+  });
+
+  it("keeps the parser's own evidence when neither path lowers", async () => {
+    const units = await readDocumentWith(stub({ "Not a bug": "(FRAG (RB Not) (NP (DT a) (NN bug)))" }), "Not a bug.");
+    expect(units[0]!.outcome).toBe("fragment");
+    expect(units[0]!.reason).toContain("FRAG/no-VP");
+  });
+
+  it("with the rule-based parser, matches the sync default exactly", async () => {
+    const text = "Birds sing and dogs bark; the owl hooted. A blue car.";
+    expect(await parseDocumentWith(ruleBasedParser, text)).toEqual(parseDocument(text));
+    expect(await readDocumentWith(ruleBasedParser, text)).toEqual(readDocument(text));
   });
 });
