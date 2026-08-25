@@ -26,6 +26,8 @@ import {
   lexVagueAttributionRule,
 } from "./rules/lexical.js";
 import { reframeRule } from "./rules/reframe.js";
+import { tricolonRule } from "./rules/tricolon.js";
+import { anaphoraRule } from "./rules/anaphora.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
@@ -42,12 +44,14 @@ export const RULES: readonly TropeRule[] = [
   lexVagueAttributionRule,
   // --- syntactic ---
   reframeRule,
+  tricolonRule,
   // --- formatting ---
   boldFirstBulletRule,
   emDashDensityRule,
   listicleInTrenchCoatRule,
   unicodeDecorationRule,
   // --- discourse ---
+  anaphoraRule,
 ];
 
 // Two rules sharing an id would make findings indistinguishable and dedupe against each other.
