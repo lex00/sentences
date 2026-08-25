@@ -15,7 +15,7 @@ const twoOrdinalsPlusOther = [
   "",
   "The second wall is the lack of delegated access.",
   "",
-  "Something else entirely follows here.",
+  "A completely unrelated note follows here.",
 ].join("\n");
 
 const interrupted = [
