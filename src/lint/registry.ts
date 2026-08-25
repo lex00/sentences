@@ -28,6 +28,8 @@ import {
 import { reframeRule } from "./rules/reframe.js";
 import { tricolonRule } from "./rules/tricolon.js";
 import { anaphoraRule } from "./rules/anaphora.js";
+import { deadMetaphorRule } from "./rules/dead-metaphor.js";
+import { dilutionRule, nearDuplicateRule } from "./rules/repetition.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
@@ -52,6 +54,9 @@ export const RULES: readonly TropeRule[] = [
   unicodeDecorationRule,
   // --- discourse ---
   anaphoraRule,
+  deadMetaphorRule,
+  dilutionRule,
+  nearDuplicateRule,
 ];
 
 // Two rules sharing an id would make findings indistinguishable and dedupe against each other.
