@@ -31,10 +31,13 @@ import {
   lexStakesInflationRule,
   lexVagueAttributionRule,
 } from "./rules/lexical.js";
+import { mirroredClausesRule } from "./rules/mirrored-clauses.js";
 import { reframeRule } from "./rules/reframe.js";
 import { tricolonRule } from "./rules/tricolon.js";
 import { anaphoraRule } from "./rules/anaphora.js";
+import { aphoristicEnderRule } from "./rules/aphoristic-ender.js";
 import { deadMetaphorRule } from "./rules/dead-metaphor.js";
+import { elegantVariationRule } from "./rules/elegant-variation.js";
 import { dilutionRule, nearDuplicateRule } from "./rules/repetition.js";
 import { selfPosedQuestionRule } from "./rules/self-posed-question.js";
 import { falseRangeRule } from "./rules/false-range.js";
@@ -65,6 +68,7 @@ export const RULES: readonly TropeRule[] = [
   // --- syntactic ---
   falseRangeRule,
   ingTackOnRule,
+  mirroredClausesRule,
   reframeRule,
   selfPosedQuestionRule,
   servesAsDodgeRule,
@@ -76,9 +80,11 @@ export const RULES: readonly TropeRule[] = [
   unicodeDecorationRule,
   // --- discourse ---
   anaphoraRule,
+  aphoristicEnderRule,
   countdownRule,
   deadMetaphorRule,
   dilutionRule,
+  elegantVariationRule,
   nearDuplicateRule,
   punchyFragmentsRule,
 ];
