@@ -65,15 +65,14 @@ describe("discourse/punchy-fragments", () => {
     expect(punchyFragmentsRule.detect(doc)).toEqual([]);
   });
 
-  it("a short reframe pair also earns a run finding under this rule's outcome-based contract", () => {
-    // Both units come back "fragment" via the chunker's copula-losing bug (pinned in
-    // document.test.ts), both are <= 4 words, and they are adjacent — that IS a run under this
-    // rule's contract. See fragments.ts's header comment for why this is accepted, not patched.
+  it("a short reframe pair is no longer a fragment run — both units lower (engine bug #31 fixed)", () => {
+    // Used to be pinned the other way: the tagger dropped the contracted copula, both units came
+    // back "fragment", and this rule's outcome-based contract turned the pair into a run. With
+    // #31 fixed both units lower, so the reframe rule owns this text and this rule stays quiet —
+    // which is what fragments.ts's header wanted all along.
     const doc = docFromReadDocument("It's not bold. It's backwards.");
-    expect(doc.units.map((u) => u.outcome)).toEqual(["fragment", "fragment"]);
-    const findings = punchyFragmentsRule.detect(doc);
-    expect(findings).toHaveLength(1);
-    expect(findings[0]!.severity).toBe("medium"); // run of exactly 2
+    expect(doc.units.map((u) => u.outcome)).toEqual(["lowered", "lowered"]);
+    expect(punchyFragmentsRule.detect(doc)).toEqual([]);
   });
 
   it("suppresses fragments that sit inside markdown structure (heading/bullet) via makeDoc", () => {
@@ -138,12 +137,11 @@ describe("discourse/countdown", () => {
 
   it('never treats "It\'s not X" as a negated opener — the initial token must literally be Not/No', () => {
     // Cross-rule precision case from the issue: "It's not bold. It's backwards." is a reframe
-    // (negative parallelism), not a countdown. Both units come back "fragment" (bug in the
-    // chunker, pinned in document.test.ts as "chunker loses the copula"), so outcome alone can't
-    // save us here — the guard is requiring the literal first word token to be Not/No, and "It's"
-    // (or "It", split by a real tokenizer) never is.
+    // (negative parallelism), not a countdown. The guard is the literal first word token being
+    // Not/No — "It's" (or "It", split by a real tokenizer) never is — so this held while the
+    // units came back "fragment" (engine bug #31) and still holds now that they lower.
     const doc = docFromReadDocument("It's not bold. It's backwards.");
-    expect(doc.units.map((u) => u.outcome)).toEqual(["fragment", "fragment"]);
+    expect(doc.units.map((u) => u.outcome)).toEqual(["lowered", "lowered"]);
     expect(countdownRule.detect(doc)).toEqual([]);
   });
 

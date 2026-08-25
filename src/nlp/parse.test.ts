@@ -56,6 +56,56 @@ describe("in-browser parser -> IR", () => {
   });
 });
 
+// Engine bug #31: compromise hands the second half of a contraction back as a ZERO-WIDTH term, and
+// the tagger used to drop it — so "It's not bold" tagged PRP RB JJ, had no verb at all, and
+// readDocument called it a fragment. tagger.ts now splits the clitic off its host and expands it.
+describe("contracted verbs (#31)", () => {
+  it("lowers a contracted copula to subject + verb + negation + predicate adjective", () => {
+    const c = ir("It's not bold.");
+    expect((c.subject as Nominal).head.text).toBe("It");
+    expect((c.verb as Verbal).head.text).toBe("is"); // expanded: lower.ts's COPULA list holds "is", never "'s"
+    expect(modWords(c.verb as Verbal)).toEqual(["not"]);
+    expect(c.complement).toMatchObject({ kind: "predicateAdj", value: { text: "bold" } });
+  });
+
+  it("keeps the copula reading for a predicate noun: “He's a doctor.”", () => {
+    const c = ir("He's a doctor.");
+    expect((c.verb as Verbal).head.text).toBe("is");
+    expect(c.complement?.kind).toBe("predicateNoun"); // not a direct object
+  });
+
+  it.each([
+    ["They're happy.", "are"],
+    ["I'm tired.", "am"],
+    ["That's not bold.", "is"],
+  ])("expands the copula clitic in %s", (text, verb) => {
+    expect(((ir(text) as { verb: Verbal }).verb).head.text).toBe(verb);
+  });
+
+  it.each([
+    ["It's been raining.", "has been raining"], // "'s" before a participle is HAVE, not BE
+    ["They'll come.", "will come"],
+    ["She'd left already.", "had left"], // vs. the modal reading below
+    ["She'd like tea.", "would like"],
+    ["I've seen it.", "have seen"],
+  ])("expands the auxiliary/modal clitic in %s", (text, verb) => {
+    expect(((ir(text) as { verb: Verbal }).verb).head.text).toBe(verb);
+  });
+
+  it("leaves an n't-fused verb fused — the negation is still in the surface word", () => {
+    // Not split, on purpose: the whole downstream stack reads the negation off the fused head
+    // (lint/ir-query's stripContractedNegation). These already parsed before #31 and still do.
+    expect((ir("It isn't bold.").verb as Verbal).head.text).toBe("isn't");
+    expect((ir("He doesn't run.").verb as Verbal).head.text).toBe("doesn't run");
+  });
+
+  it("leaves a possessive 's alone (it is not a dropped verb)", () => {
+    const c = ir("The city's heritage is rich.");
+    expect((c.subject as Nominal).head.text).toBe("heritage");
+    expect(modWords(c.subject as Nominal)).toEqual(["The", "city's"]);
+  });
+});
+
 describe("infinitives and 'to' disambiguation", () => {
   it("infinitive is its own construction, not joined to the verb: 'I need to take a big old walk'", () => {
     const c = ir("i need to take a big old walk");
