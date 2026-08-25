@@ -33,6 +33,8 @@ import { dilutionRule, nearDuplicateRule } from "./rules/repetition.js";
 import { selfPosedQuestionRule } from "./rules/self-posed-question.js";
 import { falseRangeRule } from "./rules/false-range.js";
 import { countdownRule, punchyFragmentsRule } from "./rules/fragments.js";
+import { ingTackOnRule } from "./rules/ing-tackon.js";
+import { servesAsDodgeRule } from "./rules/serves-as.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
@@ -49,8 +51,10 @@ export const RULES: readonly TropeRule[] = [
   lexVagueAttributionRule,
   // --- syntactic ---
   falseRangeRule,
+  ingTackOnRule,
   reframeRule,
   selfPosedQuestionRule,
+  servesAsDodgeRule,
   tricolonRule,
   // --- formatting ---
   boldFirstBulletRule,
