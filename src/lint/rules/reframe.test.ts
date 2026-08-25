@@ -595,6 +595,19 @@ describe("end to end through readDocument", () => {
     expect(found).toHaveLength(1);
     expect(textAt(doc, found[0]!.span)).toBe("not bold. It's backwards");
   });
+
+  test("a fused “isn't” answered by an anaphor: “Growth isn't a destination. It's a journey.”", () => {
+    // The n't-fused be-form stays fused in the verb head (tagger.ts, #31), so lower.ts has to
+    // strip the "n't" before its copula test or "a destination" classifies as a DIRECT OBJECT and
+    // isCopular's complement check fails — which is what used to leave this pair unfound.
+    const doc = realDoc("Growth isn't a destination. It's a journey.");
+    const first = doc.units[0]!.clauses![0]!;
+    expect(first.complement?.kind).toBe("predicateNoun");
+    const found = detect(doc);
+    expect(found).toHaveLength(1);
+    expect(textAt(doc, found[0]!.span)).toBe("isn't a destination. It's a journey");
+    expect(found[0]!.message).toContain("“not destination” answered by “journey”");
+  });
 });
 
 // --- wiring ---

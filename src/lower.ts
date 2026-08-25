@@ -279,7 +279,22 @@ function lowerInfinitive(inf: Tree): Infinitive {
 }
 
 const asVerbalFlat = (c: Compound<PredicatePart>): Verbal => ({ head: w(c.items.map((i) => i.verb.head.text).join(` ${c.conjunction.text} `)), modifiers: [] });
-const isCopula = (verbWords: string[]) => verbWords.some((v) => COPULA.has(v.toLowerCase()));
+
+// A negative contraction stays FUSED in the verb head — src/nlp/tagger.ts leaves "isn't" as one
+// token on purpose (the negation is still visible in the surface word, and lint/ir-query reads it
+// back off the head), so the copula test has to look past a trailing "n't". Without this,
+// "Growth isn't a destination" made "a destination" a DIRECT OBJECT rather than a predicate noun.
+//
+// Only be-form STEMS survive the strip, which is exactly the wanted narrowness: "doesn't" -> "does"
+// and "won't" -> "wo" are not in COPULA, so a fused auxiliary or modal still takes an ordinary
+// object. "ain't" has no stem to strip and is listed outright.
+const FUSED_COPULA = new Set(["ain't"]);
+const stripContractedNegation = (word: string): string => (/n't$/i.test(word) ? word.slice(0, -3) : word);
+const isCopulaWord = (v: string): boolean => {
+  const lc = v.toLowerCase();
+  return COPULA.has(lc) || FUSED_COPULA.has(lc) || COPULA.has(stripContractedNegation(lc));
+};
+const isCopula = (verbWords: string[]) => verbWords.some(isCopulaWord);
 
 // Gather adverb/PP modifiers from a verbal phrase (shared by gerund/infinitive lowering).
 function verbalModifiers(src: Tree): Modifier[] {
