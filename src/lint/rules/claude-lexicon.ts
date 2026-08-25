@@ -18,6 +18,7 @@ import type { DocAnalysis, Finding, Severity, Span, TropeRule } from "../types.j
 import { textAt } from "../span.js";
 import type { Lexicon, LexiconEntry } from "../lexicons/index.js";
 import { entryHits } from "./lexical.js";
+import { claudeTechnicalVocabulary } from "../lexicons/claude-technical-vocabulary.js";
 
 const SEVERITY_STEPS: readonly Severity[] = ["candidate", "low", "medium", "high"];
 
@@ -58,3 +59,21 @@ export function buildClaudeLexiconRule(lexicon: Lexicon, explanation: string): T
     },
   };
 }
+
+// --- the concrete rule (issue #34) ------------------------------------------------------------
+// "load-bearing" is deliberately absent from claudeTechnicalVocabulary's data (see that file's
+// header) — its literal-sense gate lives in rules/claude-figurative.ts, which the ungated entries
+// below don't need.
+
+const CLAUDE_TECHNICAL_VOCABULARY_EXPLANATION =
+  `"Battle-tested", "footgun", "escape hatch", "happy path", "blast radius", "table stakes", ` +
+  `"north star", "single source of truth", "cognitive load", "mental model", "guardrails", ` +
+  `"seamless", "idiomatic", "opinionated" — this is Claude's dev-prose idiolect: real engineering ` +
+  `words that show up so often in AI-written docs and PRs that one instance already reads as ` +
+  `machine-flavored, whoever typed it. Swap in the plainer word your own voice would reach for, or ` +
+  `just say what the thing does.`;
+
+export const claudeTechnicalVocabularyRule: TropeRule = buildClaudeLexiconRule(
+  claudeTechnicalVocabulary,
+  CLAUDE_TECHNICAL_VOCABULARY_EXPLANATION,
+);
