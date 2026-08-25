@@ -7,13 +7,17 @@
 
 import type { TropeRule } from "./types.js";
 import { demoIntensifierRule } from "./rules/demo.js";
+import { tricolonRule } from "./rules/tricolon.js";
+import { anaphoraRule } from "./rules/anaphora.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
   // --- syntactic ---
+  tricolonRule,
   // --- formatting ---
   // --- discourse ---
+  anaphoraRule,
 ];
 
 // Two rules sharing an id would make findings indistinguishable and dedupe against each other.
