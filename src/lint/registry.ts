@@ -7,13 +7,67 @@
 
 import type { TropeRule } from "./types.js";
 import { demoIntensifierRule } from "./rules/demo.js";
+import {
+  boldFirstBulletRule,
+  emDashDensityRule,
+  listicleInTrenchCoatRule,
+  unicodeDecorationRule,
+} from "./rules/formatting.js";
+import {
+  lexDelveFamilyRule,
+  lexFalseSuspenseRule,
+  lexFillerTransitionsRule,
+  lexInventedConceptLabelsRule,
+  lexMagicAdverbsRule,
+  lexOrnateNounsRule,
+  lexPedagogicalVoiceRule,
+  lexSignpostsRule,
+  lexStakesInflationRule,
+  lexVagueAttributionRule,
+} from "./rules/lexical.js";
+import { reframeRule } from "./rules/reframe.js";
+import { tricolonRule } from "./rules/tricolon.js";
+import { anaphoraRule } from "./rules/anaphora.js";
+import { deadMetaphorRule } from "./rules/dead-metaphor.js";
+import { dilutionRule, nearDuplicateRule } from "./rules/repetition.js";
+import { selfPosedQuestionRule } from "./rules/self-posed-question.js";
+import { falseRangeRule } from "./rules/false-range.js";
+import { countdownRule, punchyFragmentsRule } from "./rules/fragments.js";
+import { ingTackOnRule } from "./rules/ing-tackon.js";
+import { servesAsDodgeRule } from "./rules/serves-as.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
+  lexDelveFamilyRule,
+  lexFalseSuspenseRule,
+  lexFillerTransitionsRule,
+  lexInventedConceptLabelsRule,
+  lexMagicAdverbsRule,
+  lexOrnateNounsRule,
+  lexPedagogicalVoiceRule,
+  lexSignpostsRule,
+  lexStakesInflationRule,
+  lexVagueAttributionRule,
   // --- syntactic ---
+  falseRangeRule,
+  ingTackOnRule,
+  reframeRule,
+  selfPosedQuestionRule,
+  servesAsDodgeRule,
+  tricolonRule,
   // --- formatting ---
+  boldFirstBulletRule,
+  emDashDensityRule,
+  listicleInTrenchCoatRule,
+  unicodeDecorationRule,
   // --- discourse ---
+  anaphoraRule,
+  countdownRule,
+  deadMetaphorRule,
+  dilutionRule,
+  nearDuplicateRule,
+  punchyFragmentsRule,
 ];
 
 // Two rules sharing an id would make findings indistinguishable and dedupe against each other.

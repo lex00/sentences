@@ -11,7 +11,9 @@
 // Both are rule-based and synchronous — the zero-download default. The *With variants take the
 // same async Parser seam analyze() uses ({ parse(text): Promise<Tree> }), so a loaded ModelParser
 // gives the whole document neural-quality parses through one code path, falling back to the
-// rule-based chunker per unit rather than declaring the unit unparseable.
+// rule-based chunker per unit rather than declaring the unit unparseable. readDocumentUnitsWith
+// additionally hands back each unit's parse tree — the lint layer reads fine POS tags off it and
+// inspects the FRAG trees, and re-parsing to recover it would double the model's work.
 //
 // Boundaries are found by scanning rather than String.split so every unit carries accurate char
 // offsets into the ORIGINAL text: text.slice(span.start, span.end) === unit, terminating
@@ -65,19 +67,20 @@ const rootLabel = (t: Tree): string => {
 // else is the parser or the lowering falling over on a unit that does have a predicate.
 const treeReason = (t: Tree, err: Error): string => `${rootLabel(t)}${hasVP(t) ? "" : "/no-VP"}: ${err.message}`;
 
-// A unit's outcome plus, when it lowered, the Sentence it lowered to. DocUnit carries the clauses
-// but not their conjunctions; the diagram path needs those, so it rides along here instead of
-// widening the shared type.
-type UnitResult = { doc: DocUnit; sentence?: Sentence };
+// A unit's outcome plus what produced it: the parse tree (whenever one was obtained, fragments
+// included — rules read fine POS tags off it and want to inspect FRAG trees) and, when it lowered,
+// the Sentence. DocUnit carries the clauses but not their conjunctions; the diagram path needs
+// those, so they ride along here instead of widening the shared type.
+type UnitResult = { doc: DocUnit; tree?: Tree; sentence?: Sentence };
 
-// Lower one already-parsed unit, or say why it didn't.
+// Lower one already-parsed unit, or say why it didn't. Either way the tree comes back.
 function fromTree(unit: string, span: Span, tree: Tree): UnitResult {
   try {
     const sentence = lowerSentence(tree);
-    return { doc: { unit, span, outcome: "lowered", clauses: sentence.clauses }, sentence };
+    return { doc: { unit, span, outcome: "lowered", clauses: sentence.clauses }, tree, sentence };
   } catch (e) {
     const reason = treeReason(tree, e as Error);
-    return { doc: { unit, span, outcome: hasVP(tree) ? "unparseable" : "fragment", reason } };
+    return { doc: { unit, span, outcome: hasVP(tree) ? "unparseable" : "fragment", reason }, tree };
   }
 }
 
@@ -149,6 +152,14 @@ async function readResultsWith(parser: Parser, text: string): Promise<UnitResult
   for (const u of splitUnits(text)) out.push(await readUnitWith(parser, u.unit, u.span));
   return out;
 }
+
+// A unit's outcome together with the parse it came from. The tree is the one whose lowering
+// produced `doc.clauses` (so lowerSentence(tree) reproduces them); when nothing lowered it is
+// whatever parse we did get, FRAG root and all, and it is absent only when no parser produced one.
+export type DocUnitParse = { doc: DocUnit; tree?: Tree };
+
+export const readDocumentUnitsWith = async (parser: Parser, text: string): Promise<DocUnitParse[]> =>
+  (await readResultsWith(parser, text)).map((r) => (r.tree ? { doc: r.doc, tree: r.tree } : { doc: r.doc }));
 
 export const readDocumentWith = async (parser: Parser, text: string): Promise<DocUnit[]> =>
   (await readResultsWith(parser, text)).map((r) => r.doc);
