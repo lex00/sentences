@@ -13,6 +13,8 @@ import {
   listicleInTrenchCoatRule,
   unicodeDecorationRule,
 } from "./rules/formatting.js";
+import { claudeAssistantVoiceRule } from "./rules/claude-assistant-voice.js";
+import { claudeDiscourseMarkersRule } from "./rules/claude-discourse-markers.js";
 import {
   lexDelveFamilyRule,
   lexFalseSuspenseRule,
@@ -39,6 +41,8 @@ import { servesAsDodgeRule } from "./rules/serves-as.js";
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
+  claudeAssistantVoiceRule,
+  claudeDiscourseMarkersRule,
   lexDelveFamilyRule,
   lexFalseSuspenseRule,
   lexFillerTransitionsRule,
