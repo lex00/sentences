@@ -52,6 +52,17 @@ text → neural constituency parse (`src/parser/`) → Clause IR (`src/lower.ts`
 (`src/layout.ts`) → Scene → Canvas / WebGPU or SVG renderer. The parse → IR lowering is the piece
 no existing tool provides. `DESIGN.md` covers the architecture; `RESEARCH.md` the motivating gap.
 
+## De-stink
+
+`destink.html` is a second, thin app on the same engine: a deterministic linter for AI-writing
+tropes, built off the same constituency parse and Clause IR rather than a second model. It covers
+the syntactic, lexical, formatting, and measurable-discourse tiers (repetition, anaphora, dilution)
+with located findings, a stink score, and mechanical fixes limited to deleting, moving, or
+lightly repairing the author's own words; semantic tropes (stakes inflation as tone, false
+vulnerability, dead metaphors beyond lemma counting) are out of scope for a parser and are not
+claimed. See `docs/DESTINK.md` for the architecture and `scripts/destink-score.mjs` for the
+no-browser CLI.
+
 ## License
 
 MIT. See `LICENSE`.

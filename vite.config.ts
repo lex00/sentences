@@ -7,8 +7,15 @@ export default defineConfig({
   base: process.env.VITE_BASE ?? "/",
   build: {
     rollupOptions: {
-      // thin apps on one engine: the diagram tool (index) and the game modes
-      input: { main: "index.html", play: "play.html", game: "game.html", drag: "drag.html", free: "free.html" },
+      // thin apps on one engine: the diagram tool (index), the game modes, and the de-stink linter
+      input: {
+        main: "index.html",
+        play: "play.html",
+        game: "game.html",
+        drag: "drag.html",
+        free: "free.html",
+        destink: "destink.html",
+      },
     },
   },
   // agent worktrees nest under .claude/worktrees; without the exclude, vitest in the main
