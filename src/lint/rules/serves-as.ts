@@ -36,15 +36,15 @@
 //     defaultSeverity ("low") — repetition is the only corroboration a structural-only check can
 //     use for mark/represent, mirroring rules/demo.ts's "count first, judge second".
 //
-// PARSER GAP — reported per #18's ground rules, NOT fixed here (src/nlp/parse.ts is out of scope
-// for this issue): the rule-based chunker currently drops "as X" entirely after serve/stand.
-// Verified: parse("The building serves as a reminder of the city's heritage.") returns
-// `(S (NP (DT The) (NN building)) (VP (VBZ serves)))` — nothing after "serves" at all, for both
-// the dodging and the comparative example alike. So clause.verb.modifiers is always [] for these
-// two verbs through today's readDocument, and the phrasal frame — though implemented exactly as
-// specified below and pinned against hand-built Clause fixtures in serves-as.test.ts — cannot
-// fire end-to-end today; see that file's "parser gap" describe block for the pinned reproduction.
-// mark/represent are unaffected: plain transitive objects parse fine today (verified against
+// PARSER GAP — reported per #18's ground rules and since CLOSED in the engine (issue #33). The
+// rule-based chunker used to drop "as X" entirely after serve/stand:
+// parse("The building serves as a reminder of the city's heritage.") returned
+// `(S (NP (DT The) (NN building)) (VP (VBZ serves)))`, so clause.verb.modifiers was always [] and
+// the phrasal frame could only be tested against hand-built Clause fixtures. parse.ts now reads a
+// subordinator with no clause after it as a preposition, so the "as" PP reaches the IR and this
+// frame fires through readDocument — including the discriminator above, since the comparative's
+// "as he can" attaches to the object. See serves-as.test.ts's end-to-end describe block.
+// mark/represent were never affected: plain transitive objects parse fine (verified against
 // readDocument — "represents a turning point" and "marks a turning point" both lower to an
 // ordinary directObject complement, and passive voice, "is represented by ...", correctly leaves
 // clause.complement null, which the bare frame's own transitive-frame requirement already handles

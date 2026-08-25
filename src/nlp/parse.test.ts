@@ -56,6 +56,122 @@ describe("in-browser parser -> IR", () => {
   });
 });
 
+// Engine bug #31: compromise hands the second half of a contraction back as a ZERO-WIDTH term, and
+// the tagger used to drop it — so "It's not bold" tagged PRP RB JJ, had no verb at all, and
+// readDocument called it a fragment. tagger.ts now splits the clitic off its host and expands it.
+describe("contracted verbs (#31)", () => {
+  it("lowers a contracted copula to subject + verb + negation + predicate adjective", () => {
+    const c = ir("It's not bold.");
+    expect((c.subject as Nominal).head.text).toBe("It");
+    expect((c.verb as Verbal).head.text).toBe("is"); // expanded: lower.ts's COPULA list holds "is", never "'s"
+    expect(modWords(c.verb as Verbal)).toEqual(["not"]);
+    expect(c.complement).toMatchObject({ kind: "predicateAdj", value: { text: "bold" } });
+  });
+
+  it("keeps the copula reading for a predicate noun: “He's a doctor.”", () => {
+    const c = ir("He's a doctor.");
+    expect((c.verb as Verbal).head.text).toBe("is");
+    expect(c.complement?.kind).toBe("predicateNoun"); // not a direct object
+  });
+
+  it.each([
+    ["They're happy.", "are"],
+    ["I'm tired.", "am"],
+    ["That's not bold.", "is"],
+  ])("expands the copula clitic in %s", (text, verb) => {
+    expect(((ir(text) as { verb: Verbal }).verb).head.text).toBe(verb);
+  });
+
+  it.each([
+    ["It's been raining.", "has been raining"], // "'s" before a participle is HAVE, not BE
+    ["They'll come.", "will come"],
+    ["She'd left already.", "had left"], // vs. the modal reading below
+    ["She'd like tea.", "would like"],
+    ["I've seen it.", "have seen"],
+  ])("expands the auxiliary/modal clitic in %s", (text, verb) => {
+    expect(((ir(text) as { verb: Verbal }).verb).head.text).toBe(verb);
+  });
+
+  it("leaves an n't-fused verb fused — the negation is still in the surface word", () => {
+    // Not split, on purpose: the whole downstream stack reads the negation off the fused head
+    // (lint/ir-query's stripContractedNegation). These already parsed before #31 and still do.
+    expect((ir("It isn't bold.").verb as Verbal).head.text).toBe("isn't");
+    expect((ir("He doesn't run.").verb as Verbal).head.text).toBe("doesn't run");
+  });
+
+  it("leaves a possessive 's alone (it is not a dropped verb)", () => {
+    const c = ir("The city's heritage is rich.");
+    expect((c.subject as Nominal).head.text).toBe("heritage");
+    expect(modWords(c.subject as Nominal)).toEqual(["The", "city's"]);
+  });
+});
+
+// Engine bug #33: two shapes the chunker used to drop on the floor rather than mis-attach — an
+// "as"-phrase after serve/stand, and a comma-set-off trailing participial phrase.
+describe("dropped phrases (#33)", () => {
+  it("keeps an as-phrase after serve/stand as a prep modifier on the verb", () => {
+    const c = ir("The building serves as a reminder of the city's heritage.");
+    expect((c.verb as Verbal).head.text).toBe("serves");
+    const pp = (c.verb as Verbal).modifiers.find((m) => m.kind === "prep");
+    expect(pp && pp.kind === "prep" && pp.prep.text).toBe("as");
+    expect(pp && pp.kind === "prep" && pp.object.head.text).toBe("reminder");
+  });
+
+  it("attaches an “as ... as” comparative clause to the object, not the verb", () => {
+    // The discriminator lint/rules/serves-as.ts relies on to tell the comparative apart from the
+    // dodge: "as many tables" is the prep object, and "as he can" is a modifier ON that object.
+    const c = ir("The waiter serves as many tables as he can.");
+    const mods = (c.verb as Verbal).modifiers;
+    expect(mods.filter((m) => m.kind === "clause")).toHaveLength(0);
+    const pp = mods.find((m) => m.kind === "prep");
+    const obj = pp && pp.kind === "prep" ? pp.object : null;
+    expect(obj?.head.text).toBe("tables");
+    expect(obj?.modifiers.some((m) => m.kind === "clause" && m.connector.text === "as")).toBe(true);
+  });
+
+  it("still reads a subordinator with a clause after it as a clause", () => {
+    const c = ir("The dog slept because dogs barked."); // the PP fallback must not steal this
+    const m = (c.verb as Verbal).modifiers.find((x) => x.kind === "clause");
+    expect(m && m.kind === "clause" && m.connector.text).toBe("because");
+  });
+
+  it("keeps a trailing participial phrase as a participle on the subject", () => {
+    const c = ir("The station opened in 1994, highlighting its importance.");
+    expect((c.verb as Verbal).head.text).toBe("opened");
+    const p = (c.subject as Nominal).modifiers.find((m) => m.kind === "participle");
+    expect(p && p.kind === "participle" && p.verb.text).toBe("highlighting");
+    expect(p && p.kind === "participle" && p.object?.head.text).toBe("importance");
+  });
+
+  it("does not swallow a comma-set-off participle into the verb chain", () => {
+    const c = ir("The dog barked, wagging its tail.");
+    expect((c.verb as Verbal).head.text).toBe("barked"); // not "barked wagging"
+    expect((c.subject as Nominal).modifiers.some((m) => m.kind === "participle")).toBe(true);
+  });
+
+  it("handles a participle set off BETWEEN the subject and the predicate", () => {
+    // Used to be read as one verb chain, "barking chased"; the phrase now lifts out and the real
+    // predicate is found behind it.
+    const c = ir("The dog, barking furiously, chased the cat.");
+    expect((c.verb as Verbal).head.text).toBe("chased");
+    expect(c.complement).toMatchObject({ kind: "directObject" });
+    const p = (c.subject as Nominal).modifiers.find((m) => m.kind === "participle");
+    expect(p && p.kind === "participle" && p.verb.text).toBe("barking");
+  });
+
+  it("folds a standalone comma token in too, so spaced input parses the same", () => {
+    const c = ir("The station opened in 1994 , highlighting its importance.");
+    expect((c.subject as Nominal).modifiers.some((m) => m.kind === "participle")).toBe(true);
+  });
+
+  it("leaves an integrated (comma-less) participle alone", () => {
+    // "The dog barking furiously bit me" — no comma, so no set-off phrase to lift out; this stays
+    // the chunker's existing (imperfect) reading rather than gaining a participle on the subject.
+    const c = ir("The dog barking furiously bit me.");
+    expect((c.subject as Nominal).modifiers.some((m) => m.kind === "participle")).toBe(false);
+  });
+});
+
 describe("infinitives and 'to' disambiguation", () => {
   it("infinitive is its own construction, not joined to the verb: 'I need to take a big old walk'", () => {
     const c = ir("i need to take a big old walk");

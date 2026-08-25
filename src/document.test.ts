@@ -3,7 +3,7 @@ import { parseDocument, parseDocumentWith, readDocument, readDocumentUnitsWith, 
 import { parseBracket, posTags } from "./ptb.js";
 import { lowerSentence } from "./lower.js";
 import type { Parser } from "./analyze.js";
-import type { Nominal } from "./ir.js";
+import type { Nominal, Verbal } from "./ir.js";
 
 describe("parseDocument (split on . ! ? ; :)", () => {
   it("skips a leading fragment and diagrams the real clause after a colon", () => {
@@ -85,9 +85,14 @@ const stub = (trees: Record<string, string>): Parser => ({
 });
 
 describe("readDocumentWith / parseDocumentWith (parser-agnostic)", () => {
-  it("lowers a unit the rule-based chunker can't, when the parser can", async () => {
+  it("prefers the supplied parser's own tree, with spans still indexing the original text", async () => {
     const text = "It's not bold. It's backwards.";
-    expect(readDocument(text).map((u) => u.outcome)).toEqual(["fragment", "fragment"]); // chunker loses the copula
+    // The chunker used to lose the contracted copula here and hand back two fragments (engine bug
+    // #31); it now recovers it, expanding the clitic to "is" — see nlp/tagger.test.ts.
+    const own = readDocument(text);
+    expect(own.map((u) => u.outcome)).toEqual(["lowered", "lowered"]);
+    expect((own[0]!.clauses![0]!.verb as Verbal).head.text).toBe("is");
+
     const units = await readDocumentWith(
       stub({
         "It's not bold": "(S (NP (PRP It)) (VP (VBZ 's) (ADJP (RB not) (JJ bold))))",
@@ -96,6 +101,7 @@ describe("readDocumentWith / parseDocumentWith (parser-agnostic)", () => {
       text,
     );
     expect(units.map((u) => u.outcome)).toEqual(["lowered", "lowered"]);
+    expect((units[0]!.clauses![0]!.verb as Verbal).head.text).toBe("'s"); // the stub's tree, not the chunker's
     expect(units.map((u) => u.span.start)).toEqual([0, 15]); // spans still index the original text
   });
 

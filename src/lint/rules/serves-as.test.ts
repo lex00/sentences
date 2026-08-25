@@ -233,12 +233,21 @@ describe("serves-as-dodge — span behavior", () => {
   });
 });
 
-describe("serves-as-dodge — parser gap (reported, not fixed here)", () => {
-  it("the phrasal frame cannot fire through today's readDocument: the rule-based chunker drops \"as X\" after serve/stand entirely", () => {
+describe("serves-as-dodge — end to end through readDocument", () => {
+  it("the phrasal frame fires now that the chunker keeps the \"as\" phrase (engine bug #33)", () => {
+    // Was pinned as a gap: parse() dropped everything after "serves", so clause.verb.modifiers was
+    // always empty and this frame could only be tested against hand-built IR. The chunker now
+    // attaches "as a reminder ..." as a prep modifier on the verb.
     const dodge = analyzeReal("The building serves as a reminder of the city's heritage.");
-    expect(detect(dodge)).toEqual([]); // would fire if clause.verb.modifiers carried the "as" PP — it never does today
+    const findings = detect(dodge);
+    expect(findings).toHaveLength(1);
+    expect(textAt(dodge, findings[0]!.span)).toBe("serves");
+    expect(findings[0]!.severity).toBe("medium"); // phrasal = defaultSeverity shifted up one
+
+    // And the discriminator holds on real parses, not just fixtures: the comparative's own
+    // "as he can" clause hangs off the object, so isPlainNominal rejects it.
     const legit = analyzeReal("The waiter serves as many tables as he can.");
-    expect(detect(legit)).toEqual([]); // same parser gap; also correct for the right reason once the gap closes
+    expect(detect(legit)).toEqual([]);
   });
 
   it("the bare frame DOES fire through today's readDocument — plain transitive objects parse fine", () => {

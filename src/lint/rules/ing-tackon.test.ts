@@ -202,19 +202,19 @@ describe("ing-tackon — must-not-fire acceptance case", () => {
   });
 });
 
-describe("ing-tackon — parser gap (reported, not fixed here)", () => {
-  it("path 1 cannot fire through today's readDocument for #18's own example: parse() drops the trailing participle from the tree entirely", () => {
+describe("ing-tackon — end to end through readDocument", () => {
+  it("path 1 fires for #18's own example now that the chunker keeps the trailing participle (engine bug #33)", () => {
     const text = "The station opened in 1994, highlighting its importance.";
-    // Confirmed by hand: parse(text) returns `(S (NP The station) (VP (VBD opened) (PP in 1994)))`
-    // — nothing about "highlighting" survives into the tree lower.ts sees, so no Clause here ever
-    // carries a participle modifier. Path 2 is what actually catches this sentence today.
+    // Was pinned as a gap: parse() returned `(S (NP The station) (VP (VBD opened) (PP in 1994)))`
+    // and dropped ", highlighting its importance" outright, so only path 2 (token shape) could
+    // catch this. The participle now survives as a modifier on the subject.
     const doc = analyzeReal(text);
     const clause = doc.units[0]!.clauses![0]!;
-    expect("modifiers" in clause.subject && clause.subject.modifiers.some((m) => m.kind === "participle")).toBe(false);
+    expect("modifiers" in clause.subject && clause.subject.modifiers.some((m) => m.kind === "participle")).toBe(true);
 
     const findings = detect(doc);
-    expect(findings).toHaveLength(1); // path 2 (fallback) catches it
+    expect(findings).toHaveLength(1); // path 1 confirms the unit, so path 2 skips it — never both
     expect(textAt(doc, findings[0]!.span)).toBe("highlighting");
-    expect(findings[0]!.severity).toBe("candidate");
+    expect(findings[0]!.severity).toBe("low"); // IR-confirmed, not the fallback's "candidate"
   });
 });

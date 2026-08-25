@@ -27,15 +27,13 @@
 //   Applies only to units path 1 did NOT already confirm, so the same tack-on is never reported
 //   twice under two different rule findings for one span.
 //
-// PARSER GAP — reported per #18's ground rules, NOT fixed here (src/nlp/parse.ts is out of scope
-// for this issue). Checked by hand against the exact example #18 asks about:
-// `readDocument("The station opened in 1994, highlighting its importance.")` lowers successfully
-// but the resulting Clause has NO participle anywhere — parse() itself drops ", highlighting its
-// importance" from the tree before lower.ts ever sees it (`parse(...)` returns
-// `(S (NP The station) (VP (VBD opened) (PP in 1994)))`, full stop). So path 1 is implemented and
-// pinned against hand-built Clause fixtures in ing-tackon.test.ts (and will start firing through
-// readDocument the day that parser gap closes), but cannot fire end-to-end today — path 2 is what
-// actually catches this example through readDocument; see ing-tackon.test.ts's "parser gap"
+// PARSER GAP — reported per #18's ground rules and since CLOSED in the engine (issue #33). For the
+// exact example #18 asks about, `parse("The station opened in 1994, highlighting its importance.")`
+// used to return `(S (NP The station) (VP (VBD opened) (PP in 1994)))` and drop the trailing
+// phrase outright, so the lowered Clause carried no participle and only path 2 could catch it.
+// parse.ts now keeps a comma-set-off "-ing" phrase and lower.ts hangs it on the subject, so path 1
+// fires through readDocument — and path 2 stands down for that unit, as designed. Path 2 still
+// carries units whose parse doesn't reach path 1's shape. See ing-tackon.test.ts's end-to-end
 // describe block.
 
 import nlp from "compromise";

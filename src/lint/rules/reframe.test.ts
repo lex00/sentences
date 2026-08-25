@@ -4,10 +4,9 @@
 //                is a predicate over the IR, so this tests exactly what it claims to test, with no
 //                parser in the loop and nothing to go stale when the chunker changes.
 //   End-to-end   Real text through readDocument, to pin what the shipped no-model path actually
-//                catches today. These use UNCONTRACTED forms on purpose: "It's not bold." comes
-//                back a fragment from the rule-based tagger (engine bug #31, not this rule's to
-//                fix), so the contracted shapes are covered structurally above instead and will
-//                start working end-to-end for free once #31 lands or a model parser is loaded.
+//                catches today. Most of these use uncontracted forms; contracted copulas ("It's
+//                not bold.") used to come back a fragment from the rule-based tagger (engine bug
+//                #31) and are now covered end-to-end too, at the bottom of that block.
 //
 // (When #12's fixture format lands, the fixture-shaped cases here are the ones to retrofit.)
 
@@ -423,12 +422,14 @@ describe("end to end through readDocument", () => {
     expect(detect(realDoc(text))).toEqual([]);
   });
 
-  test("contracted copulas are a fragment on this path today (engine bug #31)", () => {
-    // Documents the known gap rather than pretending it works: nothing lowers, so nothing fires.
-    // The same sentences DO fire when the IR is present — see the structural tests above.
+  test("contracted copulas fire end-to-end now that the tagger keeps them (engine bug #31)", () => {
+    // Was pinned as a gap: the rule-based tagger dropped the zero-width "'s" term, so both units
+    // came back "fragment" and nothing fired. tagger.ts now restores the clitic as "is".
     const doc = realDoc("It's not bold. It's backwards.");
-    expect(doc.units.map((u) => u.outcome)).toEqual(["fragment", "fragment"]);
-    expect(detect(doc)).toEqual([]);
+    expect(doc.units.map((u) => u.outcome)).toEqual(["lowered", "lowered"]);
+    const found = detect(doc);
+    expect(found).toHaveLength(1);
+    expect(textAt(doc, found[0]!.span)).toBe("not bold. It's backwards");
   });
 });
 
