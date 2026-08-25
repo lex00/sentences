@@ -7,6 +7,8 @@
 
 import type { TropeRule } from "./types.js";
 import { demoIntensifierRule } from "./rules/demo.js";
+import { deadMetaphorRule } from "./rules/dead-metaphor.js";
+import { dilutionRule, nearDuplicateRule } from "./rules/repetition.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
@@ -14,6 +16,9 @@ export const RULES: readonly TropeRule[] = [
   // --- syntactic ---
   // --- formatting ---
   // --- discourse ---
+  deadMetaphorRule,
+  dilutionRule,
+  nearDuplicateRule,
 ];
 
 // Two rules sharing an id would make findings indistinguishable and dedupe against each other.
