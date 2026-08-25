@@ -17,9 +17,13 @@ import nlp from "compromise";
 import { POSS, AUX, SUBORD, REL, ADV } from "./lexicon.js";
 
 export type Tag = "DT" | "PRP$" | "PRP" | "IN" | "TO" | "SUB" | "REL" | "CC" | "MD" | "COP" | "AUX" | "RB" | "CD" | "JJ" | "X" | "," | ".";
-export type Tagged = { word: string; lc: string; tag: Tag; forced?: "V" };
+// `comma`: this word is followed by a comma. compromise carries punctuation in a term's trailing
+// whitespace rather than as a term of its own, so without this the chunker cannot see where a
+// phrase was set off — which is the only signal distinguishing a trailing participial phrase
+// ("opened in 1994, highlighting ...") from a verb chain ("kept highlighting ...").
+export type Tagged = { word: string; lc: string; tag: Tag; forced?: "V"; comma?: true };
 
-type Term = { text: string; tags?: string[] };
+type Term = { text: string; tags?: string[]; post?: string };
 
 function mapTags(word: string, tags: Set<string>): { tag: Tag; forced?: "V" } {
   const lc = word.toLowerCase();
@@ -81,6 +85,12 @@ export function tag(text: string): Tagged[] {
     const m = mapTags(word, tags);
     out.push(m.forced ? { word, lc: word.toLowerCase(), tag: m.tag, forced: m.forced } : { word, lc: word.toLowerCase(), tag: m.tag });
   };
+  // compromise keeps a comma in the preceding term's trailing whitespace, so record it on the word
+  // it follows (see Tagged.comma).
+  const markComma = (): void => {
+    const last = out[out.length - 1];
+    if (last) last.comma = true;
+  };
   for (const sent of sentences) {
     for (const t of sent.terms) {
       const tags = new Set(t.tags ?? []);
@@ -99,10 +109,12 @@ export function tag(text: string): Tagged[] {
         push(prev.word.slice(0, m.index), prevTags); // host word without the clitic, re-tagged
         push(full, tags);
         prevTags = tags;
+        if (t.post?.includes(",")) markComma();
         continue;
       }
       push(word, tags);
       prevTags = tags;
+      if (t.post?.includes(",")) markComma();
     }
   }
   return out;

@@ -106,6 +106,72 @@ describe("contracted verbs (#31)", () => {
   });
 });
 
+// Engine bug #33: two shapes the chunker used to drop on the floor rather than mis-attach — an
+// "as"-phrase after serve/stand, and a comma-set-off trailing participial phrase.
+describe("dropped phrases (#33)", () => {
+  it("keeps an as-phrase after serve/stand as a prep modifier on the verb", () => {
+    const c = ir("The building serves as a reminder of the city's heritage.");
+    expect((c.verb as Verbal).head.text).toBe("serves");
+    const pp = (c.verb as Verbal).modifiers.find((m) => m.kind === "prep");
+    expect(pp && pp.kind === "prep" && pp.prep.text).toBe("as");
+    expect(pp && pp.kind === "prep" && pp.object.head.text).toBe("reminder");
+  });
+
+  it("attaches an “as ... as” comparative clause to the object, not the verb", () => {
+    // The discriminator lint/rules/serves-as.ts relies on to tell the comparative apart from the
+    // dodge: "as many tables" is the prep object, and "as he can" is a modifier ON that object.
+    const c = ir("The waiter serves as many tables as he can.");
+    const mods = (c.verb as Verbal).modifiers;
+    expect(mods.filter((m) => m.kind === "clause")).toHaveLength(0);
+    const pp = mods.find((m) => m.kind === "prep");
+    const obj = pp && pp.kind === "prep" ? pp.object : null;
+    expect(obj?.head.text).toBe("tables");
+    expect(obj?.modifiers.some((m) => m.kind === "clause" && m.connector.text === "as")).toBe(true);
+  });
+
+  it("still reads a subordinator with a clause after it as a clause", () => {
+    const c = ir("The dog slept because dogs barked."); // the PP fallback must not steal this
+    const m = (c.verb as Verbal).modifiers.find((x) => x.kind === "clause");
+    expect(m && m.kind === "clause" && m.connector.text).toBe("because");
+  });
+
+  it("keeps a trailing participial phrase as a participle on the subject", () => {
+    const c = ir("The station opened in 1994, highlighting its importance.");
+    expect((c.verb as Verbal).head.text).toBe("opened");
+    const p = (c.subject as Nominal).modifiers.find((m) => m.kind === "participle");
+    expect(p && p.kind === "participle" && p.verb.text).toBe("highlighting");
+    expect(p && p.kind === "participle" && p.object?.head.text).toBe("importance");
+  });
+
+  it("does not swallow a comma-set-off participle into the verb chain", () => {
+    const c = ir("The dog barked, wagging its tail.");
+    expect((c.verb as Verbal).head.text).toBe("barked"); // not "barked wagging"
+    expect((c.subject as Nominal).modifiers.some((m) => m.kind === "participle")).toBe(true);
+  });
+
+  it("handles a participle set off BETWEEN the subject and the predicate", () => {
+    // Used to be read as one verb chain, "barking chased"; the phrase now lifts out and the real
+    // predicate is found behind it.
+    const c = ir("The dog, barking furiously, chased the cat.");
+    expect((c.verb as Verbal).head.text).toBe("chased");
+    expect(c.complement).toMatchObject({ kind: "directObject" });
+    const p = (c.subject as Nominal).modifiers.find((m) => m.kind === "participle");
+    expect(p && p.kind === "participle" && p.verb.text).toBe("barking");
+  });
+
+  it("folds a standalone comma token in too, so spaced input parses the same", () => {
+    const c = ir("The station opened in 1994 , highlighting its importance.");
+    expect((c.subject as Nominal).modifiers.some((m) => m.kind === "participle")).toBe(true);
+  });
+
+  it("leaves an integrated (comma-less) participle alone", () => {
+    // "The dog barking furiously bit me" — no comma, so no set-off phrase to lift out; this stays
+    // the chunker's existing (imperfect) reading rather than gaining a participle on the subject.
+    const c = ir("The dog barking furiously bit me.");
+    expect((c.subject as Nominal).modifiers.some((m) => m.kind === "participle")).toBe(false);
+  });
+});
+
 describe("infinitives and 'to' disambiguation", () => {
   it("infinitive is its own construction, not joined to the verb: 'I need to take a big old walk'", () => {
     const c = ir("i need to take a big old walk");
