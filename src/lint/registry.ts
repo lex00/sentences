@@ -25,6 +25,7 @@ import {
   lexStakesInflationRule,
   lexVagueAttributionRule,
 } from "./rules/lexical.js";
+import { reframeRule } from "./rules/reframe.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
@@ -40,6 +41,7 @@ export const RULES: readonly TropeRule[] = [
   lexStakesInflationRule,
   lexVagueAttributionRule,
   // --- syntactic ---
+  reframeRule,
   // --- formatting ---
   boldFirstBulletRule,
   emDashDensityRule,
