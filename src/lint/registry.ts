@@ -8,6 +8,8 @@
 import type { TropeRule } from "./types.js";
 import { aiLeakageRule } from "./rules/ai-leakage.js";
 import { demoIntensifierRule } from "./rules/demo.js";
+import { claudeTechnicalVocabularyRule } from "./rules/claude-lexicon.js";
+import { claudeFigurativeSuffixesRule } from "./rules/claude-figurative.js";
 import {
   boldFirstBulletRule,
   emDashDensityRule,
@@ -45,6 +47,8 @@ export const RULES: readonly TropeRule[] = [
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
   claudeAssistantVoiceRule,
   claudeDiscourseMarkersRule,
+  claudeFigurativeSuffixesRule,
+  claudeTechnicalVocabularyRule,
   lexDelveFamilyRule,
   lexFalseSuspenseRule,
   lexFillerTransitionsRule,
