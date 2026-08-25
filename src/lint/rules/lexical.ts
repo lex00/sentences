@@ -155,7 +155,9 @@ function phraseHits(entry: LexiconEntry, tokens: string[], words: WordSpan[]): S
   return hits;
 }
 
-function entryHits(entry: LexiconEntry, words: WordSpan[]): Span[] {
+// Exported for claude-lexicon.ts, which reuses the exact matching semantics with different
+// severity semantics (single-hit, escalation-only — see that file).
+export function entryHits(entry: LexiconEntry, words: WordSpan[]): Span[] {
   return Array.isArray(entry.match) ? phraseHits(entry, entry.match, words) : singleWordHits(entry, entry.match, words);
 }
 
