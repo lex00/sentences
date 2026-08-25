@@ -7,12 +7,22 @@
 
 import type { TropeRule } from "./types.js";
 import { demoIntensifierRule } from "./rules/demo.js";
+import {
+  boldFirstBulletRule,
+  emDashDensityRule,
+  listicleInTrenchCoatRule,
+  unicodeDecorationRule,
+} from "./rules/formatting.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
   // --- syntactic ---
   // --- formatting ---
+  boldFirstBulletRule,
+  emDashDensityRule,
+  listicleInTrenchCoatRule,
+  unicodeDecorationRule,
   // --- discourse ---
 ];
 
