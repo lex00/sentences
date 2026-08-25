@@ -13,11 +13,13 @@ import {
   listicleInTrenchCoatRule,
   unicodeDecorationRule,
 } from "./rules/formatting.js";
+import { selfPosedQuestionRule } from "./rules/self-posed-question.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
   // --- syntactic ---
+  selfPosedQuestionRule,
   // --- formatting ---
   boldFirstBulletRule,
   emDashDensityRule,
