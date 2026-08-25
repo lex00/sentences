@@ -13,6 +13,7 @@ import {
   listicleInTrenchCoatRule,
   unicodeDecorationRule,
 } from "./rules/formatting.js";
+import { countdownRule, punchyFragmentsRule } from "./rules/fragments.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
@@ -24,6 +25,8 @@ export const RULES: readonly TropeRule[] = [
   listicleInTrenchCoatRule,
   unicodeDecorationRule,
   // --- discourse ---
+  countdownRule,
+  punchyFragmentsRule,
 ];
 
 // Two rules sharing an id would make findings indistinguishable and dedupe against each other.
