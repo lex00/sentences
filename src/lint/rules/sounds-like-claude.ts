@@ -39,6 +39,7 @@ import { claudeAssistantVoiceRule } from "./claude-assistant-voice.js";
 import { claudeDiscourseMarkersRule } from "./claude-discourse-markers.js";
 import { claudeFictionFramesRule, claudeFictionGesturesRule } from "./claude-fiction.js";
 import { claudeFigurativeSuffixesRule } from "./claude-figurative.js";
+import { claudeStockFramesRule } from "./claude-stock-frames.js";
 import { claudeTechnicalVocabularyRule } from "./claude-lexicon.js";
 import { elegantVariationRule } from "./elegant-variation.js";
 import { mirroredClausesRule } from "./mirrored-clauses.js";
@@ -55,6 +56,7 @@ const CLAUDE_FAMILIES: readonly TropeRule[] = [
   claudeFictionFramesRule,
   claudeFictionGesturesRule,
   claudeFigurativeSuffixesRule,
+  claudeStockFramesRule,
   claudeTechnicalVocabularyRule,
   elegantVariationRule,
   mirroredClausesRule,

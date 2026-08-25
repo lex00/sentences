@@ -48,7 +48,8 @@ describe("the destink-score CLI (subprocess)", () => {
     expect(typeof report.score.total).toBe("number");
   });
 
-  it("produces the exact same JSON on repeated runs — same input, same score, every run", () => {
+  // Two full CLI spawns; the rule set has grown enough that 5s (vitest's default) is tight.
+  it("produces the exact same JSON on repeated runs — same input, same score, every run", { timeout: 30_000 }, () => {
     const first = runCli(fixture);
     const second = runCli(fixture);
     expect(second.stdout).toBe(first.stdout);
