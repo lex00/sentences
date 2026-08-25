@@ -187,8 +187,10 @@ describe("registry", () => {
 
   it("enables every rule by default and disables only the ones toggled off", () => {
     expect(enabledRules().map((r) => r.id)).toEqual(RULES.map((r) => r.id));
-    expect(enabledRules({ "demo/intensifier": false })).toEqual([]);
-    expect(enabledRules({ "demo/intensifier": true })).toHaveLength(1);
+    // Asserted by id rather than by list length, so landing a new rule in the registry doesn't
+    // make this a two-line edit for whoever lands it.
+    expect(enabledRules({ "demo/intensifier": false }).map((r) => r.id)).not.toContain("demo/intensifier");
+    expect(enabledRules({ "demo/intensifier": true }).map((r) => r.id)).toContain("demo/intensifier");
   });
 
   it("ignores toggles for rules that no longer exist, so stale settings still run", () => {

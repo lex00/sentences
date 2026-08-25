@@ -7,11 +7,13 @@
 
 import type { TropeRule } from "./types.js";
 import { demoIntensifierRule } from "./rules/demo.js";
+import { reframeRule } from "./rules/reframe.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
   // --- syntactic ---
+  reframeRule,
   // --- formatting ---
   // --- discourse ---
 ];
