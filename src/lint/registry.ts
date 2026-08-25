@@ -30,6 +30,7 @@ import { tricolonRule } from "./rules/tricolon.js";
 import { anaphoraRule } from "./rules/anaphora.js";
 import { deadMetaphorRule } from "./rules/dead-metaphor.js";
 import { dilutionRule, nearDuplicateRule } from "./rules/repetition.js";
+import { selfPosedQuestionRule } from "./rules/self-posed-question.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
@@ -46,6 +47,7 @@ export const RULES: readonly TropeRule[] = [
   lexVagueAttributionRule,
   // --- syntactic ---
   reframeRule,
+  selfPosedQuestionRule,
   tricolonRule,
   // --- formatting ---
   boldFirstBulletRule,
