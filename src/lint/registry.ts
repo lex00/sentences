@@ -7,6 +7,7 @@
 
 import type { TropeRule } from "./types.js";
 import { aiLeakageRule } from "./rules/ai-leakage.js";
+import { claudeFictionFramesRule, claudeFictionGesturesRule } from "./rules/claude-fiction.js";
 import { demoIntensifierRule } from "./rules/demo.js";
 import { claudeTechnicalVocabularyRule } from "./rules/claude-lexicon.js";
 import { claudeFigurativeSuffixesRule } from "./rules/claude-figurative.js";
@@ -44,6 +45,8 @@ import { servesAsDodgeRule } from "./rules/serves-as.js";
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
   aiLeakageRule, // claude-isms (#34) — assistant/tool boilerplate + leaked artifact strings
+  claudeFictionFramesRule,
+  claudeFictionGesturesRule,
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
   claudeAssistantVoiceRule,
   claudeDiscourseMarkersRule,
