@@ -49,9 +49,16 @@ export function isCopular(clause: Clause): boolean {
 
 // --- negation ---
 
-// Per the issue: "not" / "n't" only (not "never" — that's a separate, weaker signal a rule can
-// test for itself against the same modifier list).
-const NEGATORS = new Set(["not", "n't"]);
+// Per the original issue: "not" / "n't" only. #34 (the temporal-absolute reframe, "It was never X.
+// It was always Y.") widens this to "never" too — "never" is a denial exactly the way "not" is,
+// just placed in time rather than in the moment, and the reframe rule needs isNegated(a) to see it
+// so the ordinary "copular, negated, then copular, affirmative, coreferent" pair check picks up the
+// never/always shape for free, with no new predicate of its own. "always" stays OUT of this set: it
+// marks the affirmative side, not a negation, and isNegated(b) must stay false there for the pair to
+// register as a denial-then-replacement at all. A rule wanting to tell "never" apart from "not" (the
+// reframe rule does, for its severity bonus) reads hasAbsoluteAdverb below instead of guessing from
+// this set.
+const NEGATORS = new Set(["not", "n't", "never"]);
 
 const verbalHeads = (verb: Predicate): Verbal[] => ("items" in verb ? verb.items.map((p) => p.verb) : [verb]);
 
@@ -69,7 +76,11 @@ const hasNegationModifier = (verbal: Verbal): boolean =>
 const headHasContractedNegation = (head: Word): boolean => head.text.split(/\s+/).some((tok) => /n't$/i.test(tok));
 
 /**
- * Is this clause negated — a "not"/"n't" on the verb, spelled out or contracted?
+ * Is this clause negated — a "not"/"n't"/"never" on the verb, spelled out or contracted?
+ *
+ * "never" is always its own "word" modifier in the rule-based tagger's output (unlike "n't", it
+ * never fuses into the verb head's text — there is no "wasnever" to strip), so only the modifier
+ * path in hasNegationModifier ever catches it; headHasContractedNegation stays "n't"-only.
  *
  * Unlike isCopular, this DOES look across every conjunct of a compound predicate: negation is a
  * per-Verbal fact (modifiers live on each PredicatePart's own verb), so `true` here means at
@@ -78,6 +89,34 @@ const headHasContractedNegation = (head: Word): boolean => head.text.split(/\s+/
  */
 export function isNegated(clause: Clause): boolean {
   return verbalHeads(clause.verb).some((v) => hasNegationModifier(v) || headHasContractedNegation(v.head));
+}
+
+// --- absolute adverbs ("never" / "always") ---
+
+// The bare word list "never"/"always" checks against, kept separate from NEGATORS above (isNegated
+// only ever wants the negative half of this pair).
+const ABSOLUTE_ADVERBS = new Set(["never", "always"]);
+
+/**
+ * Does the clause's verb carry "never" or "always" as a bare adverb modifier — the temporal-absolute
+ * pair the reframe rule's never/always variant looks for (#34)? Returns whichever one is present, or
+ * null for neither. Only ever one of the two can be true of a given clause in practice (a verb
+ * doesn't carry both), so the first hit found across compound-predicate conjuncts is returned.
+ *
+ * Deliberately narrower than isNegated: this does not also catch "not" (that's what isNegated is
+ * for), and it does not look past a fused verb head — the rule-based tagger never fuses "never" or
+ * "always" into the verb the way it fuses "n't", so there is no equivalent fused-head shape to check.
+ */
+export function hasAbsoluteAdverb(clause: Clause): "never" | "always" | null {
+  for (const v of verbalHeads(clause.verb)) {
+    for (const m of v.modifiers) {
+      if (m.kind === "word") {
+        const w = m.value.text.toLowerCase();
+        if (ABSOLUTE_ADVERBS.has(w)) return w as "never" | "always";
+      }
+    }
+  }
+  return null;
 }
 
 // --- heads ---
