@@ -16,8 +16,7 @@
 import type { Parser } from "../analyze.js";
 import type { SceneElement } from "../inspect.js";
 import type { TextMetrics } from "../layout.js";
-import type { Tree } from "../ptb.js";
-import { readDocumentWith } from "../document.js";
+import { readDocumentUnitsWith } from "../document.js";
 import { posTags } from "../ptb.js";
 import { lowerSentence } from "../lower.js";
 import { layout } from "../layout.js";
@@ -37,16 +36,14 @@ export type AnalyzeDocumentOptions = {
 };
 
 export async function analyzeDocument(parser: Parser, text: string, opts: AnalyzeDocumentOptions = {}): Promise<DocumentAnalysis> {
-  const rec = recordTrees(parser);
-  const read = await readDocumentWith(rec.parser, text);
+  const read = await readDocumentUnitsWith(parser, text);
 
-  const units: DocumentUnit[] = read.map((d, i) => {
+  const units: DocumentUnit[] = read.map(({ doc: d, tree }) => {
     // Tokenize against the unit's source slice, offset by where that slice starts, so the spans
     // come back document-absolute without ever re-searching the full text.
     const u: DocumentUnit = { ...d, words: tokenizeWithSpans(d.unit, d.span.start) };
 
-    const tree = rec.seen[i]?.unit === d.unit ? rec.seen[i]!.tree : undefined;
-    if (!tree) return u; // the parser refused this unit; it keeps its words and its outcome
+    if (!tree) return u; // no parser produced a tree for this unit; it keeps its words and outcome
     u.tree = tree;
     attachPos(u.words, posTags(tree));
 
@@ -70,31 +67,6 @@ export async function analyzeDocument(parser: Parser, text: string, opts: Analyz
 // Adjacent (previous, next) unit pairs, in order — what a cross-sentence rule walks.
 export const adjacentUnits = (doc: DocumentAnalysis): Array<[DocumentUnit, DocumentUnit]> =>
   doc.units.slice(1).map((u, i) => [doc.units[i]!, u]);
-
-// TODO(#7 gap): readDocumentWith parses every unit but returns only DocUnit, which has no room for
-// the Tree — and UnitAnalysis.tree wants it, as does anything reading fine POS tags. Re-parsing to
-// get it would double the model's work, so instead we hand readDocumentWith a Parser that keeps
-// what it produced. It records one entry per parse() call, in call order, which lines up with
-// document order; the `seen[i].unit === d.unit` guard above means that if that ever stops holding
-// the tree is simply absent rather than wrong. Delete this once document.ts exposes the trees.
-function recordTrees(parser: Parser): { parser: Parser; seen: Array<{ unit: string; tree?: Tree }> } {
-  const seen: Array<{ unit: string; tree?: Tree }> = [];
-  return {
-    seen,
-    parser: {
-      parse: async (unit: string) => {
-        try {
-          const tree = await parser.parse(unit);
-          seen.push({ unit, tree });
-          return tree;
-        } catch (e) {
-          seen.push({ unit });
-          throw e;
-        }
-      },
-    },
-  };
-}
 
 // Tag the words by position against the tree's preterminals. A real parser's leaves ARE the token
 // stream (both come from tokenizeWords), so the common case is a straight index match; a stub or a

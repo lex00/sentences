@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { parseDocument, parseDocumentWith, readDocument, readDocumentWith, ruleBasedParser, splitUnits } from "./document.js";
-import { parseBracket } from "./ptb.js";
+import { parseDocument, parseDocumentWith, readDocument, readDocumentUnitsWith, readDocumentWith, ruleBasedParser, splitUnits } from "./document.js";
+import { parseBracket, posTags } from "./ptb.js";
+import { lowerSentence } from "./lower.js";
 import type { Parser } from "./analyze.js";
 import type { Nominal } from "./ir.js";
 
@@ -113,6 +114,27 @@ describe("readDocumentWith / parseDocumentWith (parser-agnostic)", () => {
     const units = await readDocumentWith(stub({ "Not a bug": "(FRAG (RB Not) (NP (DT a) (NN bug)))" }), "Not a bug.");
     expect(units[0]!.outcome).toBe("fragment");
     expect(units[0]!.reason).toContain("FRAG/no-VP");
+  });
+
+  it("hands back the tree each unit's clauses came from", async () => {
+    const parses = await readDocumentUnitsWith(stub({ "The dog barked": "(S (NP (DT The) (NN dog)) (VP (VBD barked)))" }), "The dog barked. The cat slept.");
+    expect(parses.map((p) => p.doc.outcome)).toEqual(["lowered", "lowered"]);
+    expect(posTags(parses[0]!.tree!).map((t) => t.tag)).toEqual(["DT", "NN", "VBD"]); // the stub's tree
+    expect(posTags(parses[1]!.tree!).some((t) => t.word === "cat")).toBe(true); // the fallback's tree
+    for (const p of parses) expect(lowerSentence(p.tree!).clauses).toEqual(p.doc.clauses); // the tree that lowered
+  });
+
+  it("hands back a FRAG tree for a unit that never lowered", async () => {
+    const parses = await readDocumentUnitsWith(stub({ "Not a bug": "(FRAG (RB Not) (NP (DT a) (NN bug)))" }), "Not a bug.");
+    expect(parses[0]!.doc.outcome).toBe("fragment");
+    expect(parses[0]!.tree!.label).toBe("FRAG"); // rules inspect it; POS tags come off it
+    expect(posTags(parses[0]!.tree!).map((t) => t.tag)).toEqual(["RB", "DT", "NN"]);
+  });
+
+  it("omits the tree only when no parser produced one", async () => {
+    const parses = await readDocumentUnitsWith(stub({}), "a blue car. The dog barked.");
+    expect(parses[0]!.tree).toBeUndefined(); // stub refused it, and the chunker can't parse it either
+    expect(parses[1]!.tree).toBeDefined(); // stub refused it, but the chunker parsed it
   });
 
   it("with the rule-based parser, matches the sync default exactly", async () => {
