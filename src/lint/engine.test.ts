@@ -187,8 +187,11 @@ describe("registry", () => {
 
   it("enables every rule by default and disables only the ones toggled off", () => {
     expect(enabledRules().map((r) => r.id)).toEqual(RULES.map((r) => r.id));
-    expect(enabledRules({ "demo/intensifier": false })).toEqual([]);
-    expect(enabledRules({ "demo/intensifier": true })).toHaveLength(1);
+    // Toggle every CURRENT rule off explicitly, rather than hardcoding "demo/intensifier": false —
+    // that hardcoding only held while RULES had exactly one entry; wave-2 rules add more.
+    const allOff = Object.fromEntries(RULES.map((r) => [r.id, false]));
+    expect(enabledRules(allOff)).toEqual([]);
+    expect(enabledRules({ ...allOff, "demo/intensifier": true })).toHaveLength(1);
   });
 
   it("ignores toggles for rules that no longer exist, so stale settings still run", () => {

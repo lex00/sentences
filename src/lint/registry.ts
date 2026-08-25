@@ -7,11 +7,15 @@
 
 import type { TropeRule } from "./types.js";
 import { demoIntensifierRule } from "./rules/demo.js";
+import { ingTackOnRule } from "./rules/ing-tackon.js";
+import { servesAsDodgeRule } from "./rules/serves-as.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
   // --- syntactic ---
+  ingTackOnRule,
+  servesAsDodgeRule,
   // --- formatting ---
   // --- discourse ---
 ];
