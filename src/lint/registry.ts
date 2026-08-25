@@ -19,6 +19,7 @@ import {
 } from "./rules/formatting.js";
 import { claudeAssistantVoiceRule } from "./rules/claude-assistant-voice.js";
 import { claudeDiscourseMarkersRule } from "./rules/claude-discourse-markers.js";
+import { claudeStockFramesRule } from "./rules/claude-stock-frames.js";
 import { corporateJargonRule } from "./rules/corporate-jargon.js";
 import { excessVocabularyRule } from "./rules/excess-vocabulary.js";
 import { soundsLikeClaudeRule } from "./rules/sounds-like-claude.js";
@@ -56,6 +57,7 @@ export const RULES: readonly TropeRule[] = [
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
   claudeAssistantVoiceRule,
   claudeDiscourseMarkersRule,
+  claudeStockFramesRule,
   claudeFigurativeSuffixesRule,
   claudeTechnicalVocabularyRule,
   corporateJargonRule,
