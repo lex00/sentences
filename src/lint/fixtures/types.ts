@@ -8,6 +8,18 @@
 // default 1) tells the harness exactly what the rule's Finding.span must slice out of `text` —
 // see stub-doc's spanOf, which the harness resolves this through.
 
+// FORMAT EXTENSION (retrofit round, refs #12): a handful of lexical rules gate an entry on
+// WordSpan.pos (posGate: "noun"/"verb"/"adverb" — see lexicons/types.ts and rules/lexical.ts).
+// Neither of the fixture battery's two doc-builders ever fills `pos` (makeDoc never does, and
+// buildDocAnalysis mirrors it deliberately — see build-doc.ts) — that's not a gap in this fixture
+// format, it's the same "fails closed with no POS evidence" behavior those rules' own unit tests
+// pin (see lexical.test.ts's "fails closed under the stub tokenizer" cases). To fixture the case
+// where POS evidence IS present without inventing a third doc-builder, `posOverrides` patches
+// `.pos` onto every word in the built doc whose text matches a key, case-insensitively — the same
+// technique lexical.test.ts's own `docWithPos` helper uses, just applied on top of the normal word
+// scan instead of replacing it. Omit it and the fixture exercises the fails-closed path instead.
+export type PosOverrides = Readonly<Record<string, string>>;
+
 export type PositiveFixture = {
   text: string; // input the rule MUST fire on
   spanText: string; // exact substring the rule's finding span must match (see nth)
@@ -17,12 +29,14 @@ export type PositiveFixture = {
   // populated) instead of the parser-free makeDoc stub. Only syntactic rules that read .clauses
   // need this; leave it off for lexical/formatting/discourse fixtures.
   needsClauses?: boolean;
+  posOverrides?: PosOverrides; // see the FORMAT EXTENSION comment above
 };
 
 export type NegativeFixture = {
   text: string; // input the rule MUST NOT fire on — a near-miss, not just unrelated prose
   note?: string; // what makes this look like a positive without being one
   needsClauses?: boolean;
+  posOverrides?: PosOverrides;
 };
 
 export type RuleFixtures = {

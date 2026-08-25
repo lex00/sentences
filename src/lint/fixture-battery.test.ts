@@ -29,19 +29,21 @@
 //
 // Analysis path: fixtures are plain text. By default they run through stub-doc's makeDoc — no
 // parser, honest offsets, every unit "unparseable". A fixture that needs real clauses to test a
-// syntactic rule sets needsClauses: true, which routes it through document.ts's readDocument
-// instead; its words are then scanned the same way stub-doc does it, straight off each unit's slice
-// of the source (see buildDoc below) — no separate word-scanning logic to keep in sync.
+// syntactic rule sets needsClauses: true, which routes it through build-doc.ts's buildDocAnalysis
+// instead (readDocument, real rule-based parse, plus word spans scanned the same way stub-doc does
+// it — buildDocAnalysis is the app's own product-code seam for exactly this, not a reimplementation
+// grown here). See fixtures/types.ts's FORMAT EXTENSION comment for `posOverrides`, the one other
+// knob this harness offers on top of plain text.
 
 import { describe, expect, it } from "vitest";
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { RULES } from "./registry.js";
-import { makeDoc, spanOf, wordSpans } from "./stub-doc.js";
+import { makeDoc, spanOf } from "./stub-doc.js";
 import { sameSpan, textAt } from "./span.js";
-import { readDocument } from "../document.js";
+import { buildDocAnalysis } from "./build-doc.js";
 import type { DocAnalysis, Finding, Span } from "./types.js";
-import type { NegativeFixture, PositiveFixture, RuleFixtures } from "./fixtures/types.js";
+import type { NegativeFixture, PositiveFixture, PosOverrides, RuleFixtures } from "./fixtures/types.js";
 
 // --- discovery ---
 
@@ -66,12 +68,23 @@ const fixturesByRuleId = new Map(fixtureSets.map((f) => [f.ruleId, f]));
 
 // --- doc building ---
 
-// Per the design guidance: the syntactic path reuses stub-doc's own word scanner over each unit's
-// slice, so a fixture's words are found the same way whether or not it asked for real clauses.
-function buildDoc(f: { text: string; needsClauses?: boolean }): DocAnalysis {
-  if (!f.needsClauses) return makeDoc(f.text);
-  const units = readDocument(f.text);
-  return { text: f.text, units: units.map((u) => ({ ...u, words: wordSpans(f.text, u.span) })) };
+// Patches word.pos in place for every word whose text matches a posOverrides key (case-insensitive
+// on the surface token — a fixture writes "leverage", not "Leverage"). See fixtures/types.ts.
+function applyPosOverrides(doc: DocAnalysis, overrides: PosOverrides | undefined): DocAnalysis {
+  if (!overrides) return doc;
+  const byLower = new Map(Object.entries(overrides).map(([k, v]) => [k.toLowerCase(), v]));
+  for (const unit of doc.units) {
+    for (const w of unit.words) {
+      const pos = byLower.get(w.text.toLowerCase());
+      if (pos !== undefined) w.pos = pos;
+    }
+  }
+  return doc;
+}
+
+function buildDoc(f: { text: string; needsClauses?: boolean; posOverrides?: PosOverrides }): DocAnalysis {
+  const doc = f.needsClauses ? buildDocAnalysis(f.text) : makeDoc(f.text);
+  return applyPosOverrides(doc, f.posOverrides);
 }
 
 // --- failure formatting ---
