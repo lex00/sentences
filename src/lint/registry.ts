@@ -31,6 +31,7 @@ import { anaphoraRule } from "./rules/anaphora.js";
 import { deadMetaphorRule } from "./rules/dead-metaphor.js";
 import { dilutionRule, nearDuplicateRule } from "./rules/repetition.js";
 import { selfPosedQuestionRule } from "./rules/self-posed-question.js";
+import { falseRangeRule } from "./rules/false-range.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
@@ -46,6 +47,7 @@ export const RULES: readonly TropeRule[] = [
   lexStakesInflationRule,
   lexVagueAttributionRule,
   // --- syntactic ---
+  falseRangeRule,
   reframeRule,
   selfPosedQuestionRule,
   tricolonRule,
