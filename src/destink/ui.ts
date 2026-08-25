@@ -8,6 +8,17 @@ import type { RuleToggles } from "../lint/registry.js";
 import { TIERS } from "../lint/score.js";
 import { segmentSpans } from "./highlight.js";
 import type { FixDiff } from "./diff.js";
+import type { HighlightStrategy } from "./diagram-finding.js";
+
+// Plain-English label for #26's selection strategy, shown above a rendered diagram so the reader
+// knows what they're looking at before they parse the lit-up shape themselves.
+const STRATEGY_LABEL: Record<HighlightStrategy, string> = {
+  reframe: "the shape of the reframe",
+  compound: "the shape of the compound",
+  "whole-unit": "the flagged sentence(s)",
+  span: "the flagged words",
+};
+export const strategyLabel = (s: HighlightStrategy): string => STRATEGY_LABEL[s];
 
 const TIER_LABEL: Record<TropeTier, string> = {
   lexical: "Lexical",
@@ -123,9 +134,18 @@ export function flashFinding(root: HTMLElement, idx: number): void {
 // Findings list, grouped by tier
 // ---------------------------------------------------------------------------------------------
 
+// The diagram-the-finding (#26) hookup for one findings-list render. `isOpen` decides which
+// panels main.ts wants drawn immediately (carried over from before a re-lint, by stable finding
+// key — see diagram-panels.ts); `onToggle` does the actual drawing/clearing into `content` when
+// the reader clicks the button, or when a panel is reopened automatically.
+export type DiagramToggle = {
+  isOpen: (idx: number) => boolean;
+  onToggle: (idx: number, open: boolean, content: HTMLElement) => void;
+};
+
 // `onSelect` is called with the finding's index into `findings` (the same index space
 // renderAnnotatedText used) when the reader clicks its row.
-export function renderFindingsList(el: HTMLElement, findings: readonly ReportFinding[], onSelect: (idx: number) => void): void {
+export function renderFindingsList(el: HTMLElement, findings: readonly ReportFinding[], onSelect: (idx: number) => void, diagram: DiagramToggle): void {
   el.textContent = "";
   if (findings.length === 0) {
     el.innerHTML = "<p class=\"empty\">No findings — either it's clean, or every rule is off.</p>";
@@ -151,14 +171,33 @@ export function renderFindingsList(el: HTMLElement, findings: readonly ReportFin
         </div>
         <div class="finding-explain">${esc(f.explanation)}</div>
       `;
-      // TODO(#26): mount the "show me" diagram affordance here. Contract: this container is
-      // identified by data-finding-idx (index into the same findings array as the highlight
-      // marks and this list) and data-rule-id (the rule that produced the finding); #26's code
-      // should replace this placeholder's contents, not the container itself.
+
+      // The diagram-the-finding (#26) mount: identified by data-finding-idx (index into this same
+      // findings array) and data-rule-id, so #26-adjacent code or a future feature can find it.
       const mount = document.createElement("div");
       mount.className = "diagram-mount";
       mount.dataset.findingIdx = String(idx);
       mount.dataset.ruleId = f.ruleId;
+
+      const content = document.createElement("div");
+      content.className = "diagram-content";
+
+      let open = diagram.isOpen(idx);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "show-diagram-btn";
+      const syncLabel = (): void => { btn.textContent = open ? "Hide diagram" : "Show me"; };
+      syncLabel();
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation(); // the row's own click flashes the text highlight — don't also do that
+        open = !open;
+        syncLabel();
+        if (!open) content.textContent = "";
+        diagram.onToggle(idx, open, content);
+      });
+
+      mount.append(btn, content);
+      if (open) diagram.onToggle(idx, true, content); // reopened after a re-lint — draw right away
       item.append(mount);
 
       item.addEventListener("click", () => onSelect(idx));
