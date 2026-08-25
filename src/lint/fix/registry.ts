@@ -9,9 +9,18 @@ import type { TropeRule } from "../types.js";
 import { RULES } from "../registry.js";
 import type { FixProvider, Fixer } from "./types.js";
 import { demoIntensifierFixer } from "./fixers/demo.js";
+import { countdownMergeFixer } from "./fixers/fragments.js";
+import { reframeFixer } from "./fixers/reframe.js";
+import { tricolonNoAutoFix } from "./fixers/tricolon.js";
 
 export const FIXERS: Readonly<Record<string, Fixer>> = {
   "demo/intensifier": demoIntensifierFixer, // DEMO — goes when rules/demo.ts goes
+  reframe: reframeFixer, // #24 — collapse the denial into the assertion
+  "discourse/countdown": countdownMergeFixer, // #24 — fold the runway into the cap
+  // #24 — deliberately no automatic fix: which item of a 4-item pile is weakest is a judgement, so
+  // fixers/tricolon.ts exports proposals() for a human to choose from and this stays null. Keyed
+  // here anyway so assertFixersHaveRules keeps watching the rule id.
+  "tricolon/density": tricolonNoAutoFix,
 };
 
 export const fixerFor = (ruleId: string, fixers: Readonly<Record<string, Fixer>> = FIXERS): Fixer | undefined =>
