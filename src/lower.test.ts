@@ -75,6 +75,31 @@ describe("lower: constituency parse -> IR", () => {
   });
 });
 
+// A negative contraction stays fused in the verb token (src/nlp/tagger.ts leaves "isn't" whole on
+// purpose), so the copula test strips a trailing "n't" before deciding whether the complement is a
+// predicate noun or a direct object.
+describe("lower: fused-negation be-forms are copular", () => {
+  it.each([
+    ["isn't", "(S (NP (NN Growth)) (VP (VBP isn't) (NP (DT a) (NN destination))))"],
+    ["wasn't", "(S (NP (DT The) (NN report)) (VP (VBP wasn't) (NP (DT a) (NN summary))))"],
+    ["aren't", "(S (NP (PRP They)) (VP (VBP aren't) (NP (DT a) (NN team))))"],
+    ["weren't", "(S (NP (PRP They)) (VP (VBP weren't) (NP (DT a) (NN team))))"],
+    ["ain't", "(S (NP (PRP It)) (VP (VBP ain't) (NP (DT a) (NN problem))))"], // no stem to strip
+  ])("%s takes a predicate noun, and keeps its fused head text", (verb, ptb) => {
+    const c = lower(ptb);
+    expect((c.verb as Verbal).head.text).toBe(verb); // lint/ir-query reads the negation off this
+    expect(c.complement?.kind).toBe("predicateNoun");
+  });
+
+  it.each([
+    ["doesn't", "(S (NP (PRP He)) (VP (VBZ doesn't) (NP (DT a) (NN marathon))))"], // strips to "does"
+    ["won't", "(S (NP (PRP It)) (VP (MD won't) (NP (DT a) (NN problem))))"], // strips to "wo"
+    ["can't", "(S (NP (PRP It)) (VP (MD can't) (NP (DT a) (NN problem))))"], // strips to "ca"
+  ])("%s is NOT copular — only be-form stems survive the strip", (_verb, ptb) => {
+    expect(lower(ptb).complement?.kind).toBe("directObject");
+  });
+});
+
 describe("lower: questions and relative clauses (benepar structures)", () => {
   it("yes/no question (SQ) un-inverts to subject + predicate adjective", () => {
     const c = lower("(SQ (VBZ Is) (NP (DT the) (NN sky)) (ADJP (JJ blue)))");

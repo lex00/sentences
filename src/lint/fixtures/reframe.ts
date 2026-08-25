@@ -1,7 +1,8 @@
 // Fixtures for rules/reframe.ts (reframeRule) — mined from reframe.test.ts's own end-to-end
 // (readDocument) and token-shape cases.
 // Contracted copulas lower on the rule-based path since the #31 tagger fix, so the flagship
-// contracted form is a positive here.
+// contracted form is a positive here — as is the n't-fused form ("Growth isn't a destination."),
+// which needed lower.ts to strip the fused negation before classifying the complement.
 //
 // #34 adds the temporal-absolute variant ("It was never X. It was always Y."), mined from the same
 // test file's "It was never X. It was always Y." block. Three shapes, three arms:
@@ -41,6 +42,12 @@ export const fixtures: RuleFixtures = {
       spanText: "not the bold plan for this year's big project. It's actually the safer plan for the team",
       needsClauses: true,
       note: "contracted copulas lower since the #31 tagger fix — the flagship form fires on the rule-based path",
+    },
+    {
+      text: "Growth isn't a destination. It's a journey.",
+      spanText: "isn't a destination. It's a journey",
+      needsClauses: true,
+      note: "fused-negation be-form: lower.ts strips the \"n't\" before its copula test, so the complement classifies as a predicate noun and the NP-then-anaphor pair is found (refs #34)",
     },
     {
       text: "It was never bold. It was always safe.",
