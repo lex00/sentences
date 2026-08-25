@@ -14,6 +14,8 @@ import {
   listicleInTrenchCoatRule,
   unicodeDecorationRule,
 } from "./rules/formatting.js";
+import { claudeAssistantVoiceRule } from "./rules/claude-assistant-voice.js";
+import { claudeDiscourseMarkersRule } from "./rules/claude-discourse-markers.js";
 import {
   lexDelveFamilyRule,
   lexFalseSuspenseRule,
@@ -41,6 +43,8 @@ export const RULES: readonly TropeRule[] = [
   // --- lexical ---
   aiLeakageRule, // claude-isms (#34) — assistant/tool boilerplate + leaked artifact strings
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
+  claudeAssistantVoiceRule,
+  claudeDiscourseMarkersRule,
   lexDelveFamilyRule,
   lexFalseSuspenseRule,
   lexFillerTransitionsRule,
