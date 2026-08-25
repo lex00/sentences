@@ -23,6 +23,12 @@
 //              about this sentence, and the loop cannot make judgements — it can only count
 //              findings, and both forms score the same.
 //
+//              NOTE (#34): the shape this proposal produces is exactly rules/contrast-tail.ts's
+//              "claude/contrast-tail" pattern, so accepting it can hand the document a new
+//              candidate-severity finding the author never wrote. Not a cycle: the loop's
+//              registered fixer is the pure-deletion collapse below, which never produces that
+//              shape, and this proposal only ever reaches the text through a human saying yes.
+//
 // --- what the edit algebra could NOT express ---
 //
 // Issue #24's illustration is "It's backwards wearing bold clothes." — clause B's complement with

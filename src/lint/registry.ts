@@ -31,9 +31,12 @@ import {
   lexStakesInflationRule,
   lexVagueAttributionRule,
 } from "./rules/lexical.js";
+import { colonRevealRule } from "./rules/colon-reveal.js";
+import { contrastTailRule } from "./rules/contrast-tail.js";
 import { mirroredClausesRule } from "./rules/mirrored-clauses.js";
 import { reframeRule } from "./rules/reframe.js";
 import { tricolonRule } from "./rules/tricolon.js";
+import { tricolonSeriesRule } from "./rules/tricolon-series.js";
 import { anaphoraRule } from "./rules/anaphora.js";
 import { aphoristicEnderRule } from "./rules/aphoristic-ender.js";
 import { deadMetaphorRule } from "./rules/dead-metaphor.js";
@@ -66,6 +69,8 @@ export const RULES: readonly TropeRule[] = [
   lexStakesInflationRule,
   lexVagueAttributionRule,
   // --- syntactic ---
+  colonRevealRule, // claude-isms (#34) — the setup-label colon
+  contrastTailRule, // claude-isms (#34) — the trailing ", not X" dismissal
   falseRangeRule,
   ingTackOnRule,
   mirroredClausesRule,
@@ -73,6 +78,7 @@ export const RULES: readonly TropeRule[] = [
   selfPosedQuestionRule,
   servesAsDodgeRule,
   tricolonRule,
+  tricolonSeriesRule, // #34 — the comma series the IR rule's Compound path never sees
   // --- formatting ---
   boldFirstBulletRule,
   emDashDensityRule,
