@@ -187,8 +187,10 @@ describe("registry", () => {
 
   it("enables every rule by default and disables only the ones toggled off", () => {
     expect(enabledRules().map((r) => r.id)).toEqual(RULES.map((r) => r.id));
-    expect(enabledRules({ "demo/intensifier": false })).toEqual([]);
-    expect(enabledRules({ "demo/intensifier": true })).toHaveLength(1);
+    const withoutDemo = enabledRules({ "demo/intensifier": false });
+    expect(withoutDemo.map((r) => r.id)).not.toContain("demo/intensifier");
+    expect(withoutDemo).toHaveLength(RULES.length - 1);
+    expect(enabledRules({ "demo/intensifier": true })).toHaveLength(RULES.length);
   });
 
   it("ignores toggles for rules that no longer exist, so stale settings still run", () => {
