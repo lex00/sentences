@@ -21,6 +21,14 @@
 //     never land in the same unit.words array for a multi-word entry to match contiguously. "tldr"
 //     (no punctuation) is the form this matching engine can actually see; the semicolon spelling is
 //     a known gap, not silently dropped.
+//
+// Consolidation-pass addition (issue #34): six more entries sourced from claudisms.ai (CC0), a
+// crowdsourced list of Claude's written tics. "sit with" / "worth sitting with" and "double-click
+// on" / "lean into" are Claude's reach for a physical-action metaphor over a plain verb ("consider",
+// "look more closely at", "focus on"); "the question I keep coming back to" and "what I'd leave you
+// with" are first-person framing devices for, respectively, opening on an unresolved thread and
+// closing with one — connective tissue exactly like the rest of this file, so they join the same
+// lexicon rather than starting a new one.
 import type { Lexicon } from "./types.js";
 
 export const claudeDiscourseMarkers: Lexicon = {
@@ -59,5 +67,11 @@ export const claudeDiscourseMarkers: Lexicon = {
     { match: ["key", "takeaways"] },
     { match: "tldr", note: "written form of \"tl;dr\" the tokenizer can actually see — see header comment" },
     { match: ["better", "posed"] },
+    { match: ["sit", "with"], note: "claudisms.ai (CC0) — \"sit with that for a moment\"" },
+    { match: ["worth", "sitting", "with"], note: "claudisms.ai (CC0)" },
+    { match: ["the", "question", "i", "keep", "coming", "back", "to"], note: "claudisms.ai (CC0)" },
+    { match: ["what", "i'd", "leave", "you", "with"], note: "claudisms.ai (CC0)" },
+    { match: ["double-click", "on"], note: "claudisms.ai (CC0)" },
+    { match: ["lean", "into"], note: "claudisms.ai (CC0)" },
   ],
 };
