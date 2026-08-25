@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { lower } from "../lower.js";
 import { parse } from "../nlp/parse.js";
 import { BANK } from "../game/bank.js";
-import { isCopular, isNegated, complementHead, complementHeads, subjectHead, subjectHeads, subjectIsPronominal } from "./ir-query.js";
+import { isCopular, isNegated, hasAbsoluteAdverb, complementHead, complementHeads, subjectHead, subjectHeads, subjectIsPronominal } from "./ir-query.js";
 
 // The rule-based parser (src/nlp/parse.ts) is the everyday path: real sentences, tagged and
 // chunked the way the game/free-write mode sees them.
@@ -98,6 +98,35 @@ describe("isNegated", () => {
     const bank = BANK.find((b) => b.sentence === "The dog has black fur and can jump high.")!;
     const c = lower(bank.ptb);
     expect(isNegated(c)).toBe(false);
+  });
+
+  it('catches "never" as a bare word modifier on the verb (#34) — no fusion, unlike "n\'t"', () => {
+    const c = ir("It was never bold.");
+    expect((c.verb as { head: { text: string } }).head.text).toBe("was"); // documents: "never" does NOT fuse into the head
+    expect((c.verb as { modifiers: unknown[] }).modifiers).toContainEqual({ kind: "word", value: { text: "never" } });
+    expect(isNegated(c)).toBe(true);
+  });
+
+  it('"always" alone is not a negation', () => {
+    expect(isNegated(ir("It was always safe."))).toBe(false);
+  });
+});
+
+describe("hasAbsoluteAdverb", () => {
+  it('returns "never" for a clause with a bare "never" modifier', () => {
+    expect(hasAbsoluteAdverb(ir("It was never bold."))).toBe("never");
+  });
+
+  it('returns "always" for a clause with a bare "always" modifier', () => {
+    expect(hasAbsoluteAdverb(ir("It was always safe."))).toBe("always");
+  });
+
+  it("returns null when neither is present", () => {
+    expect(hasAbsoluteAdverb(ir("This is not bold."))).toBeNull();
+  });
+
+  it('"not" alone does not count as an absolute adverb', () => {
+    expect(hasAbsoluteAdverb(ir("This is not bold."))).not.toBe("never");
   });
 });
 

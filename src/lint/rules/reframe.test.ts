@@ -11,7 +11,7 @@
 // (When #12's fixture format lands, the fixture-shaped cases here are the ones to retrofit.)
 
 import { describe, expect, test } from "vitest";
-import type { Clause, Nominal, Word } from "../../ir.js";
+import type { Clause, Modifier, Nominal, Word } from "../../ir.js";
 import type { DocAnalysis, UnitAnalysis } from "../types.js";
 import { readDocument } from "../../document.js";
 import { runRules } from "../engine.js";
@@ -29,19 +29,28 @@ type Spec = {
   subj: string;
   subjPos?: string;
   verb?: string;
-  neg?: boolean | "fused"; // true = a "not" modifier (PTB shape); "fused" = "isn't" baked into the head
+  // true = a "not" modifier (PTB shape); "fused" = "isn't" baked into the head;
+  // "never" = a bare "never" modifier (#34's temporal-absolute variant, never fused).
+  neg?: boolean | "fused" | "never";
+  adverb?: "always"; // a bare "always" modifier — #34's strong-bonus signal on the affirmative side
   comp?: string;
   kind?: "predicateNoun" | "predicateAdj" | "directObject";
+  about?: string; // a verb-level "about X" prep modifier, complement left null — the about-PP shape
 };
 
 // One clause of plain IR data. Defaults make the common case short: copular, affirmative, with a
 // predicate noun.
 function clause(spec: Spec): Clause {
-  const { subj, subjPos, verb = "is", neg, comp, kind = "predicateNoun" } = spec;
+  const { subj, subjPos, verb = "is", neg, adverb, comp, kind = "predicateNoun", about } = spec;
   const head = neg === "fused" ? word(`${verb}n't`, "VBZ") : word(verb, "VBZ");
+  const modifiers: Modifier[] = [];
+  if (neg === true) modifiers.push({ kind: "word", value: word("not") });
+  if (neg === "never") modifiers.push({ kind: "word", value: word("never") });
+  if (adverb === "always") modifiers.push({ kind: "word", value: word("always") });
+  if (about !== undefined) modifiers.push({ kind: "prep", prep: word("about"), object: nominal(about, "NN") });
   return {
     subject: nominal(subj, subjPos),
-    verb: { head, modifiers: neg === true ? [{ kind: "word", value: word("not") }] : [] },
+    verb: { head, modifiers },
     complement:
       comp === undefined
         ? null
@@ -368,6 +377,111 @@ describe("“not because X, but because Y”", () => {
   });
 });
 
+// --- the temporal-absolute variant: "It was never X. It was always Y." (#34) ---
+
+describe("“It was never X. It was always Y.”", () => {
+  test("never (negated) + always (affirmative) fires as an ordinary pair, structurally", () => {
+    const doc = docOf("It was never bold. It was always safe.", [
+      [clause({ subj: "It", subjPos: "PRP", verb: "was", neg: "never", comp: "bold", kind: "predicateAdj" })],
+      [clause({ subj: "It", subjPos: "PRP", verb: "was", adverb: "always", comp: "safe", kind: "predicateAdj" })],
+    ]);
+    const found = detect(doc);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("“not bold”");
+    expect(found[0]!.message).toContain("“safe”");
+  });
+
+  test("never + always gets one severity step up over the plain count-scaled severity", () => {
+    // One pair alone would ordinarily be "low" (see the density tests above) — the never/always
+    // bonus bumps it to "medium".
+    const doc = docOf("It was never bold. It was always safe.", [
+      [clause({ subj: "It", subjPos: "PRP", verb: "was", neg: "never", comp: "bold", kind: "predicateAdj" })],
+      [clause({ subj: "It", subjPos: "PRP", verb: "was", adverb: "always", comp: "safe", kind: "predicateAdj" })],
+    ]);
+    expect(detect(doc)[0]!.severity).toBe("medium");
+  });
+
+  test("never + a plain affirmative (no \"always\") still fires, without the bump", () => {
+    const doc = docOf("It was never bold. It was safe.", [
+      [clause({ subj: "It", subjPos: "PRP", verb: "was", neg: "never", comp: "bold", kind: "predicateAdj" })],
+      [clause({ subj: "It", subjPos: "PRP", verb: "was", comp: "safe", kind: "predicateAdj" })],
+    ]);
+    const found = detect(doc);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.severity).toBe("low");
+  });
+
+  test("the about-PP form: complement is null, so isCopular alone would miss it", () => {
+    // "It was never about the money" lowers with complement: null and "about the money" riding as a
+    // verb modifier instead (see reframe.ts's isAboutPair doc comment) — this pins that shape.
+    const a = clause({ subj: "It", subjPos: "PRP", verb: "was", neg: "never", about: "money" });
+    expect(a.complement).toBeNull();
+    const doc = docOf("It was never about the money. It was always about control.", [
+      [a],
+      [clause({ subj: "It", subjPos: "PRP", verb: "was", adverb: "always", about: "control" })],
+    ]);
+    const found = detect(doc);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("“not money”");
+    expect(found[0]!.message).toContain("“control”");
+    expect(found[0]!.severity).toBe("medium"); // never + always bonus, same as the plain form
+  });
+
+  test("does not fire across non-coreferent subjects even with never/always both present", () => {
+    const doc = docOf("It was never bold. That was always safe.", [
+      [clause({ subj: "It", subjPos: "PRP", verb: "was", neg: "never", comp: "bold", kind: "predicateAdj" })],
+      [clause({ subj: "problem", subjPos: "NN", verb: "was", adverb: "always", comp: "safe", kind: "predicateAdj" })],
+    ]);
+    expect(detect(doc)).toEqual([]);
+  });
+
+  test("does not fire on a non-copular \"never … always …\" pair (different verbs, different subjects)", () => {
+    const doc = docOf("She never lies. He always exaggerates.", [
+      [clause({ subj: "She", subjPos: "PRP", verb: "lies", neg: "never" })],
+      [clause({ subj: "He", subjPos: "PRP", verb: "exaggerates", adverb: "always" })],
+    ]);
+    expect(detect(doc)).toEqual([]);
+  });
+
+  test("a lone \"never\" clause with nothing adjacent does not fire", () => {
+    const doc = docOf("It was never finished.", [
+      [clause({ subj: "It", subjPos: "PRP", verb: "was", neg: "never", comp: "finished", kind: "predicateAdj" })],
+    ]);
+    expect(detect(doc)).toEqual([]);
+  });
+
+  // --- the comma-spliced, same-sentence form ("It was never X, it was always Y.") ---
+  //
+  // The splitter (document.ts) does not treat "," as a unit boundary, so this arrives as ONE unit.
+  // The real parser also does not lower it to two clauses (verified against readDocument — see the
+  // end-to-end block below and reframe.ts's commaVariant doc comment), so there is no clause pair
+  // for isReframePairAny to find; this is read off the unit's text instead, at "candidate" severity.
+  describe("same-sentence comma variant, from token shape", () => {
+    test("fires on \"never … , … always …\" with a copula present", () => {
+      const text = "It was never about the money, it was always about control.";
+      const found = detect(makeDoc(text));
+      expect(found).toHaveLength(1);
+      expect(found[0]!.severity).toBe("candidate");
+      expect(textAt(makeDoc(text), found[0]!.span)).toBe("never about the money, it was always about control.");
+    });
+
+    test("does not fire without a comma between \"never\" and \"always\"", () => {
+      const text = "It was never bold and it was always safe.";
+      expect(detect(makeDoc(text))).toEqual([]);
+    });
+
+    test("does not fire without \"always\" on the other side of the comma", () => {
+      const text = "It was never easy, but we managed.";
+      expect(detect(makeDoc(text))).toEqual([]);
+    });
+
+    test("does not fire without a copula anywhere in the unit", () => {
+      const text = "It never works, it always ships.";
+      expect(detect(makeDoc(text))).toEqual([]);
+    });
+  });
+});
+
 // --- end to end, through the shipped no-model path ---
 
 describe("end to end through readDocument", () => {
@@ -419,6 +533,56 @@ describe("end to end through readDocument", () => {
     ["two denials", "It is not bold. It is not brave."],
     ["reversed order", "It is bold. It is not backwards."],
   ])("does not fire on %s", (_name, text) => {
+    expect(detect(realDoc(text))).toEqual([]);
+  });
+
+  // --- the temporal-absolute variant, through the real parser (#34) ---
+  //
+  // "never" lowers as a bare "word" modifier on the verb (never fused, unlike "n't" — see
+  // ir-query.ts), so the two-sentence form is caught by the ordinary structural pair path, same as
+  // the "not X. Y." forms above; only the severity differs (the never/always bonus).
+  test("“It was never bold. It was always safe.” — real parse, never/always bonus applied", () => {
+    const text = "It was never bold. It was always safe.";
+    const doc = realDoc(text);
+    const found = detect(doc);
+    expect(found).toHaveLength(1);
+    expect(textAt(doc, found[0]!.span)).toBe("never bold. It was always safe");
+    expect(found[0]!.severity).toBe("medium"); // "low" base for a lone pair, bumped once
+  });
+
+  // "It was never about the money" lowers with complement: null and "about the money" as a verb
+  // modifier (confirmed against the real parser) — isCopular alone misses this, which is what
+  // isAboutPair in reframe.ts exists to catch.
+  test("“It was never about X. It was always about Y.” — the about-PP arm, real parse", () => {
+    const text = "It was never about the money. It was always about control.";
+    const doc = realDoc(text);
+    const found = detect(doc);
+    expect(found).toHaveLength(1);
+    expect(textAt(doc, found[0]!.span)).toBe("never about the money. It was always about control");
+    expect(found[0]!.severity).toBe("medium");
+  });
+
+  // The owner's LinkedIn-slop example, comma-spliced into one sentence. Confirmed against the real
+  // parser: this lowers to a SINGLE clause (the comma splice's own subject "it" ends up folded in as
+  // a bare predicateNoun, and "always about control" is dropped entirely in lowering) — so there is
+  // no clause pair here for isReframePairAny to find, and the comma-variant token-shape arm is what
+  // catches it, at "candidate" severity.
+  test("“It was never about X, it was always about Y.” — the comma-variant arm, real parse", () => {
+    const text = "It was never about the money, it was always about control.";
+    const doc = realDoc(text);
+    expect(doc.units).toHaveLength(1);
+    expect(doc.units[0]!.clauses).toHaveLength(1); // pins the single-clause lowering this arm exists for
+    const found = detect(doc);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.severity).toBe("candidate");
+    expect(textAt(doc, found[0]!.span)).toBe("never about the money, it was always about control");
+  });
+
+  test.each([
+    ["a lone \"never\" clause, nothing adjacent", "It was never finished."],
+    ["different subjects, neither copular", "She never lies. He always exaggerates."],
+    ["\"never\" paired with a non-copular affirmative clause", "It was never easy, but we managed."],
+  ])("temporal-absolute variant does not fire on %s", (_name, text) => {
     expect(detect(realDoc(text))).toEqual([]);
   });
 
