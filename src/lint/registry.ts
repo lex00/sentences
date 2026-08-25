@@ -6,6 +6,7 @@
 // of reordering the file.
 
 import type { TropeRule } from "./types.js";
+import { aiLeakageRule } from "./rules/ai-leakage.js";
 import { demoIntensifierRule } from "./rules/demo.js";
 import {
   boldFirstBulletRule,
@@ -38,6 +39,7 @@ import { servesAsDodgeRule } from "./rules/serves-as.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
+  aiLeakageRule, // claude-isms (#34) — assistant/tool boilerplate + leaked artifact strings
   demoIntensifierRule, // DEMO — delete once the first real lexical rule lands (see rules/demo.ts)
   lexDelveFamilyRule,
   lexFalseSuspenseRule,
