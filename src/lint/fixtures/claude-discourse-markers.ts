@@ -43,6 +43,11 @@ export const fixtures: RuleFixtures = {
       text: "At a high level, the pipeline retries before failing over.",
       spanText: "At a high level",
     },
+    {
+      text: "Instead of fighting the constraint, the team decided to lean into it.",
+      spanText: "lean into",
+      note: "claudisms.ai (CC0) addition — the physical-action metaphor for \"focus on\"",
+    },
   ],
   negatives: [
     {

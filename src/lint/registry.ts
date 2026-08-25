@@ -19,6 +19,9 @@ import {
 } from "./rules/formatting.js";
 import { claudeAssistantVoiceRule } from "./rules/claude-assistant-voice.js";
 import { claudeDiscourseMarkersRule } from "./rules/claude-discourse-markers.js";
+import { corporateJargonRule } from "./rules/corporate-jargon.js";
+import { excessVocabularyRule } from "./rules/excess-vocabulary.js";
+import { soundsLikeClaudeRule } from "./rules/sounds-like-claude.js";
 import {
   lexDelveFamilyRule,
   lexFalseSuspenseRule,
@@ -55,6 +58,8 @@ export const RULES: readonly TropeRule[] = [
   claudeDiscourseMarkersRule,
   claudeFigurativeSuffixesRule,
   claudeTechnicalVocabularyRule,
+  corporateJargonRule,
+  excessVocabularyRule,
   lexDelveFamilyRule,
   lexFalseSuspenseRule,
   lexFillerTransitionsRule,
@@ -87,6 +92,7 @@ export const RULES: readonly TropeRule[] = [
   elegantVariationRule,
   nearDuplicateRule,
   punchyFragmentsRule,
+  soundsLikeClaudeRule, // claude-isms capstone (#34) — see rules/sounds-like-claude.ts
 ];
 
 // Two rules sharing an id would make findings indistinguishable and dedupe against each other.
