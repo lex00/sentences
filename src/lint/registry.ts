@@ -32,6 +32,7 @@ import { deadMetaphorRule } from "./rules/dead-metaphor.js";
 import { dilutionRule, nearDuplicateRule } from "./rules/repetition.js";
 import { selfPosedQuestionRule } from "./rules/self-posed-question.js";
 import { falseRangeRule } from "./rules/false-range.js";
+import { countdownRule, punchyFragmentsRule } from "./rules/fragments.js";
 
 export const RULES: readonly TropeRule[] = [
   // --- lexical ---
@@ -58,9 +59,11 @@ export const RULES: readonly TropeRule[] = [
   unicodeDecorationRule,
   // --- discourse ---
   anaphoraRule,
+  countdownRule,
   deadMetaphorRule,
   dilutionRule,
   nearDuplicateRule,
+  punchyFragmentsRule,
 ];
 
 // Two rules sharing an id would make findings indistinguishable and dedupe against each other.
