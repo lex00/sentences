@@ -108,13 +108,20 @@ function suppressedByQuote(intervals: readonly Span[], span: Span): boolean {
 }
 
 // One pass of suppression state, computed once per detect() call and threaded through both rules.
-type Context = { markdown: ReturnType<typeof markdownContext>; quotes: readonly Span[] };
+//
+// EXPORTED (not because this file needs it, but because the suppression question is shared): any
+// rule that keys off short verbless units has the same two problems these two do — a heading or a
+// bullet is not a fragment, and quoted speech is the author quoting someone else. rules/
+// quantity-hook.ts reads the same shapes and gets the same answer from here rather than growing a
+// second, subtly different copy of the markdown containment test and the quote-pairing heuristic.
+// The header above is the documentation for both; keep it that way if a third caller shows up.
+export type Context = { markdown: ReturnType<typeof markdownContext>; quotes: readonly Span[] };
 
-function makeContext(doc: DocAnalysis): Context {
+export function makeContext(doc: DocAnalysis): Context {
   return { markdown: markdownContext(doc.text), quotes: quotedIntervals(doc.text) };
 }
 
-function suppressed(ctx: Context, span: Span): boolean {
+export function suppressed(ctx: Context, span: Span): boolean {
   return suppressedByMarkdown(ctx.markdown, span) || suppressedByQuote(ctx.quotes, span);
 }
 
