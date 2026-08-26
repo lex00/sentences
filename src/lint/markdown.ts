@@ -10,8 +10,9 @@
 // What counts as what (documented because none of this is a real markdown parser):
 //   heading     ATX only: /^ {0,3}#{1,6}(\s|$)/. Setext headings (underlined with ===/---) are not
 //               detected — a === or --- line reads as prose. Rare enough in prose docs to skip.
-//   bullet      A line starting (after up to 3 leading spaces) with -, *, or + followed by
-//               whitespace, OR a decimal number followed by . or ) and whitespace ("1. " / "2) ").
+//   bullet      A line starting (after up to 3 leading spaces) with one of the ASCII markers
+//               (-, *, +), one of the GLYPH markers (see BULLET_RE), or a decimal number followed
+//               by . or ) — in every case followed by whitespace ("- ", "\u2022 ", "1. ", "2) ").
 //   codeFence   A line starting (after up to 3 leading spaces) with 3+ backticks or 3+ tildes opens
 //               a fence; every line up to and including the matching close (same character, count
 //               >= the opener's) is "codeFence", closer included. An unterminated fence runs to the
@@ -83,7 +84,22 @@ function splitLines(text: string): Span[] {
 const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
 const HEADING_RE = /^ {0,3}(#{1,6})(\s|$)/;
 const BLOCKQUOTE_RE = /^ {0,3}>/;
-const BULLET_RE = /^( {0,3})([-*+])(\s+)(?=\S|$)/;
+// Bullet markers. The ASCII set (-, *, +) is CommonMark's. The glyph set is not: CommonMark reads
+// a line opening with \u2022 or \u2192 as an ordinary paragraph. That is the right call for a
+// renderer and the wrong one for a linter that reasons about document SHAPE — a writer pasting a
+// list out of a word processor, or a chat model asked for a list and reaching for a decorative
+// marker, produces a list either way. Classifying those lines as prose silently blinded
+// bold-first-bullet, listicle-in-trench-coat, and the paragraph grouping every discourse rule reads
+// (rules/staccato-register.ts counts one-sentence paragraphs; eight arrow-marked lines used to
+// group into one 8-line "paragraph").
+//
+// The glyph set is deliberately narrow — a marker has to be unambiguous at the START of a line with
+// whitespace after it. Included: \u2022 \u2023 \u25AA \u25B8 \u25E6 \u00B7 (bullet glyphs proper)
+// and \u2192 \u21D2 \u279C \u27A4 (arrows used as markers, the shape a de-punctuated document
+// reaches for). NOT included: emoji and dingbats (formatting/unicode-decoration reports those as
+// decoration, and a leading emoji is as often ornament as it is a marker), and the astral ranges
+// generally, so every marker here is one UTF-16 code unit and markerSpan arithmetic stays honest.
+const BULLET_RE = /^( {0,3})([-*+\u2022\u2023\u25AA\u25B8\u25E6\u00B7\u2192\u21D2\u279C\u27A4])(\s+)(?=\S|$)/;
 const ORDERED_BULLET_RE = /^( {0,3})(\d{1,9}[.)])(\s+)(?=\S|$)/;
 
 export function markdownContext(text: string): MarkdownContext {

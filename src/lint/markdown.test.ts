@@ -31,6 +31,32 @@ describe("markdownContext — line classification", () => {
     expect(text.slice(numbered.contentSpan.start, numbered.contentSpan.end)).toBe("one");
   });
 
+  it("recognizes glyph bullet markers, unordered, with marker/content sliced the same way", () => {
+    const text = "\u2022 bullet\n\u25AA square\n\u2192 arrow\n\u21D2 double";
+    const ctx = markdownContext(text);
+    expect(ctx.lines.map((l) => l.kind)).toEqual(["bullet", "bullet", "bullet", "bullet"]);
+    const arrow = ctx.lines[2] as Extract<(typeof ctx.lines)[number], { kind: "bullet" }>;
+    expect(text.slice(arrow.markerSpan.start, arrow.markerSpan.end)).toBe("\u2192");
+    expect(text.slice(arrow.contentSpan.start, arrow.contentSpan.end)).toBe("arrow");
+    expect(arrow.ordered).toBe(false);
+  });
+
+  it("keeps a glyph list OUT of the paragraph grouping instead of folding it into one paragraph", () => {
+    // The regression this was added for: eight arrow-marked lines used to classify as prose and
+    // group into a single 8-line "paragraph", which silently skewed every rule that counts
+    // sentences per paragraph (rules/staccato-register.ts) and hid the list from
+    // bold-first-bullet and listicle-in-trench-coat entirely.
+    const ctx = markdownContext("Intro line.\n\n\u2192 one\n\u2192 two\n\u2192 three\n\nOutro line.");
+    expect(ctx.paragraphs).toHaveLength(2);
+    expect(ctx.lists).toHaveLength(1);
+    expect(ctx.lists[0]!.items).toHaveLength(3);
+  });
+
+  it("does not treat a glyph mid-line, or one with no space after it, as a marker", () => {
+    const ctx = markdownContext("Capability \u2260 Authority.\n\u2192nospace\nplain \u2022 dot");
+    expect(ctx.lines.map((l) => l.kind)).toEqual(["prose", "prose", "prose"]);
+  });
+
   it("does not classify blank lines", () => {
     const ctx = markdownContext("prose one\n\n\nprose two");
     expect(ctx.lines).toHaveLength(2);

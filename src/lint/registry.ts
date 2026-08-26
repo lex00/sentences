@@ -50,6 +50,7 @@ import { selfPosedQuestionRule } from "./rules/self-posed-question.js";
 import { falseRangeRule } from "./rules/false-range.js";
 import { countdownRule, punchyFragmentsRule } from "./rules/fragments.js";
 import { ingTackOnRule } from "./rules/ing-tackon.js";
+import { staccatoRegisterRule } from "./rules/staccato-register.js";
 import { servesAsDodgeRule } from "./rules/serves-as.js";
 
 export const RULES: readonly TropeRule[] = [
@@ -101,6 +102,7 @@ export const RULES: readonly TropeRule[] = [
   nearDuplicateRule,
   punchyFragmentsRule,
   soundsLikeClaudeRule, // claude-isms capstone (#34) — see rules/sounds-like-claude.ts
+  staccatoRegisterRule, // #34 — the de-punctuated document: the scrub relocated the tells
 ];
 
 // Two rules sharing an id would make findings indistinguishable and dedupe against each other.
