@@ -50,7 +50,7 @@ import { selfPosedQuestionRule } from "./rules/self-posed-question.js";
 import { falseRangeRule } from "./rules/false-range.js";
 import { countdownRule, punchyFragmentsRule } from "./rules/fragments.js";
 import { ingTackOnRule } from "./rules/ing-tackon.js";
-import { quantityHookRule } from "./rules/quantity-hook.js";
+import { setupTurnRule } from "./rules/setup-turn.js";
 import { staccatoRegisterRule } from "./rules/staccato-register.js";
 import { servesAsDodgeRule } from "./rules/serves-as.js";
 
@@ -102,7 +102,7 @@ export const RULES: readonly TropeRule[] = [
   elegantVariationRule,
   nearDuplicateRule,
   punchyFragmentsRule,
-  quantityHookRule, // #34 — "3 rules. And none you set.": a number used as bait, then voided
+  setupTurnRule, // #34 — "3 rules. And none you set.": a frame that never becomes a claim
   soundsLikeClaudeRule, // claude-isms capstone (#34) — see rules/sounds-like-claude.ts
   staccatoRegisterRule, // #34 — the de-punctuated document: the scrub relocated the tells
 ];
