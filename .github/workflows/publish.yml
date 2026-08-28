@@ -1,0 +1,44 @@
+# Publishes `sentences` to npm on a version tag push. Auth is npm Trusted Publishing (OIDC) --
+# no NPM_TOKEN secret. Configure this once, after the first manual publish, under
+# npmjs.com -> Packages -> sentences -> Settings -> Trusted publishing:
+#   organization/user: lex00
+#   repository:         sentences
+#   workflow filename:  publish.yml
+#   allowed actions:    npm publish
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24" # bundled npm must be >=11.5.1 for OIDC trusted publishing
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      - name: Verify tag matches package.json version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "tag v$tag does not match package.json version $pkg" >&2
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build:lint-dist
+      - run: npm publish

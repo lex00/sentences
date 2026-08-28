@@ -1,9 +1,13 @@
 {
   "name": "sentences",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "description": "Effects-rich, interactive Reed-Kellogg sentence-diagram renderer",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lex00/sentences.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
