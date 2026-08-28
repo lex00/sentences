@@ -81,7 +81,22 @@ function splitLines(text: string): Span[] {
   return spans;
 }
 
-const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
+// The indent bound is ` *`, not CommonMark's ` {0,3}`. That bound is right for a fence at the TOP
+// level, but a fence inside a list item is indented to the item's content column, which is 4 or
+// more spaces:
+//
+//   1. Do the thing:
+//
+//       ```js
+//       const x = a -- b;
+//       ```
+//
+// With the tighter bound neither the opener nor the closer matched, so the block never became a
+// codeFence: `codeFences` came back empty, the lines inside classified as `prose`, and
+// `inKind(ctx, span, "codeFence")` was false for all of them. Every formatting rule that suppresses
+// on code (emDashDensity, unicodeDecoration, boldFirstBullet, listicleInTrenchCoat) therefore ran
+// over the code, and `--` in a decrement or a CLI flag came back as an em dash.
+const FENCE_RE = /^ *(`{3,}|~{3,})/;
 const HEADING_RE = /^ {0,3}(#{1,6})(\s|$)/;
 const BLOCKQUOTE_RE = /^ {0,3}>/;
 // Bullet markers. The ASCII set (-, *, +) is CommonMark's. The glyph set is not: CommonMark reads
