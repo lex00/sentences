@@ -63,6 +63,26 @@ vulnerability, dead metaphors beyond lemma counting) are out of scope for a pars
 claimed. See `docs/DESTINK.md` for the architecture and `scripts/destink-score.mjs` for the
 no-browser CLI.
 
+### CLI
+
+```
+node scripts/destink-score.mjs [--markdown] <file>
+```
+
+Prints the same versioned JSON report the browser app renders (findings with source spans,
+errors, the rule set, and a stink score) to stdout. It only reads the file; nothing is written
+back.
+
+- `--markdown` runs the file through `markdown-prose.ts` first, blanking code fences, tables,
+  inline code, link targets, HTML blocks, and admonition directives to spaces before linting.
+  Offsets still index the original file. Use it on `.md` files — without it, markdown structure
+  reads as prose and floods the report with false findings (~64% of findings on a measured
+  technical-docs corpus, per that module's header).
+- Needs Node >=22.6 (re-execs itself with `--experimental-strip-types`) or >=23 (the flag is on
+  by default). The script runs the TypeScript sources directly with no build step; older Node
+  exits with an explanation instead of adding a transpiler dependency.
+- Not a published `bin` — it only runs from a checkout of this repo, not via `npx`.
+
 ## License
 
 MIT. See `LICENSE`.
