@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist-lint",
+    "rootDir": "src",
+    "declaration": true,
+    "noEmit": false
+  },
+  "include": [
+    "src/lint/registry.ts",
+    "src/lint/engine.ts",
+    "src/lint/build-doc.ts",
+    "src/lint/report.ts",
+    "src/lint/markdown-prose.ts"
+  ]
+}
