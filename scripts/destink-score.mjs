@@ -2,7 +2,13 @@
 // Scorer CLI (issue #13): run a file through the rule-based lint path and print its stink report as
 // JSON, without a browser and without a build step.
 //
-//   node scripts/destink-score.mjs <file>
+//   node scripts/destink-score.mjs [--markdown] <file>
+//
+// --markdown runs the input through extractProse (src/lint/markdown-prose.ts) first, which blanks
+// code fences, tables, inline code, link targets, HTML blocks and admonition directives to spaces.
+// Offsets are preserved, so every span in the report still indexes the file on disk. Use it for a
+// .md file: over a technical-docs corpus it removed ~64% of findings, all of them markdown being
+// read as prose (see that module's header for the measurement).
 //
 // Same input, same score, every run — see src/lint/report.ts and src/lint/score.ts for what makes
 // that true.
@@ -60,9 +66,11 @@ async function main() {
     process.exit(result.status ?? 1);
   }
 
-  const filePath = process.argv[2];
+  const args = process.argv.slice(2);
+  const markdown = args.includes("--markdown");
+  const filePath = args.find((a) => !a.startsWith("--"));
   if (!filePath) {
-    console.error("usage: node scripts/destink-score.mjs <file>");
+    console.error("usage: node scripts/destink-score.mjs [--markdown] <file>");
     process.exit(1);
   }
 
@@ -75,7 +83,11 @@ async function main() {
   const { buildReport } = await import("../src/lint/report.js");
 
   const text = readFileSync(filePath, "utf8");
-  const doc = buildDocAnalysis(text);
+  // extractProse returns a string of the same length, so findings located against it index `text`.
+  // The report is therefore still built from the ORIGINAL text: word count and every span mean
+  // what they meant before, and only what the RULES see changes.
+  const { extractProse } = await import("../src/lint/markdown-prose.js");
+  const doc = buildDocAnalysis(markdown ? extractProse(text) : text);
   const rules = enabledRules({}, RULES);
   const { findings, errors } = runRules(rules, doc);
   const report = buildReport(text, findings, errors, rules);
