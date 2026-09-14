@@ -1,0 +1,86 @@
+# The checks every change has to pass. Until this file existed, nothing ran the test suite on a
+# push: deploy.yml builds and ships the site without testing, and publish.yml runs the suite only
+# once a version tag already exists — which is the worst moment to learn that main is broken,
+# because the tag is cut and has to be deleted and remade.
+#
+# `just check` runs the first job's steps locally, and `just release-check` runs both. If the two
+# ever disagree, this file is the one that decides.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: typecheck, tests, lint-dist build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build:lint-dist
+
+  package:
+    name: published package works when installed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run build:lint-dist
+      # Packs the tarball, installs it into a scratch directory, and drives the installed bin over
+      # JSON-RPC. It is the only check that sees the package rather than the checkout, and the class
+      # of bug it exists for (npm installs a bin as a symlink, which broke the entry-point test and
+      # made the server exit silently) is invisible to every unit test in the repo.
+      - run: node scripts/smoke-package.mjs
+
+  docs:
+    name: the linter's own docs stay clean
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      # Not a gate on the score — most of these documents predate the rule set and carry findings
+      # nobody has triaged. What this catches is a rule that starts THROWING on real prose, which
+      # the report records per-rule instead of failing loudly, so a broken rule would otherwise
+      # reach a release reporting nothing and looking clean.
+      - name: lint every doc and fail on any rule error
+        run: |
+          set -euo pipefail
+          failed=0
+          for f in README.md docs/*.md; do
+            for level in 1 2 3; do
+              errors=$(node scripts/destink-score.mjs --markdown --strictness=$level "$f" \
+                | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).errors.length")
+              if [ "$errors" != "0" ]; then
+                echo "::error file=$f::$errors rule error(s) at strictness $level"
+                node scripts/destink-score.mjs --markdown --strictness=$level "$f" \
+                  | node -p "JSON.stringify(JSON.parse(require('fs').readFileSync(0,'utf8')).errors, null, 2)"
+                failed=1
+              fi
+            done
+          done
+          echo "linted $(ls README.md docs/*.md | wc -l) documents at three strictness levels, no rule errors"
+          exit $failed

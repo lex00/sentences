@@ -28,6 +28,9 @@ jobs:
           registry-url: "https://registry.npmjs.org"
           cache: npm
 
+      # The tag is the only thing that says which version this is; package.json is the only thing
+      # npm reads. They have to agree, and the tag cannot be changed after the fact without
+      # confusing everyone who already fetched it.
       - name: Verify tag matches package.json version
         run: |
           tag="${GITHUB_REF_NAME#v}"
@@ -41,4 +44,11 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build:lint-dist
+
+      # The package as an installer sees it, not as the checkout does: pack, install into a scratch
+      # directory, and drive the installed bin over JSON-RPC. This runs BEFORE publish on purpose.
+      # npm is append-only — a version number is burned the moment it is published, and a broken
+      # 0.2.0 cannot be replaced, only followed by 0.2.1. The cheapest place to catch it is here.
+      - run: node scripts/smoke-package.mjs
+
       - run: npm publish

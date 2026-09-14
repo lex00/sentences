@@ -35,6 +35,23 @@ npm install
 npm run dev
 ```
 
+`just` wraps the common tasks (`just` on its own lists them):
+
+```
+just check        # typecheck, tests, lint-dist build — what CI runs on a PR
+just lint-docs    # score every markdown doc in the repo; `just lint-docs 3` for strict
+just smoke        # pack the tarball, install it clean, drive the installed bin over JSON-RPC
+just release 0.3.0   # verify, bump, commit, tag. Pushes nothing.
+just release-push    # push main and the tag, which publishes to npm
+```
+
+CI runs the same three things on every push and pull request (`.github/workflows/ci.yml`): the
+suite, the packaged-artifact smoke test, and a pass that lints every doc at all three strictness
+levels and fails on a rule that *throws* — the report records rule errors per-rule rather than
+failing loudly, so a broken rule would otherwise reach a release looking clean. Publishing runs on
+a version tag, re-runs everything including the smoke test, and only then calls `npm publish`; npm
+is append-only, so a burned version number is the one mistake that cannot be taken back.
+
 The neural parser weights (~72 MB — benepar exported to int8 ONNX) are a build artifact and are
 not committed. Regenerate them with the scripts in `parser-export/` (Python + benepar). Without
 them, the app falls back to a pure-TypeScript rule-based parser.
