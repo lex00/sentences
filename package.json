@@ -1,6 +1,6 @@
 {
   "name": "sentences",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "description": "Effects-rich, interactive Reed-Kellogg sentence-diagram renderer",
   "license": "MIT",
@@ -22,10 +22,17 @@
   "files": [
     "dist-lint"
   ],
+  "bin": {
+    "destink-mcp": "./dist-lint/mcp/server.js"
+  },
   "exports": {
     "./lint/registry": {
       "types": "./dist-lint/lint/registry.d.ts",
       "default": "./dist-lint/lint/registry.js"
+    },
+    "./lint/run": {
+      "types": "./dist-lint/lint/run.d.ts",
+      "default": "./dist-lint/lint/run.js"
     },
     "./lint/engine": {
       "types": "./dist-lint/lint/engine.d.ts",
@@ -55,6 +62,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "compromise": "^14.15.1"
   }
 }

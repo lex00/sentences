@@ -62,6 +62,13 @@
 // same honesty false-range.ts uses), two are "low", three or more "medium". A writer who does this
 // three times in a piece is not varying sentence shape at all, which is the thing worth saying.
 
+//
+// STRICTNESS (strictness.ts). This rule already fires on a single pair, so the dial moves its
+// SEVERITY rather than unlocking anything: one step down at level 1, one step up at level 3. At
+// level 3 a single mirrored pair reports at "low" instead of "candidate", which is the setting for
+// an editor who does not want the shape at all rather than one measuring how often it recurs.
+import type { Strictness } from "../strictness.js";
+import { DEFAULT_STRICTNESS, severityAt } from "../strictness.js";
 import type { Clause, Compound, Complement, Infinitive, Gerund, Modifier, Nominal, Predicate, Word } from "../../ir.js";
 import { complementHead, isCopular, isNegated, subjectHead, subjectIsPronominal } from "../ir-query.js";
 import { spanning } from "../span.js";
@@ -221,7 +228,7 @@ export const mirroredClausesRule: TropeRule = {
   id: RULE_ID,
   name: "Mirrored clauses (parallel frames, swapped content)",
   tier: "syntactic",
-  detect(doc: DocAnalysis): Finding[] {
+  detect(doc: DocAnalysis, strictness: Strictness = DEFAULT_STRICTNESS): Finding[] {
     // Every clause of the document, flattened in order, each remembering the unit it came from.
     // Adjacency is then a single sweep, and "consecutive clauses of one unit" and "last clause of
     // one unit against the first of the next" stop being two code paths.
@@ -241,7 +248,7 @@ export const mirroredClausesRule: TropeRule = {
       // a leftover, not two overlapping pairs chained through the middle clause.
     }
 
-    const severity = severityFor(pairs.length);
+    const severity = severityAt(severityFor(pairs.length), strictness);
     const density = pairs.length >= 2 ? ` You build ${pairs.length} of these in this piece — at that rate the symmetry is the only thing the reader hears.` : "";
 
     return pairs.map((p) => ({

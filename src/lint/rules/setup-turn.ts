@@ -61,6 +61,12 @@
 // semantics this rule cannot see. Requiring an explicit voider is the rule, not a threshold on it.
 // If the variant is ever wanted it belongs behind "candidate" severity (see types.ts).
 
+//
+// STRICTNESS (strictness.ts). This rule already fires on a single setup-and-turn pair, so the dial
+// moves its SEVERITY rather than unlocking anything: one step down at level 1, one step up at
+// level 3, where an opening pair reaches "high" and a mid-document one "medium".
+import type { Strictness } from "../strictness.js";
+import { DEFAULT_STRICTNESS, severityAt } from "../strictness.js";
 import type { DocAnalysis, Finding, Severity, TropeRule, UnitAnalysis, WordSpan } from "../types.js";
 import { makeContext, suppressed, type Context } from "./fragments.js";
 import { spanning } from "../span.js";
@@ -223,7 +229,7 @@ export const setupTurnRule: TropeRule = {
   id: RULE_ID,
   name: "The setup and the turn",
   tier: "discourse",
-  detect(doc: DocAnalysis): Finding[] {
+  detect(doc: DocAnalysis, strictness: Strictness = DEFAULT_STRICTNESS): Finding[] {
     const ctx = makeContext(doc);
     const units = doc.units;
     const findings: Finding[] = [];
@@ -237,7 +243,7 @@ export const setupTurnRule: TropeRule = {
       // first thing the reader meets. Mid-document the same pair is likelier to be a writer landing
       // one deliberate beat, so it reports a step lower.
       const opensDocument = i === 0;
-      const severity: Severity = opensDocument ? "medium" : "low";
+      const severity: Severity = severityAt(opensDocument ? "medium" : "low", strictness);
 
       const setupText = setup.unit.trim();
       const turnText = turn.unit.trim();

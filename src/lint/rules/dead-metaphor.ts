@@ -6,9 +6,9 @@
 // No corpus is available at runtime, so there's no real background frequency to compare a word
 // against. Two document-internal proxies stand in for it:
 //
-//   1. "content word" = not a function word. STOPWORDS below is a small, closed, hand-picked list
-//      of English function words — pronouns, articles, prepositions, conjunctions, auxiliaries,
-//      negation, degree words (~130 entries).
+//   1. "content word" = not a function word, per the shared STOPWORDS list in
+//      ../content-words.js (which also supplies the inflection folding this file's lemma
+//      grouping runs on).
 //   2. "rare" = absent from COMMON_WORDS, a hand-assembled list of ~300 everyday English content
 //      words ("time", "people", "world", "make", "know", "day"...) modeled loosely on the shape
 //      of a top-1000-word frequency list but built by hand for this file, not exported from a
@@ -27,32 +27,8 @@
 // picked so a handful of ordinary term mentions across a short document never qualifies — see
 // dead-metaphor.test.ts for the worked numbers.
 
+import { STOPWORDS, lemmatize } from "../content-words.js";
 import type { DocAnalysis, Finding, Severity, Span, TropeRule } from "../types.js";
-
-// --- data: function words (excluded from "content word" entirely) ---------------------------
-
-const STOPWORDS = new Set([
-  "a", "an", "the",
-  "i", "me", "my", "mine", "myself", "you", "your", "yours", "yourself", "yourselves",
-  "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself",
-  "we", "us", "our", "ours", "ourselves", "they", "them", "their", "theirs", "themselves",
-  "this", "that", "these", "those",
-  "who", "whom", "whose", "which", "what", "whatever", "whichever", "whoever",
-  "and", "or", "but", "nor", "so", "yet", "if", "because", "although", "though", "while", "as",
-  "than", "whether", "unless", "until", "since",
-  "in", "on", "at", "by", "for", "with", "about", "against", "between", "into", "through",
-  "during", "before", "after", "above", "below", "to", "from", "up", "down", "over", "under",
-  "again", "further", "once", "of", "off", "out",
-  "be", "am", "is", "are", "was", "were", "been", "being",
-  "have", "has", "had", "having",
-  "do", "does", "did", "doing",
-  "will", "would", "shall", "should", "may", "might", "must", "can", "could",
-  "not", "no", "nor",
-  "there", "here",
-  "very", "too", "also", "just", "only", "even", "still", "then",
-  "all", "any", "some", "each", "every", "other", "another", "such", "own", "same",
-  "etc",
-]);
 
 // --- data: common English content words (excluded because they're too ordinary to be "rare") -
 // Hand-assembled for this rule, not sourced from a frequency corpus (none is available at
@@ -100,21 +76,6 @@ const COMMON_WORDS = new Set([
 ]);
 
 const MIN_WORD_LEN = 4; // below this, even a "rare" token is too short to read as a content word
-
-// --- data: a light, document-internal lemmatizer (heuristic, not linguistic) -----------------
-// Collapses common English inflections so "wall"/"walls" and "door"/"doors" count together. It's
-// suffix-stripping, not a dictionary lemmatizer — good enough to group inflections of the SAME
-// word within one document, not meant to be linguistically exact (see the false negative on
-// "trees" vs "tree" that the tests document and accept).
-function lemmatize(lower: string): string {
-  if (lower.length <= 3) return lower;
-  if (/[^aeiou]ies$/.test(lower)) return `${lower.slice(0, -3)}y`; // parties -> party
-  if (/(sses|shes|ches|xes|zes)$/.test(lower)) return lower.slice(0, -2); // boxes -> box
-  if (/[^aeiou]s$/.test(lower)) return lower.slice(0, -1); // walls -> wall, doors -> door
-  if (/[^aeiou]ing$/.test(lower) && lower.length > 5) return lower.slice(0, -3); // walking -> walk
-  if (/[^aeiou]ed$/.test(lower) && lower.length > 4) return lower.slice(0, -2); // walked -> walk
-  return lower;
-}
 
 // --- thresholds --------------------------------------------------------------------------------
 // Below this many qualifying content words, per-lemma rate is too noisy to trust at all (a

@@ -20,6 +20,30 @@
 // scan instead of replacing it. Omit it and the fixture exercises the fails-closed path instead.
 export type PosOverrides = Readonly<Record<string, string>>;
 
+// WHICH PROFILE A FIXTURE BELONGS TO (added with the strictness dial, lint/strictness.ts).
+//
+// Two kinds of claim get made in these files and they hold over different ranges of the dial:
+//
+//   "shape"  (the default) — a claim about what the rule structurally IS. "A trailing phrase
+//            opening on `which` is a relative clause and not this rule's business" is true at
+//            every strictness level, because the dial moves counts and severities and never what
+//            counts as the shape (see strictness.ts). The battery therefore runs a shape fixture
+//            at ALL THREE levels, and that is what turns strictness.ts's central promise from a
+//            sentence in a header comment into something CI enforces: if level 3 ever starts
+//            reporting a shape a rule had positively excluded, a negative here fails.
+//
+//   "rate"   — a claim about a DENSITY THRESHOLD. "Three trailing tails is under the floor" is
+//            true at level 2 and false at level 3, where the floor is zero, and saying so is not
+//            a bug in the fixture: it is the dial working. The battery runs a rate fixture at the
+//            default level only, and a rule's own test file is where the other levels are pinned
+//            (see rules/trailing-tail.test.ts).
+//
+// Default "shape" on purpose. When the dial landed, 389 of this directory's 393 fixtures already
+// behaved identically at all three levels; the four that did not were every one of them a
+// threshold claim. So the common case is the one that needs no annotation, and marking a fixture
+// "rate" is a deliberate statement that its assertion is about a number rather than a structure.
+export type FixtureProfile = "shape" | "rate";
+
 export type PositiveFixture = {
   text: string; // input the rule MUST fire on
   spanText: string; // exact substring the rule's finding span must match (see nth)
@@ -30,6 +54,7 @@ export type PositiveFixture = {
   // need this; leave it off for lexical/formatting/discourse fixtures.
   needsClauses?: boolean;
   posOverrides?: PosOverrides; // see the FORMAT EXTENSION comment above
+  profile?: FixtureProfile; // default "shape"; see WHICH PROFILE A FIXTURE BELONGS TO above
 };
 
 export type NegativeFixture = {
@@ -37,6 +62,7 @@ export type NegativeFixture = {
   note?: string; // what makes this look like a positive without being one
   needsClauses?: boolean;
   posOverrides?: PosOverrides;
+  profile?: FixtureProfile; // default "shape"; see WHICH PROFILE A FIXTURE BELONGS TO above
 };
 
 export type RuleFixtures = {

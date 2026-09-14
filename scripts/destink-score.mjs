@@ -30,6 +30,28 @@ import { fileURLToPath } from "node:url";
 
 const STRIP_TYPES_FLAG = "--experimental-strip-types";
 
+export const USAGE = `usage: node scripts/destink-score.mjs [--markdown] <file>
+
+Lints <file> for AI-writing tropes and prints the versioned JSON report on stdout: located
+findings, per-rule and per-tier counts, and a stink score (weighted findings per 1000 words).
+Reads the file and nothing else; nothing is written back and nothing leaves the machine.
+
+  --markdown   Blank code fences, tables, inline code, link targets, HTML blocks and admonitions
+               to spaces before linting, so markdown structure is not read as prose. Spans still
+               index the original file. Use it on .md files: without it, markdown reads as prose
+               and floods the report (~64% of findings on a measured technical-docs corpus).
+  --strictness=N
+               How hard to look, 1 to 3. 2 is the default and the level every threshold in the
+               rule set was calibrated against. 3 drops density floors to zero, so one instance of
+               a shape reports the same as six, and raises each finding a severity step: use it on
+               text you already know a model wrote. 1 doubles the floors and eases severities, for
+               prose with a voice you are trying not to flatten.
+  --help, -h   Print this and exit.
+
+Runs from a checkout of this repo only. For editor and agent use, the same linter ships as an MCP
+server on the published package:
+  npx -y --package=sentences destink-mcp`;
+
 // "flag"        Node >=22.6, <23: type stripping exists but needs the flag.
 // "none"        Node >=23: type stripping is on by default.
 // "unsupported" Anything older: no built-in TypeScript support at all.
@@ -67,30 +89,46 @@ async function main() {
   }
 
   const args = process.argv.slice(2);
+  // An explicit --help is a request that succeeded, so it prints to stdout and exits 0. A missing
+  // file is a mistake, so the same text goes to stderr with a non-zero exit. Before, --help fell
+  // through the second path by accident: right text, wrong stream, wrong exit code.
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(USAGE);
+    process.exit(0);
+  }
+
   const markdown = args.includes("--markdown");
+
+  // Parsed here rather than in run.ts so a bad value fails before a file is read: "--strictness=9"
+  // silently linting at 2 would be a worse answer than an error naming the three levels.
+  const strictnessArg = args.find((a) => a.startsWith("--strictness"));
+  let strictness = 2;
+  if (strictnessArg) {
+    const raw = strictnessArg.split("=")[1];
+    strictness = Number(raw);
+    if (![1, 2, 3].includes(strictness)) {
+      console.error(`--strictness must be 1, 2 or 3 (got ${raw === undefined ? "no value" : JSON.stringify(raw)})`);
+      process.exit(1);
+    }
+  }
+
   const filePath = args.find((a) => !a.startsWith("--"));
   if (!filePath) {
-    console.error("usage: node scripts/destink-score.mjs [--markdown] <file>");
+    console.error(USAGE);
     process.exit(1);
   }
 
   // Registered before the dynamic imports below so it governs their resolution too.
   register(new URL("./ts-loader.mjs", import.meta.url));
 
-  const { buildDocAnalysis } = await import("../src/lint/build-doc.js");
-  const { RULES, enabledRules } = await import("../src/lint/registry.js");
-  const { runRules } = await import("../src/lint/engine.js");
-  const { buildReport } = await import("../src/lint/report.js");
+  // One call, because the order of the steps inside it matters: --markdown changes what the
+  // RULES see, never what the report is built from, so every span still indexes the file on disk.
+  // src/lint/run.ts owns that ordering for this script, the MCP server (src/mcp/) and the package's
+  // `sentences/lint/run` export alike.
+  const { lintDocument } = await import("../src/lint/run.js");
 
   const text = readFileSync(filePath, "utf8");
-  // extractProse returns a string of the same length, so findings located against it index `text`.
-  // The report is therefore still built from the ORIGINAL text: word count and every span mean
-  // what they meant before, and only what the RULES see changes.
-  const { extractProse } = await import("../src/lint/markdown-prose.js");
-  const doc = buildDocAnalysis(markdown ? extractProse(text) : text);
-  const rules = enabledRules({}, RULES);
-  const { findings, errors } = runRules(rules, doc);
-  const report = buildReport(text, findings, errors, rules);
+  const report = lintDocument(text, { markdown, strictness });
 
   console.log(JSON.stringify(report, null, 2));
 }

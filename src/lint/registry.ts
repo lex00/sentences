@@ -45,6 +45,8 @@ import { anaphoraRule } from "./rules/anaphora.js";
 import { aphoristicEnderRule } from "./rules/aphoristic-ender.js";
 import { deadMetaphorRule } from "./rules/dead-metaphor.js";
 import { elegantVariationRule } from "./rules/elegant-variation.js";
+import { lowValueSentenceRule } from "./rules/low-value-sentence.js";
+import { trailingTailRule } from "./rules/trailing-tail.js";
 import { dilutionRule, nearDuplicateRule } from "./rules/repetition.js";
 import { selfPosedQuestionRule } from "./rules/self-posed-question.js";
 import { falseRangeRule } from "./rules/false-range.js";
@@ -100,11 +102,13 @@ export const RULES: readonly TropeRule[] = [
   deadMetaphorRule,
   dilutionRule,
   elegantVariationRule,
+  lowValueSentenceRule, // a whole sentence in a >50-word paragraph that adds no content word
   nearDuplicateRule,
   punchyFragmentsRule,
   setupTurnRule, // #34 — "3 rules. And none you set.": a frame that never becomes a claim
   soundsLikeClaudeRule, // claude-isms capstone (#34) — see rules/sounds-like-claude.ts
   staccatoRegisterRule, // #34 — the de-punctuated document: the scrub relocated the tells
+  trailingTailRule, // the appended closing phrase; gated on rate, because the shape alone is ordinary
 ];
 
 // Two rules sharing an id would make findings indistinguishable and dedupe against each other.

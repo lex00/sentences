@@ -13,6 +13,8 @@
     "src/lint/engine.ts",
     "src/lint/build-doc.ts",
     "src/lint/report.ts",
-    "src/lint/markdown-prose.ts"
+    "src/lint/markdown-prose.ts",
+    "src/lint/run.ts",
+    "src/mcp/server.ts"
   ]
 }

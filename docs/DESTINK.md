@@ -22,7 +22,7 @@ analyzeDocument (lint/analyze-document.ts)
   │                                  clauses, all mapped back to character offsets
   ▼
 rule engine (lint/engine.ts, registry.ts)
-  │                                  27 TropeRules across four tiers, run over the whole
+  │                                  48 TropeRules across four tiers, run over the whole
   │                                  document; ordered + deduped output, isolated failures
   ▼
 score + report (lint/score.ts, report.ts)
@@ -42,7 +42,23 @@ top rather than a second parser.
 ### Document pipeline
 
 `splitUnits` breaks the input on sentence-ending punctuation and keeps exact character spans for
-every unit, so a rule's finding can always be sliced straight out of `doc.text`. A unit that
+every unit, so a rule's finding can always be sliced straight out of `doc.text`.
+
+Sentences are split one markdown BLOCK at a time (`lint/blocks.ts`), and the reason is a bug that
+hid for months. `splitUnits` breaks on `. ! ? ; :` and nothing else, which is right inside a
+paragraph and wrong between blocks, because most blocks carry no terminal punctuation: a heading,
+its bullet list and the paragraph under them came back as a single fused unit, and since the fused
+span was not wholly inside any one block, `inKind(ctx, span, "heading")` answered false for all
+three — silently disabling the suppression every rule leans on to stay out of headings, bullets and
+fences. The opposite mistake is just as easy: `stub-doc.ts` used to break on every newline, which
+shreds hard-wrapped prose into half-sentences, and this repository's own docs are hard-wrapped. So
+the two document builders were each wrong in the direction the other was right, and neither could
+see it — fixtures run through the stub, production runs through the other, and nothing compared
+them. Both now split through `blocks.ts`, and `blocks.test.ts` pins the invariant that catches the
+whole class: no unit from either builder may straddle a block boundary, checked on constructed
+cases and on the real documents in `docs/`. `document.ts` itself is untouched, deliberately — it is
+shared with the Reed-Kellogg diagram path, where a document is one sentence somebody typed and
+markdown blocks are not a thing. A unit that
 doesn't lower to a clause is not dropped: `readDocument` records it as a fragment (no verb at all,
 the strongest signal a countdown or punchy-fragments rule looks for) or unparseable (a verb is
 there, the parse just failed). `analyzeDocument` then runs each unit through the parser-agnostic
@@ -52,7 +68,7 @@ can underline, not a token index into a stream the caller has to re-derive.
 
 ### Rule engine
 
-Twenty-seven rules across four tiers: lexical (word lists with POS gating), syntactic (structural
+Forty-eight rules across four tiers: lexical (word lists with POS gating), syntactic (structural
 patterns over the Clause IR), formatting (markdown-aware, parser-free), and discourse
 (cross-sentence density: repetition, anaphora, dilution). Density is the deliberate design
 constraint. A prompt-based judge reading one sentence at a time cannot tell "one tricolon is style"
@@ -65,6 +81,74 @@ throws contributes nothing, and everyone else still runs). Every rule ships with
 span, negatives that must stay silent, and cross-rule checks that a negative for one rule doesn't
 trip another. That battery is what keeps a rule's wording from drifting silently as the lexicons
 grow.
+
+Each fixture also declares which profile it belongs to, and the default does real work. A `shape`
+fixture makes a claim about what the rule structurally is — "a trailing phrase opening on `which` is
+a relative clause, not this rule's business" — which is true at every strictness level, so the
+battery runs it at all three. That is what turns the dial's central promise into something CI
+enforces rather than a sentence in a header: if level 3 ever starts reporting a shape a rule had
+positively excluded, a negative fails. A `rate` fixture makes a claim about a density threshold
+("three trailing tails is under the floor"), which is true at level 2 and false at level 3 by
+design, so it is checked at the default level only and the rule's own test file pins the rest.
+`shape` is the default because when the dial landed, 389 of the directory's 393 fixtures already
+behaved identically at all three levels, and the four that did not were every one of them a
+threshold claim. A hygiene check runs the other way too: a fixture marked `rate` whose behavior
+never changes across the dial is a shape fixture wearing a rate label, narrowing what CI checks for
+nothing, and the battery says so.
+
+The discourse tier is where a rule's scope stops being one sentence, and the three repetition rules
+divide that scope deliberately. `repetition/near-duplicate` compares units pairwise across the whole
+document by character 4-gram cosine, which catches a sentence written twice. `repetition/dilution`
+measures what fraction of the document's overlapping 3-word runs restate an earlier one, a
+dependency-free stand-in for a compression ratio (`node:zlib` is off-limits — rule code ships to the
+browser build). `discourse/low-value-sentence` covers what neither of those can reach: inside one
+paragraph of more than 50 words, a whole sentence whose every content word was already on the page.
+A sentence can fail that test while sharing almost no surface wording with anything before it, which
+is the padding the other two miss. Scoping it to the paragraph is what keeps it away from the
+ordinary way a new paragraph picks up the previous one's vocabulary, and a substantial sentence that
+brings exactly one new content word reports as a `candidate` instead, at quarter weight, because
+nothing structural separates padding from a real synthesis there. Content words come from the shared
+function-word list and inflection folding in `lint/content-words.ts`, which errs toward folding too
+little: a word that doesn't fold reads as new material, so the rule stays quiet rather than firing
+on a sentence that did introduce something.
+
+`discourse/trailing-tail` is the fourth of these and the one that admits its own limits loudest. It
+reports a sentence that finishes its point and then adds a comma and one more phrase — "…produces a
+parse, with a rule-based fallback parser". The shape is ordinary English: measured across this
+repository's own six documentation files, 5040 words, the narrowed form occurs 15 times, 2.98 per
+1000 words, and every one of those is doing real work. Nothing structural separates them from the
+phrase appended because the sentence felt too short, so the rule does not try per sentence. It
+excludes the tails whose job is visible from their first word (coordination, relative clauses,
+subordinators, the `, not X` contrast that `contrast-tail` owns, the `-ing` tack-on that
+`ing-tackon` owns, and anything carrying its own predicate) and then gates on the RATE, at twice the
+measured human figure. Everything reports at `candidate`. At strictness 3 the gate disappears and it
+becomes a flat prohibition, which is the setting for someone who does not want the shape at all.
+
+### Strictness
+
+Every threshold in the rule set is calibrated against deliberate human prose. `trailing-tail`'s
+floor is twice the rate measured across this repository's own documentation; the em-dash threshold
+had to stop flagging Melville (#35). That calibration is right for the default and wrong for the job
+somebody actually has, so the floors move together on one dial (`lint/strictness.ts`), passed to
+`runRules` and handed to every rule's `detect`:
+
+| level | floors | severities | for |
+| --- | --- | --- | --- |
+| 1 | doubled | eased one step | prose with a voice you are trying not to flatten |
+| 2 | as written | as written | the default, and what every rule file argues for |
+| 3 | zero | raised one step | text you already know a model wrote |
+
+Level 3 is the one with teeth. A density gate stops gating — `hits.length >= 0` is true of any
+non-empty set — so one instance of a shape reports the same as six, and `trailing-tail` turns from a
+rate detector into a prohibition. On the flip-flop family (`reframe`, `setup-turn`,
+`mirrored-clauses`), which already fire on a single instance, the dial moves severity instead: the
+same three findings on one paragraph score 7.5, 22.5 and 50 at levels 1, 2 and 3.
+
+What the dial never does is invent a finding a rule could not otherwise make, or relax a rule's
+structural narrowing. Level 3 does not make `trailing-tail` report a relative clause. Counts and
+severities are a judgment about how much is too much; what counts as the shape at all is the rule's
+own business at every level, and only the first of those is a matter of taste. A rule with no
+density component behaves identically at all three levels, which is the honest answer for it.
 
 ### Score and report
 
@@ -104,7 +188,7 @@ rules a second look with real POS tags. "Diagram the finding" (`diagram-finding.
 sentence a finding came from as a Reed-Kellogg diagram with the offending span lit up, so a rule
 that says "reframe" or "tricolon" can show its work instead of asserting it.
 
-## Oracle-gated: what stays out, and why
+## Oracle-gated: what stays out, and what referees it
 
 Everything above is offline and deterministic: same input, same findings, same score, every time.
 That is the design boundary, and it is deliberate. The natural next step, having a model propose
@@ -123,13 +207,33 @@ The reasoning from the epic (#28) is structural, not a matter of taste:
   tell whether the rewrite helped without reading it end to end again.
 
 The oracle-gated design puts the model, if there is one, downstream and narrow instead of upstream
-and broad: given this repo's JSON report, an out-of-repo tool could propose new text for the
-flagged spans only, apply the patch, and re-run this linter to decide whether to keep it, accepting
-a step iff findings strictly decreased, exactly the mechanical loop's own acceptance rule applied to
-model output instead of a fixer's. That loop is a separate CLI or repository: it needs network
-access and API keys, which this project (a static site with no server) does not carry, and it is
-gated by re-lint against the same rules documented here rather than by the model's own say-so about
-whether it fixed the text.
+and broad: given this repo's JSON report, something outside it proposes new text for the flagged
+spans only, and this repo decides whether that text is allowed to stand. The linter referees; the
+model edits. Proposing needs network access and API keys, which this project (a static site with no
+server) does not carry, so that half stays out. Refereeing needs neither, so it lives here, in
+`lint/fix/oracle.ts`.
+
+`refereeEdit` takes one finding's span and a replacement string, applies it, re-lints, and accepts
+only if four things hold: no rule started throwing, **nothing at all is reported inside the new
+text**, every finding outside the replacement matches a pre-edit finding under pure offset shifting,
+and the total count strictly fell. Anything else and the caller gets its text back byte-for-byte
+with the reason.
+
+The mechanical loop (`fix/loop.ts`) cannot do this job, and the reason is worth stating. Its
+acceptance test asks that every finding in the new result be the remapped image of one that was
+already there, and `apply.ts`'s `remapSpan` refuses to follow any span a word-changing splice
+touched. Arbitrary replacement text is word-changing by definition, so every finding near the edit
+becomes unfollowable, reads as new, and the step is refused. That rule is right for splices of the
+author's own words and useless for prose somebody else wrote; what replaces it is a scope test
+rather than a following test.
+
+The guarantee is weaker than the fixer's, and the difference is the point. The mechanical loop
+promises the final text is the author's words with some removed and its findings a subset of the
+findings it started with — a subset, not "probably better". An accepted oracle edit promises
+strictly fewer findings, nothing new anywhere, and every part of the document the model was not
+editing provably unchanged. What it cannot promise is that the new words are the author's, because
+they are not. That judgment stays with the person reading the result, which is why nothing in that
+module writes a file.
 
 ## Scope
 
@@ -149,7 +253,7 @@ rule set can name.
 ## The CLI
 
 ```
-node scripts/destink-score.mjs <file>
+node scripts/destink-score.mjs [--markdown] [--strictness=N] <file>
 ```
 
 Runs the file through the same steps the app's fast pass uses (build the document analysis, run
@@ -161,6 +265,50 @@ than pull in a transpiler dependency on an older Node.
 The number that matters is `score.total`: weighted findings per 1000 words, floored against a
 100-word minimum so a short fragment can't produce a score with no comparison value. `score.byTier`
 and `score.byRule` break that number down for anyone deciding which tell to chase first.
+
+The four-step sequence itself lives in `src/lint/run.ts` as `lintDocument(text, options)`, which
+this script, the MCP server and the package's `sentences/lint/run` export all call. The step order
+carries weight and is easy to get subtly wrong: `--markdown` changes what the *rules* see, never what
+the report is built from. `extractProse` blanks markdown to spaces rather than deleting it, so the
+extracted string has the same length as the original and every span in the report still indexes the
+file on disk, provided the report is built from the original text. One function, one ordering,
+four callers.
+
+## The MCP server
+
+```
+npx -y --package=sentences destink-mcp
+```
+
+The linter over stdio, for an agent that is writing prose and wants it checked against the same
+rules and the same score the app and the CLI use. `src/mcp/server.ts` is the transport wiring and
+the tool declarations; `src/mcp/tools.ts` is what the tools mean, with no MCP import in it, so the
+behavior is tested by calling functions rather than by speaking JSON-RPC at a subprocess.
+
+Two tools, both read-only:
+
+- `destink_lint` takes `text` (a draft the caller is holding) or `path` (a file to read), plus
+  `markdown` (defaulted on for a `.md`/`.markdown`/`.mdx` path, overridable either way), and a
+  `format`. `summary` renders each finding as `line:col` with the offending excerpt and the
+  explanation, printed once per rule rather than repeated down a run of findings. `score` drops the
+  located findings and keeps the counts, which is the cheap call for "did my edit help?". `json` is
+  the report verbatim, byte-identical to what the CLI prints for the same input.
+- `destink_rules` lists the rule set (id, tier, name, in registry order) so a caller can tell what
+  a clean report actually covers before trusting one.
+
+Spans are the reason the renderings exist. A half-open character range is right for an editor and
+useless to a model holding the document as text, so `summary` converts each one to `line:col` plus
+the words themselves.
+
+Argument errors and unreadable paths come back as `isError` content rather than thrown exceptions:
+a protocol-level error is something the calling model never gets to read, and a mistyped key is
+exactly the kind of thing it could fix if told. Unknown keys are rejected for the same reason:
+`{"file": "README.md"}` quietly linting nothing and reporting a clean document is a worse outcome
+than an error naming the keys that do exist.
+
+What the server deliberately does not expose is the mechanical fixer (`src/lint/fix/`). It edits an
+author's words, and whether a given edit ships is a call for the agent holding the document and the
+human reading it, not for a linter reached over a socket.
 
 ## Known engine limits
 

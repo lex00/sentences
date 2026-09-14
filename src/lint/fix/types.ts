@@ -8,6 +8,12 @@
 // it. Here the output is a subsequence of the input plus a handful of commas and capitals, so the
 // only question left is whether the finding count went down, and that is a number.
 //
+// An outside editor can still be held to an account, just not this one: fix/oracle.ts referees
+// arbitrary replacement text by re-linting it, requiring that nothing be reported inside the new
+// words and that the rest of the document come through untouched. That is a weaker promise than
+// this file's — the words are no longer the author's — and it is kept deliberately separate so the
+// grammar below stays the thing it is.
+//
 // These types are fix-local by design. src/lint/types.ts is the shared wave-1 contract and stays
 // untouched; nothing outside src/lint/fix/ needs to know a fixer exists.
 

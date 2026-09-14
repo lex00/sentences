@@ -41,9 +41,16 @@
 //
 // The "not because X, but because Y" variant is handled separately and deliberately differently:
 // see BECAUSE-VARIANT below.
+//
+// STRICTNESS (strictness.ts). This rule already fires on a single instance, so the dial moves its
+// SEVERITY rather than unlocking anything: one step down at level 1, one step up at level 3. At
+// level 3 the flagship "one, then two" shapes stop being something the reader weighs against the
+// rest of the document and become something the document is simply not allowed to contain.
 
 import type { Clause, Word } from "../../ir.js";
 import type { DocAnalysis, Finding, Severity, Span, TropeRule, UnitAnalysis } from "../types.js";
+import type { Strictness } from "../strictness.js";
+import { DEFAULT_STRICTNESS, severityAt } from "../strictness.js";
 import { complementHead, hasAbsoluteAdverb, isCopular, isNegated, subjectHead, subjectIsPronominal } from "../ir-query.js";
 
 const RULE_ID = "reframe";
@@ -318,7 +325,7 @@ export const reframeRule: TropeRule = {
   id: RULE_ID,
   name: "Negative parallelism (the reframe)",
   tier: "syntactic",
-  detect(doc: DocAnalysis): Finding[] {
+  detect(doc: DocAnalysis, strictness: Strictness = DEFAULT_STRICTNESS): Finding[] {
     const candidates = [
       ...pairCandidates(doc),
       ...doc.units.flatMap((u) => {
@@ -349,7 +356,7 @@ export const reframeRule: TropeRule = {
     return unique.map((c) => ({
       ruleId: RULE_ID,
       span: c.span,
-      severity: c.severity ?? (c.strong ? bump(baseSeverity) : baseSeverity),
+      severity: severityAt(c.severity ?? (c.strong ? bump(baseSeverity) : baseSeverity), strictness),
       message: c.message,
       explanation: c.explanation + density,
     }));

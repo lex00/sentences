@@ -14,9 +14,31 @@ describe("makeDoc (stub DocAnalysis, no parser)", () => {
       .toEqual(["Wait?!", "Not a bug...", "A feature."]);
   });
 
-  it("treats a newline as a boundary, so a heading is its own unit", () => {
+  it("breaks at a markdown block edge, so a heading is its own unit without punctuation", () => {
+    expect(makeDoc("## Why this matters\nThe answer is simple.").units.map((u) => u.unit))
+      .toEqual(["## Why this matters", "The answer is simple."]);
+  });
+
+  it("gives a bullet its own unit, and keeps its wrapped continuation with it", () => {
+    expect(makeDoc("- First item\n  wrapped onto a second line\n- Second item").units.map((u) => u.unit))
+      .toEqual(["- First item\n  wrapped onto a second line", "- Second item"]);
+  });
+
+  // The case this used to get wrong, and the reason it no longer breaks on a bare newline: one
+  // sentence hard-wrapped across two lines is one sentence. Splitting it produced a second "unit"
+  // starting mid-clause, which every fragment and opening-word rule then read as a real sentence.
+  it("does NOT break hard-wrapped prose, which is one sentence across two lines", () => {
+    expect(makeDoc("The rewrite shipped in March, a full\nrelease behind the roadmap.").units.map((u) => u.unit))
+      .toEqual(["The rewrite shipped in March, a full\nrelease behind the roadmap."]);
+  });
+
+  // Two contiguous unmarked lines are genuinely ambiguous — a bare line is not a markdown heading,
+  // and nothing structural separates "a title someone typed" from "prose that wrapped". They stay
+  // together, because the wrapped reading is the one that is true of every hard-wrapped document
+  // and the heading reading needs a marker to be more than a guess.
+  it("keeps two unmarked lines together, marker or nothing", () => {
     expect(makeDoc("Why this matters\nThe answer is simple.").units.map((u) => u.unit))
-      .toEqual(["Why this matters", "The answer is simple."]);
+      .toEqual(["Why this matters\nThe answer is simple."]);
   });
 
   it("gives every unit a span that slices back to its own text", () => {

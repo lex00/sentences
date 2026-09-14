@@ -77,7 +77,10 @@ describe("discourse/punchy-fragments", () => {
 
   it("suppresses fragments that sit inside markdown structure (heading/bullet) via makeDoc", () => {
     const heading = "## Openly\n## In a book\n## As a priest";
-    const plain = "Openly\nIn a book\nAs a priest";
+    // Blank-line separated rather than newline separated: three paragraphs, unambiguously three
+    // units. Contiguous unmarked lines are hard-wrapped prose as far as blocks.ts is concerned, and
+    // this control is about markdown STRUCTURE being absent, not about line breaks.
+    const plain = "Openly\n\nIn a book\n\nAs a priest";
     const asFragment = () => "fragment" as const;
     expect(punchyFragmentsRule.detect(makeDoc(heading, asFragment))).toEqual([]);
     // same content, no heading markers — fires, proving the suppression above is about structure
@@ -162,7 +165,7 @@ describe("discourse/countdown", () => {
 
   it("suppresses a countdown whose units sit inside markdown headings, via makeDoc", () => {
     const heading = "## Not a bug\n## Not a feature\n## A fundamental design flaw";
-    const plain = "Not a bug\nNot a feature\nA fundamental design flaw";
+    const plain = "Not a bug\n\nNot a feature\n\nA fundamental design flaw";
     const asFragment = () => "fragment" as const;
     expect(countdownRule.detect(makeDoc(heading, asFragment))).toEqual([]);
     expect(countdownRule.detect(makeDoc(plain, asFragment))).toHaveLength(1);

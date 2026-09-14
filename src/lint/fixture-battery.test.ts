@@ -14,6 +14,12 @@
 //   5. cross-rule precision: the rule must not report itself on any OTHER rule's negatives either —
 //      a negative is a near-miss for the trope it was written against, but it is prose, and no
 //      unrelated rule should be tripping on it
+//   6. profile: a "shape" fixture (the default) must hold at EVERY strictness level, because the
+//      dial moves counts and severities and never what counts as the shape; a "rate" fixture makes
+//      a claim about a density threshold and is checked at the default level only. See
+//      fixtures/types.ts. Cross-rule precision (5) stays at the default level throughout: it is a
+//      statement about the calibrated rule set, and level 3 is deliberately noisy, so firing there
+//      is the dial working rather than a precision failure.
 //
 // Fixture discovery: every *.ts file in ./fixtures/ except types.ts is a fixture module (see
 // fixtures/types.ts for the shape) and is picked up automatically — dropping a new file in that
@@ -43,7 +49,9 @@ import { makeDoc, spanOf } from "./stub-doc.js";
 import { sameSpan, textAt } from "./span.js";
 import { buildDocAnalysis } from "./build-doc.js";
 import type { DocAnalysis, Finding, Span } from "./types.js";
-import type { NegativeFixture, PositiveFixture, PosOverrides, RuleFixtures } from "./fixtures/types.js";
+import type { FixtureProfile, NegativeFixture, PositiveFixture, PosOverrides, RuleFixtures } from "./fixtures/types.js";
+import type { Strictness } from "./strictness.js";
+import { DEFAULT_STRICTNESS, STRICTNESS_LEVELS } from "./strictness.js";
 
 // --- discovery ---
 
@@ -87,6 +95,16 @@ function buildDoc(f: { text: string; needsClauses?: boolean; posOverrides?: PosO
   return applyPosOverrides(doc, f.posOverrides);
 }
 
+// The levels a fixture's claim is asserted over. A shape fixture is checked at all three; a rate
+// fixture only where its threshold was calibrated.
+const levelsFor = (profile: FixtureProfile | undefined): readonly Strictness[] =>
+  (profile ?? "shape") === "rate" ? [DEFAULT_STRICTNESS] : STRICTNESS_LEVELS;
+
+// Names the level in a failure message only when there is more than one in play, so a rate
+// fixture's output reads exactly as it did before profiles existed.
+const atLevel = (levels: readonly Strictness[], s: Strictness): string =>
+  levels.length > 1 ? ` at strictness ${s}` : "";
+
 // --- failure formatting ---
 // Every thrown message below names the rule id and the fixture (by index and note/text) plus
 // expected vs. actual, per the issue's acceptance criteria — this is the whole point of the file.
@@ -127,40 +145,89 @@ describe("lint fixture battery (#12)", () => {
 
     describe(rule.id, () => {
       fx.positives.forEach((pos: PositiveFixture, i: number) => {
-        it(`fires on positive #${i + 1} (${pos.note ?? JSON.stringify(pos.spanText)})`, () => {
-          const doc = buildDoc(pos);
-          const findings = rule.detect(doc);
-          const expected: Span = spanOf(pos.text, pos.spanText, pos.nth ?? 1);
-          const hit = findings.find((f) => f.ruleId === rule.id && sameSpan(f.span, expected));
-          expect(
-            hit,
-            hit
-              ? undefined
-              : `${rule.id} fixture positive #${i + 1}\n` +
-                  `  text:     ${JSON.stringify(pos.text)}\n` +
-                  `  expected: span [${expected.start},${expected.end}) = ${JSON.stringify(pos.spanText)} (occurrence ${pos.nth ?? 1})\n` +
-                  `  actual:   ${actualList(pos.text, findings)}`,
-          ).toBeDefined();
-        });
+        const levels = levelsFor(pos.profile);
+        for (const level of levels) {
+          it(`fires on positive #${i + 1}${atLevel(levels, level)} (${pos.note ?? JSON.stringify(pos.spanText)})`, () => {
+            const doc = buildDoc(pos);
+            const findings = rule.detect(doc, level);
+            const expected: Span = spanOf(pos.text, pos.spanText, pos.nth ?? 1);
+            const hit = findings.find((f) => f.ruleId === rule.id && sameSpan(f.span, expected));
+            expect(
+              hit,
+              hit
+                ? undefined
+                : `${rule.id} fixture positive #${i + 1}${atLevel(levels, level)}\n` +
+                    `  text:     ${JSON.stringify(pos.text)}\n` +
+                    `  expected: span [${expected.start},${expected.end}) = ${JSON.stringify(pos.spanText)} (occurrence ${pos.nth ?? 1})\n` +
+                    `  actual:   ${actualList(pos.text, findings)}\n` +
+                    (levels.length > 1
+                      ? `  note:     this is a "shape" fixture, so it must hold at every strictness level. If its claim is about a DENSITY THRESHOLD rather than a structure, mark it profile: "rate" (see fixtures/types.ts).`
+                      : ""),
+            ).toBeDefined();
+          });
+        }
       });
 
       fx.negatives.forEach((neg: NegativeFixture, i: number) => {
-        it(`stays silent on negative #${i + 1} (${neg.note ?? "no note"})`, () => {
-          const doc = buildDoc(neg);
-          const hits = rule.detect(doc).filter((f) => f.ruleId === rule.id);
-          expect(
-            hits,
-            hits.length === 0
-              ? undefined
-              : `${rule.id} fixture negative #${i + 1}\n` +
-                  `  text:     ${JSON.stringify(neg.text)}\n` +
-                  `  expected: no findings from ${rule.id}\n` +
-                  `  actual:   ${actualList(neg.text, hits)}`,
-          ).toEqual([]);
-        });
+        const levels = levelsFor(neg.profile);
+        for (const level of levels) {
+          it(`stays silent on negative #${i + 1}${atLevel(levels, level)} (${neg.note ?? "no note"})`, () => {
+            const doc = buildDoc(neg);
+            const hits = rule.detect(doc, level).filter((f) => f.ruleId === rule.id);
+            expect(
+              hits,
+              hits.length === 0
+                ? undefined
+                : `${rule.id} fixture negative #${i + 1}${atLevel(levels, level)}\n` +
+                    `  text:     ${JSON.stringify(neg.text)}\n` +
+                    `  expected: no findings from ${rule.id}\n` +
+                    `  actual:   ${actualList(neg.text, hits)}\n` +
+                    (levels.length > 1
+                      ? `  note:     this is a "shape" fixture, so it must hold at every strictness level. A rule that stays silent at 2 and fires at 3 on the same text is either letting the dial into its structural narrowing — which strictness.ts forbids — or making a threshold claim that belongs behind profile: "rate".`
+                      : ""),
+            ).toEqual([]);
+          });
+        }
       });
     });
   }
+
+  // A "rate" label costs the battery two thirds of its coverage for that fixture, so it has to be
+  // earned. A fixture marked "rate" whose behavior is identical at all three levels is a shape
+  // fixture wearing a rate label — nothing about it is a threshold claim, and the annotation is
+  // only narrowing what CI checks. This catches that, in the one direction the default cannot.
+  describe("profile hygiene", () => {
+    const rateFixtures = fixtureSets.flatMap((fx) => {
+      const rule = RULES.find((r) => r.id === fx.ruleId);
+      if (!rule) return [];
+      return [
+        ...fx.positives.map((f, i) => ({ rule, f, kind: "positive" as const, i })),
+        ...fx.negatives.map((f, i) => ({ rule, f, kind: "negative" as const, i })),
+      ].filter(({ f }) => f.profile === "rate");
+    });
+
+    if (rateFixtures.length === 0) {
+      it("no fixture claims the rate profile yet", () => {
+        expect(rateFixtures).toEqual([]);
+      });
+    } else {
+      for (const { rule, f, kind, i } of rateFixtures) {
+        it(`${rule.id}'s ${kind} #${i + 1} earns its "rate" profile`, () => {
+          const doc = buildDoc(f);
+          const counts = STRICTNESS_LEVELS.map((s) => rule.detect(doc, s).filter((x) => x.ruleId === rule.id).length);
+          const identical = counts.every((n) => n === counts[0]);
+          expect(
+            identical,
+            identical
+              ? `${rule.id} ${kind} #${i + 1} is marked profile: "rate" but reports ${counts[0]} finding(s) at every ` +
+                  `strictness level (${counts.join("/")}). Nothing about it is a threshold claim — drop the profile ` +
+                  `and let it be checked at all three levels as a shape fixture.`
+              : undefined,
+          ).toBe(false);
+        });
+      }
+    }
+  });
 
   describe("cross-rule precision", () => {
     // Every (rule, other rule's negative) pair, skipping a rule's own fixtures — those are covered

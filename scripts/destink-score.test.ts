@@ -55,9 +55,28 @@ describe("the destink-score CLI (subprocess)", () => {
     expect(second.stdout).toBe(first.stdout);
   });
 
-  it("exits non-zero with a usage message when no file is given", () => {
+  it("exits non-zero with a usage message on stderr when no file is given", () => {
     const result = runCli();
     expect(result.status).not.toBe(0);
+    expect(result.stdout).toBe("");
     expect(result.stderr).toContain("usage:");
+  });
+
+  // An asked-for help text is a success, and belongs on stdout so it can be piped. This used to
+  // fall through the no-file branch instead: right words, wrong stream, exit 1.
+  it("prints help on stdout and exits 0 for --help and -h", () => {
+    for (const flag of ["--help", "-h"]) {
+      const result = runCli(flag);
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe("");
+      expect(result.stdout).toContain("usage:");
+    }
+  });
+
+  it("documents both flags it accepts, and where to find the MCP server", () => {
+    const help = runCli("--help").stdout;
+    expect(help).toContain("--markdown");
+    expect(help).toContain("--help, -h");
+    expect(help).toContain("destink-mcp");
   });
 });

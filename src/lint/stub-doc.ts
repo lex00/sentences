@@ -12,6 +12,7 @@
 // and negation queries) has to run against the real analyzer — makeDoc will report every unit as
 // unparseable, which is the honest answer when nothing parsed it.
 
+import { splitByBlock } from "./blocks.js";
 import type { DocAnalysis, Span, UnitAnalysis, UnitOutcome, WordSpan } from "./types.js";
 
 const TERMINATORS = ".!?;:";
@@ -28,17 +29,28 @@ function trimmed(text: string, start: number, end: number): Span | null {
 }
 
 // Unit boundaries: after a run of . ! ? ; : (so "Wait?!" and "Not a bug..." stay one unit), and at
-// any newline (a heading or a bullet is its own unit even without punctuation). The terminator
-// belongs to the unit it ends — fragment rules care whether a unit ends in a period.
+// every markdown BLOCK edge, so a heading or a bullet is its own unit even carrying no punctuation.
+// The terminator belongs to the unit it ends — fragment rules care whether a unit ends in a period.
+//
+// Block edges rather than newlines. This function used to break on any "\n", which gave headings
+// and bullets the separation they need and took it away from hard-wrapped prose, splitting one
+// sentence into two the moment it crossed a line. blocks.ts draws the line in the right place, and
+// is what build-doc.ts uses too — the two builders cannot drift apart again without that module
+// changing under both of them. See blocks.test.ts and build-doc.test.ts's parity block.
 export function splitUnitSpans(text: string): Span[] {
+  return splitByBlock(text, splitWithinBlock);
+}
+
+// The terminator scan, within one block, where a newline is just wrapping.
+function splitWithinBlock(text: string): Span[] {
   const spans: Span[] = [];
   let start = 0;
   for (let i = 0; i < text.length; i++) {
     const c = text[i]!;
     const isTerm = TERMINATORS.includes(c);
-    if (!isTerm && c !== "\n") continue;
-    if (isTerm) while (i + 1 < text.length && TERMINATORS.includes(text[i + 1]!)) i++;
-    const span = trimmed(text, start, isTerm ? i + 1 : i);
+    if (!isTerm) continue;
+    while (i + 1 < text.length && TERMINATORS.includes(text[i + 1]!)) i++;
+    const span = trimmed(text, start, i + 1);
     if (span) spans.push(span);
     start = i + 1;
   }

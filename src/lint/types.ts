@@ -5,6 +5,7 @@
 //   #10    copular/negation query helpers over the Clause IR (consumes Clause)
 //   #11    TropeRule engine + runner (consumes DocAnalysis, produces Finding)
 
+import type { Strictness } from "./strictness.js";
 import type { Clause } from "../ir.js";
 import type { Tree } from "../ptb.js";
 
@@ -57,9 +58,14 @@ export type Finding = {
 
 // A trope rule: a predicate over the whole document that returns located findings.
 // Same shape as the game's Condition with the polarity flipped.
+//
+// `strictness` is the dial in strictness.ts: it moves density floors and severities, never what
+// counts as the shape. The parameter is optional because most rules have no density component and
+// behave identically at every level — those ignore it, and a rule that reads it says so in its own
+// header. The engine always passes a value; only a hand-written test ever omits it.
 export type TropeRule = {
   id: string;
   name: string;
   tier: TropeTier;
-  detect(doc: DocAnalysis): Finding[];
+  detect(doc: DocAnalysis, strictness?: Strictness): Finding[];
 };

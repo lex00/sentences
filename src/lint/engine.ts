@@ -33,6 +33,8 @@
 //              caused it.
 
 import type { DocAnalysis, Finding, TropeRule } from "./types.js";
+import type { Strictness } from "./strictness.js";
+import { DEFAULT_STRICTNESS } from "./strictness.js";
 import { compareSpans } from "./span.js";
 
 // A rule that misbehaved. `message` is a one-liner safe to show in the UI; `error` is the thrown
@@ -54,7 +56,11 @@ const describe = (err: unknown): string => (err instanceof Error ? err.message :
 // key, and keyed on the FINDING's own ruleId, not the rule's — one module may emit under sub-ids.
 const dedupeKey = (f: Finding): string => `${f.ruleId.length}:${f.ruleId}:${f.span.start}:${f.span.end}`;
 
-export function runRules(rules: readonly TropeRule[], doc: DocAnalysis): LintResult {
+export function runRules(
+  rules: readonly TropeRule[],
+  doc: DocAnalysis,
+  strictness: Strictness = DEFAULT_STRICTNESS,
+): LintResult {
   const findings: Finding[] = [];
   const errors: RuleError[] = [];
   const seen = new Set<string>(); // first finding for a key wins
@@ -62,7 +68,7 @@ export function runRules(rules: readonly TropeRule[], doc: DocAnalysis): LintRes
   for (const rule of rules) {
     let produced: Finding[];
     try {
-      produced = rule.detect(doc);
+      produced = rule.detect(doc, strictness);
     } catch (err) {
       errors.push({ ruleId: rule.id, message: `rule threw: ${describe(err)}`, error: err });
       continue; // all-or-nothing: a throwing rule reports nothing
