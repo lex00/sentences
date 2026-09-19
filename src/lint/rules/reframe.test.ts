@@ -692,3 +692,32 @@ describe("the reframes the IR cannot pair", () => {
     expect(fromText("The build is in progress. It is in the queue behind two others.")).toEqual([]);
   });
 });
+
+// MIRRORED-COMMA VARIANT. The reframe folded into one sentence and joined by a comma, with the
+// same subject and be-form on both sides. Every other arm here misses it for its own reason: no
+// next unit (a comma is not a terminator), a copular answer rather than a requirement, and a unit
+// that often does not lower at all. Found by running a deployed instance against a LinkedIn
+// sentence and seeing the most obvious tell in it come back clean.
+describe("the comma-joined reframe", () => {
+  const fromText = (text: string) => reframeRule.detect(realDoc(text));
+
+  test("fires on a denied-then-affirmed frame inside one sentence", () => {
+    const f = fromText("We are not just shipping a tool, we are unlocking a new paradigm.");
+    expect(f.length).toBeGreaterThan(0);
+  });
+
+  test("does not require the sufficiency word", () => {
+    expect(fromText("It is not raining, it is snowing.").length).toBeGreaterThan(0);
+    expect(fromText("This is not a rewrite, this is a rebuild.").length).toBeGreaterThan(0);
+  });
+
+  // The repetition is the whole safety story: both halves must share a subject AND a be-form.
+  test("stays silent on two facts that merely share a comma", () => {
+    expect(fromText("The build is not done, the tests are still running.")).toEqual([]);
+    expect(fromText("The cache is not warm and the queue is not empty.")).toEqual([]);
+  });
+
+  test("stays silent when the second half contradicts rather than mirrors", () => {
+    expect(fromText("The parser is not fast, but it is correct.")).toEqual([]);
+  });
+});

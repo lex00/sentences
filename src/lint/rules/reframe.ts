@@ -354,6 +354,41 @@ function predicateGapCandidate(span: Span): Candidate {
   };
 }
 
+// --- MIRRORED-COMMA VARIANT: "we are not just X, we are Y" ---
+//
+// The reframe folded into a single sentence, joined by a comma, with the frame repeated verbatim
+// on both sides. Every other arm in this file misses it, and each for its own reason: there is no
+// next unit because a comma is not a terminator, so the predicate-gap arm never runs; the answer
+// is a copula rather than a requirement, so the sufficiency arm rejects it; and the unit often
+// does not lower at all, so pairCandidates has no clauses to pair.
+//
+// What makes it safe to match on text is the REPETITION. Both halves carry the same subject word
+// and the same be-form, the first is negated and the second is not, and the writer built that
+// symmetry on purpose. "The build is not done, the tests are still running" shares neither and
+// stays clean; it is two facts joined by a comma, which is ordinary writing.
+//
+// The optional "just"/"only"/"merely" is where this most often shows up and is not required. With
+// it the sentence denies sufficiency; without it, plain identity. Both are the same move.
+const MIRRORED_COMMA =
+  /\b(\w+)\s+(is|are|was|were)\s+not\s+(?:just\s+|only\s+|merely\s+|simply\s+)?[^,.;:!?]{2,60},\s*\1\s+\2\b/i;
+
+function mirroredCommaVariant(u: UnitAnalysis): Span | null {
+  const m = MIRRORED_COMMA.exec(u.unit);
+  return m ? { start: u.span.start + m.index, end: u.span.end } : null;
+}
+
+function mirroredCommaCandidate(span: Span): Candidate {
+  return {
+    span,
+    message: "Negative parallelism: the same frame denied, then affirmed",
+    explanation:
+      "Both halves of this sentence use the same subject and the same verb, the first denied and the " +
+      "second affirmed, which is the reframe compressed into one breath. The reader never proposed the " +
+      "denied version, so the first half exists only to set up the second. Make the claim you actually " +
+      "want to make and let it stand on its own.",
+  };
+}
+
 // --- findings ---
 
 // Severity is a function of how many times the document does this, not of any one instance: once
@@ -459,6 +494,10 @@ export const reframeRule: TropeRule = {
       ...doc.units.flatMap((u, i) => {
         const span = sufficiencyVariant(doc.text, u, doc.units[i + 1]);
         return span ? [sufficiencyCandidate(span)] : [];
+      }),
+      ...doc.units.flatMap((u) => {
+        const span = mirroredCommaVariant(u);
+        return span ? [mirroredCommaCandidate(span)] : [];
       }),
     ];
 
