@@ -626,3 +626,40 @@ describe("registration", () => {
     expect(findings.map((f) => f.ruleId)).toEqual(["reframe"]);
   });
 });
+
+// SUFFICIENCY-VARIANT. The reframe without the symmetry: the denial is copular and negated, the
+// answer is neither, so no pairing test can match the two halves. Found by running the linter on a
+// real LinkedIn post that the copular path read as completely clean.
+describe("the sufficiency reframe", () => {
+  const fromText = (text: string) => reframeRule.detect(realDoc(text));
+
+  test("fires on a not-enough denial answered by a requirement across an em dash", () => {
+    const f = fromText("It's not enough for the workloads to run—you also need to think about cost.");
+    expect(f.length).toBeGreaterThan(0);
+    expect(f[0]!.message).toContain("sufficiency reframe");
+  });
+
+  test("fires across a semicolon, where splitUnits puts the halves in different units", () => {
+    expect(fromText("It's not just about speed; you need to think about direction too.").length).toBeGreaterThan(0);
+  });
+
+  test("fires on a comma break inside one unit", () => {
+    expect(fromText("Shipping is not enough on its own, you must also measure what it cost.").length).toBeGreaterThan(0);
+  });
+
+  // The narrowing. A denial answered by an ASSERTION is ordinary English; only a denial answered
+  // by an explicit REQUIREMENT is the move this targets.
+  test("stays silent on a denial answered by a consequence", () => {
+    expect(fromText("It's not raining, so we went out.")).toEqual([]);
+  });
+
+  test("stays silent on a plain statement of insufficiency", () => {
+    expect(fromText("There is not enough memory to run the build.")).toEqual([]);
+    expect(fromText("The parser is not enough on its own.")).toEqual([]);
+  });
+
+  // A full stop makes them two sentences, which is the copular path's business, not this one's.
+  test("does not reach across a full stop", () => {
+    expect(fromText("It is not enough. You need to measure it.")).toEqual([]);
+  });
+});

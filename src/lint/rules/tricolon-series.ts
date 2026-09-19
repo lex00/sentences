@@ -171,6 +171,28 @@ function splitInternalConj(seg: Segment): [Span, Span] | null {
 
 // --- the series ---
 
+// A list of PEOPLE is not a tricolon. "Kavanaugh Latiolais, Michael and I get into this on the
+// episode" is three comma-separated items by every structural test this rule applies, and it is a
+// byline rather than a rhetorical figure. The tell is that the non-final items are bare proper
+// nouns: a real tricolon's items carry content ("fast, correct and small"), where a name list's
+// carry identity.
+//
+// Capitalisation is the signal, and it is only trustworthy away from the sentence's first word —
+// "Kavanaugh" is capitalised because the sentence starts there. So the test looks at the items
+// AFTER the first, and asks that every one of them be nothing but capitalised words or the pronoun
+// "I". One lowercase content word anywhere in them and this is an ordinary series again.
+const NAME_TOKEN = /^(?:\p{Lu}[\p{L}'’-]*|I)$/u;
+
+function isNameList(text: string, items: readonly Span[]): boolean {
+  if (items.length < 2) return false;
+  const tail = items.slice(1, -1); // skip the first (sentence-initial) and the final (the predicate)
+  if (tail.length === 0) return false;
+  return tail.every((span) => {
+    const words = text.slice(span.start, span.end).trim().split(/\s+/).filter(Boolean);
+    return words.length > 0 && words.length <= 3 && words.every((w) => NAME_TOKEN.test(w.replace(/[.,;:]$/, "")));
+  });
+}
+
 function itemsOf(text: string, unit: UnitAnalysis): Span[] | null {
   const core = coreSpan(text, unit.span);
   if (!core) return null;
@@ -219,6 +241,7 @@ function collect(doc: DocAnalysis): Hit[] {
   for (const unit of doc.units) {
     const items = itemsOf(doc.text, unit);
     if (!items || !isSeries(doc.text, items)) continue;
+    if (isNameList(doc.text, items)) continue; // a byline, not a figure of speech
     const span: Span = { start: items[0]!.start, end: items[items.length - 1]!.end };
     hits.push({
       span,

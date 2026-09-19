@@ -237,6 +237,67 @@ function commaVariant(u: UnitAnalysis): Span | null {
   return { start: u.span.start + never.index, end: u.span.end };
 }
 
+// --- SUFFICIENCY-VARIANT: "it's not enough to X — you also need Y" ---
+//
+// The reframe without the symmetry. pairCandidates wants a denial and a replacement that are both
+// copular, which is what makes it precise, and it is the reason this shape slips through:
+//
+//   "It's not enough for the workloads to run—you also need to think about how efficiently they
+//    scale, how reliably they're deployed, and what they cost to operate."
+//
+// The denial IS copular and negated. The replacement is not: different subject, and a requirement
+// verb rather than a copula. Structurally the two halves have nothing in common, so no symmetry
+// test can pair them, yet the move is the same one — deny that something suffices, then hand the
+// reader the thing that does.
+//
+// Narrow on purpose, and lexically anchored, because loosening the second half to "any clause"
+// would fire on ordinary English: "It's not raining, so we went out" is a denial followed by a
+// consequence and is nobody's tic. What is required here is a negated SUFFICIENCY word answered by
+// an explicit REQUIREMENT, which is a much smaller target than a denial answered by an assertion.
+const SUFFICIENCY = /\bnot\s+(?:enough|just|only|simply|merely)\b/i;
+const REQUIREMENT = /\b(?:you|we|they|one)\s+(?:also\s+|still\s+)?(?:need|have\s+to|must|want)\b|\bit\s+takes\b|\bwhat\s+(?:really\s+)?matters\s+is\b/i;
+
+// Within one unit, and across the boundary to the next. splitUnits breaks on ";" and ":" as well
+// as on a full stop, so "It's not just about speed; you need to think about direction" arrives as
+// TWO units and the denial and its answer never meet inside either one. The copular path has the
+// same problem and solves it the same way, by looking at consecutive clauses rather than at one.
+function sufficiencyVariant(text: string, u: UnitAnalysis, next: UnitAnalysis | undefined): Span | null {
+  const denial = SUFFICIENCY.exec(u.unit);
+  if (!denial) return null;
+
+  // Same unit: the requirement has to sit past a break, or this is one clause and not a reframe.
+  const after = u.unit.slice(denial.index);
+  const breakAt = after.search(/[—–;:,-]/);
+  if (breakAt >= 0) {
+    const req = REQUIREMENT.exec(after);
+    if (req && req.index > breakAt) return { start: u.span.start + denial.index, end: u.span.end };
+  }
+
+  // The next unit: only when the break between them was a semicolon or colon, which joins two
+  // halves of one thought. A full stop between them is two sentences, and that is the copular
+  // path's territory rather than this one's.
+  if (!next) return null;
+  // splitUnits drops the terminator it broke on, so the separator is only visible in the source
+  // between the two units. A semicolon or colon joins two halves of one thought; a full stop makes
+  // them two sentences, which is the copular path's territory rather than this one's.
+  const between = text.slice(u.span.end, next.span.start);
+  if (!/[;:]/.test(between)) return null;
+  return REQUIREMENT.test(next.unit) ? { start: u.span.start + denial.index, end: next.span.end } : null;
+}
+
+function sufficiencyCandidate(span: Span): Candidate {
+  return {
+    span,
+    message: "sufficiency reframe: what is not enough, answered by what is required",
+    explanation:
+      "This denies that something suffices and then hands the reader the thing that does — the reframe " +
+      "without the matching halves that make it obvious. It reads as a lesson being delivered rather " +
+      "than a point being made, because the first clause exists only to be corrected by the second. " +
+      "Say the requirement on its own: the reader did not propose the insufficient version, so there is " +
+      "nothing to take away from them.",
+  };
+}
+
 // --- findings ---
 
 // Severity is a function of how many times the document does this, not of any one instance: once
@@ -335,6 +396,10 @@ export const reframeRule: TropeRule = {
       ...doc.units.flatMap((u) => {
         const span = commaVariant(u);
         return span ? [commaCandidate(span)] : [];
+      }),
+      ...doc.units.flatMap((u, i) => {
+        const span = sufficiencyVariant(doc.text, u, doc.units[i + 1]);
+        return span ? [sufficiencyCandidate(span)] : [];
       }),
     ];
 

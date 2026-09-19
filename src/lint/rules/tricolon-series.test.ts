@@ -177,3 +177,26 @@ describe("commas inside brackets are the aside's, not the sentence's", () => {
     expect(() => fire("A list (a, b, c and d without a close")).not.toThrow();
   });
 });
+
+// A list of people is a byline, not a figure of speech. Reported from a real LinkedIn post where
+// "Kavanaugh Latiolais, Michael and I get into this" came back as a 3-item comma series.
+describe("a name list is not a tricolon", () => {
+  it("stays silent on a coordination of people", () => {
+    expect(fire("Kavanaugh Latiolais, Michael and I get into this and more on the episode.")).toEqual([]);
+  });
+
+  it("stays silent on a coordination of companies", () => {
+    expect(fire("Apple, Google and Meta all shipped one this year.")).toEqual([]);
+  });
+
+  it("still fires when the items carry content rather than identity", () => {
+    expect(fire("It brings together cost optimization, Kubernetes best practices, HPA, autoscaling, and CI/CD efficiency.").length).toBeGreaterThan(0);
+    expect(fire("Products impress people, platforms empower them and frameworks outlive both.").length).toBeGreaterThan(0);
+  });
+
+  // Capitalisation only means something away from the sentence's first word, so the test looks at
+  // the items after the first. A lowercase content word in any of them and this is a real series.
+  it("is not fooled by a capitalised opening word alone", () => {
+    expect(fire("Kubernetes needs tuning, careful review and real observability.").length).toBeGreaterThan(0);
+  });
+});
