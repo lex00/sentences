@@ -192,7 +192,7 @@ export function createServer(): Server {
   const server = new Server(
     // Kept in step with package.json by server.test.ts — a client reads this in the initialize
     // handshake, and a stale version is the same small lie the rule count would be.
-    { name: "destink", version: "0.4.1" },
+    { name: "destink", version: "0.5.0" },
     { capabilities: { tools: {} } },
   );
 
