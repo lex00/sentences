@@ -24,6 +24,7 @@
 // inputs from producing scores that can't be compared against real documents.
 
 import type { Finding, Severity, TropeTier } from "./types.js";
+import { isDiscriminative } from "./discriminative.js";
 
 export const SEVERITY_WEIGHT: Readonly<Record<Severity, number>> = {
   candidate: 0.25,
@@ -47,6 +48,13 @@ export const TIERS: readonly TropeTier[] = ["lexical", "syntactic", "formatting"
 
 export type ScoreBreakdown = {
   total: number;
+  // The same weighted-findings-per-1000 arithmetic, counting only the rules that separate generated
+  // prose from carefully written prose (discriminative.ts). A SECOND number rather than a
+  // replacement, because the two answer different questions: `total` is "how many tells does this
+  // carry", which is what you want while editing, and `discriminative` is "how likely is this
+  // generated", which is what you want when that is the question. Collapsing them into one number
+  // is what leaves `total` separating the two registers by only 1.74x.
+  discriminative: number;
   byTier: Readonly<Record<TropeTier, number>>;
   byRule: Readonly<Record<string, number>>;
 };
@@ -66,10 +74,12 @@ export function scoreFindings(
   const byTierWeight: Partial<Record<TropeTier, number>> = {};
   const byRuleWeight: Record<string, number> = {};
   let totalWeight = 0;
+  let discriminativeWeight = 0;
 
   for (const f of findings) {
     const w = SEVERITY_WEIGHT[f.severity];
     totalWeight += w;
+    if (isDiscriminative(f.ruleId)) discriminativeWeight += w;
     byRuleWeight[f.ruleId] = (byRuleWeight[f.ruleId] ?? 0) + w;
     const tier = ruleTier(f.ruleId);
     if (tier) byTierWeight[tier] = (byTierWeight[tier] ?? 0) + w;
@@ -83,5 +93,5 @@ export function scoreFindings(
   const byRule: Record<string, number> = {};
   for (const id of Object.keys(byRuleWeight).sort()) byRule[id] = per1000(byRuleWeight[id]!);
 
-  return { total: per1000(totalWeight), byTier, byRule };
+  return { total: per1000(totalWeight), discriminative: per1000(discriminativeWeight), byTier, byRule };
 }

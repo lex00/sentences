@@ -18,6 +18,8 @@
 //     wordCount: number,                  // countWords(source) — see score.ts
 //     score: {
 //       total: number,                    // weighted findings per 1000 words
+//       discriminative: number,           // the same, counting only the rules that separate
+//                                         // generated prose from careful prose (discriminative.ts)
 //       byTier: { lexical, syntactic, formatting, discourse: number },
 //       byRule: { [ruleId]: number },     // keys sorted ascending
 //     },

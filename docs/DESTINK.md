@@ -196,6 +196,36 @@ no run-dependent values, so two runs over the same input are byte-identical and 
 can diff two reports without also diffing formatting noise. This report, not the internal
 `TropeRule`/`Finding` types, is the contract anything outside this repo is meant to parse.
 
+### Two scores
+
+`score.total` weights a finding by severity: how confident a rule is in one instance. That is the
+right number while editing, and the wrong one for asking whether a document was generated, because
+it says nothing about how much a rule firing tells you. Measured, the gap swamps the number:
+
+| | corpus | baseline | separation |
+| --- | --- | --- | --- |
+| all 51 rules | 53.1 | 30.5 | 1.74x |
+| the 19 discriminating rules | 27.4 | 1.7 | 16.2x |
+| the 10 that do not discriminate | 25.6 | 28.1 | 0.91x |
+
+The second group carries roughly half the corpus score and almost all of the control score, so the
+headline number is largely measuring the same thing in both columns. That is why one release added
+98 findings to the corpus and moved `score.total` by 2.9.
+
+`score.discriminative` is the same arithmetic over the subset in `lint/discriminative.ts`. A second
+number rather than a replacement, because the two answer different questions and collapsing them is
+what produced the 1.74x.
+
+A rule joins that list only by clearing three gates against a 39,793-word sample of the target
+register, with this repository's documentation (9,142 words) as a hand-written control: absent from
+the control or at least 3x its rate, firing in BOTH halves of the sample, and at least 3
+occurrences so nothing is picked on a coincidence. Held out, a list derived from one half separates
+the other at 15.8x against 16.6x in-sample, a 5% drop, so the separation survives not being fitted.
+
+One author's blog is not "AI prose", and the file says so. It ships as data in one place precisely
+so it can be replaced when someone measures a better corpus. The three gates are the method to
+re-run; the list is only the current answer.
+
 ### Mechanical fixer
 
 A fixer only gets three edit kinds: delete a span, move a span to another offset in the same
