@@ -14,6 +14,7 @@ import { describe, it, expect } from "vitest";
 import { readDocument } from "../../document.js";
 import { tokenizeWithSpans } from "../offsets.js";
 import { makeDoc } from "../stub-doc.js";
+import { buildDocAnalysis } from "../build-doc.js";
 import { textAt } from "../span.js";
 import type { DocAnalysis, UnitAnalysis } from "../types.js";
 import { countdownRule, punchyFragmentsRule } from "./fragments.js";
@@ -178,5 +179,37 @@ describe("discourse/countdown", () => {
     const doc = docFromReadDocument(text);
     expect(countdownRule.detect(doc)).toEqual([]);
     expect(punchyFragmentsRule.detect(doc)).toEqual([]);
+  });
+});
+
+// A production arrow is notation, not punctuation. A grammar reference table written with
+// semicolons arrives as a column of verbless units, because splitUnits breaks on the semicolon and
+// neither half has a predicate — so the table read as a run of terse beats. Found in
+// docs/PARSER.md while verifying score.discriminative, which is the number that has to be
+// trustworthy.
+describe("grammar notation is not a punchy fragment", () => {
+  const fire = (text: string) => punchyFragmentsRule.detect(buildDocAnalysis(text));
+
+  it("stays silent on a production table", () => {
+    expect(fire("transitive NP → direct object; SBAR → subordinate-clause modifier")).toEqual([]);
+  });
+
+  it("stays silent on ASCII arrows too", () => {
+    expect(fire("transitive NP -> direct object; SBAR -> subordinate-clause modifier")).toEqual([]);
+    expect(fire("input => parse; parse => lower")).toEqual([]);
+  });
+
+  it("breaks a run rather than silencing the whole document", () => {
+    // The notation unit drops out; what is left is one fragment, which is under the floor.
+    expect(fire("PP modifiers (recursive); coordination (NP/VP + CC → )")).toEqual([]);
+  });
+
+  // The suppression must not reach real fragments, which is the whole point of the rule.
+  it("still catches a genuine run of punchy fragments", () => {
+    expect(fire("He published this. Openly. In a book. As a priest.").length).toBeGreaterThan(0);
+  });
+
+  it("does not suppress a fragment merely for mentioning an acronym", () => {
+    expect(fire("No server. No install. Just the API.").length).toBeGreaterThan(0);
   });
 });

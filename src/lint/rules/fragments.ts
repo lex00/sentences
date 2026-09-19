@@ -159,8 +159,32 @@ const MIN_UNITS = 4;
 const DENSITY_MEDIUM = 0.3;
 const DENSITY_HIGH = 0.5;
 
+// A production arrow is notation, not punctuation. A grammar table written as
+//
+//   transitive NP → direct object; SBAR → subordinate-clause modifier
+//
+// arrives here as two verbless units, because splitUnits breaks on the semicolon and neither half
+// has a predicate — so a reference table reads as a column of terse beats. Both halves of that
+// example were false positives in docs/PARSER.md, and they were reaching score.discriminative,
+// which is the number that has to be trustworthy.
+//
+// Only arrows, and only inside a unit already judged verbless and short. formatting.ts's
+// unicode-decoration rule already treats these characters as something other than prose, so the
+// judgement is not a new one. An all-caps test was the obvious alternative and is rejected: "API",
+// "CLI" and "JSON" are ordinary words in this domain, and suppressing on them would silence real
+// fragments that happen to mention one.
+const NOTATION_ARROW = /[\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F]|->|=>/;
+
+const isNotation = (u: UnitAnalysis): boolean => NOTATION_ARROW.test(u.unit);
+
 function isShortFragment(ctx: Context, u: UnitAnalysis): boolean {
-  return u.outcome === "fragment" && wordCount(u) >= 1 && wordCount(u) <= SHORT_WORD_MAX && !suppressed(ctx, u.span);
+  return (
+    u.outcome === "fragment" &&
+    wordCount(u) >= 1 &&
+    wordCount(u) <= SHORT_WORD_MAX &&
+    !isNotation(u) &&
+    !suppressed(ctx, u.span)
+  );
 }
 
 function punchyRuns(ctx: Context, units: readonly UnitAnalysis[]): UnitAnalysis[][] {
