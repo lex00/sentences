@@ -24,6 +24,9 @@ import { DEFAULT_STRICTNESS } from "./strictness.js";
 import { buildReport } from "./report.js";
 import { buildDocAnalysis } from "./build-doc.js";
 import { extractProse } from "./markdown-prose.js";
+import type { DocumentReduction, ReductionLevel } from "./reduction.js";
+import { DEFAULT_REDUCTION_LEVEL, budget, coveredWords, reduceDocument } from "./reduction.js";
+import { countWords } from "./score.js";
 
 export type LintOptions = {
   // Blank markdown structure (code fences, tables, inline code, link targets, HTML blocks,
@@ -50,4 +53,59 @@ export function lintDocument(text: string, options: LintOptions = {}): Report {
   const doc = buildDocAnalysis(options.markdown ? extractProse(text) : text);
   const { findings, errors } = runRules(rules, doc, options.strictness ?? DEFAULT_STRICTNESS);
   return buildReport(text, findings, errors, rules);
+}
+
+// --- reduction (#51) ---------------------------------------------------------------------------
+
+// Reduction answers a different question from the lint report, so it gets a different report. The
+// lint report is `version: 1` with a pinned key order and consumers that rely on it; bolting a
+// candidate list onto it would change that shape for everybody, including the callers who never
+// ask for one. A separate document costs nothing and keeps the promise.
+
+export type ReduceOptions = {
+  markdown?: boolean;
+  // How deep to cut: 1 unconnected and parenthetical only, 2 (default) adds modifiers of
+  // modifiers, 3 adds any adjunct off the baseline. Deliberately NOT `strictness` — see
+  // reduction.ts, they answer different questions.
+  level?: ReductionLevel;
+  // Stop once the document would reach this many words. Omit to report every candidate.
+  targetWords?: number;
+};
+
+export type ReductionReport = {
+  version: 1;
+  level: ReductionLevel;
+  wordCount: number;
+  candidates: DocumentReduction["candidates"];
+  words: number; // words the candidates would remove, counting overlaps once
+  wouldBe: number; // wordCount minus that
+  reachedTarget: boolean | null; // null when no target was asked for
+  unlocatable: number;
+  refused: number;
+};
+
+// What could come off `text`, checked and ranked. Deterministic, offline, and it edits nothing.
+export function reduceText(text: string, options: ReduceOptions = {}): ReductionReport {
+  const doc = buildDocAnalysis(options.markdown ? extractProse(text) : text);
+  const level = options.level ?? DEFAULT_REDUCTION_LEVEL;
+  const reduction = reduceDocument(doc.text, doc.units, level);
+  const wordCount = countWords(text);
+
+  const picked =
+    options.targetWords === undefined ? null : budget(reduction, wordCount, options.targetWords);
+  const candidates = picked ? picked.taken : reduction.candidates;
+  // Merged, not summed: nested candidates would otherwise be counted twice. See coveredWords.
+  const words = coveredWords(doc.text, candidates);
+
+  return {
+    version: 1,
+    level,
+    wordCount,
+    candidates,
+    words,
+    wouldBe: wordCount - words,
+    reachedTarget: picked ? picked.reached : null,
+    unlocatable: reduction.unlocatable,
+    refused: reduction.refused,
+  };
 }

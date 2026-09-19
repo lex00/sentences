@@ -46,6 +46,15 @@ Reads the file and nothing else; nothing is written back and nothing leaves the 
                a shape reports the same as six, and raises each finding a severity step: use it on
                text you already know a model wrote. 1 doubles the floors and eases severities, for
                prose with a voice you are trying not to flatten.
+  --reduce=N   Report what could be CUT rather than what reads as a tell. N is 1 to 3 and is its
+               own dial, separate from --strictness: 1 offers only material the diagram draws
+               detached or parenthesised, 2 (default) adds modifiers of modifiers, 3 adds any
+               adjunct hanging off the baseline. Every candidate is checked by cutting it and
+               re-parsing: if the subject, verb or complement moves, it is withdrawn. Prints a
+               reduction report instead of the lint report. Nothing is edited.
+  --reduce-to=N
+               With --reduce, stop once the document would reach N words. Takes the deepest cuts
+               first and says so when it cannot get there without touching the baseline.
   --help, -h   Print this and exit.
 
 Runs from a checkout of this repo only. For editor and agent use, the same linter ships as an MCP
@@ -112,6 +121,29 @@ async function main() {
     }
   }
 
+  const reduceArg = args.find((a) => a.startsWith("--reduce="));
+  const reduceToArg = args.find((a) => a.startsWith("--reduce-to="));
+  let reduceLevel = null;
+  if (reduceArg) {
+    reduceLevel = Number(reduceArg.split("=")[1]);
+    if (![1, 2, 3].includes(reduceLevel)) {
+      console.error(`--reduce must be 1, 2 or 3 (got ${JSON.stringify(reduceArg.split("=")[1] ?? "")})`);
+      process.exit(1);
+    }
+  }
+  let targetWords;
+  if (reduceToArg) {
+    targetWords = Number(reduceToArg.split("=")[1]);
+    if (!Number.isInteger(targetWords) || targetWords < 0) {
+      console.error(`--reduce-to must be a whole number of words (got ${JSON.stringify(reduceToArg.split("=")[1] ?? "")})`);
+      process.exit(1);
+    }
+    if (reduceLevel === null) {
+      console.error("--reduce-to needs --reduce=N to say how deep to cut");
+      process.exit(1);
+    }
+  }
+
   const filePath = args.find((a) => !a.startsWith("--"));
   if (!filePath) {
     console.error(USAGE);
@@ -125,10 +157,13 @@ async function main() {
   // RULES see, never what the report is built from, so every span still indexes the file on disk.
   // src/lint/run.ts owns that ordering for this script, the MCP server (src/mcp/) and the package's
   // `sentences/lint/run` export alike.
-  const { lintDocument } = await import("../src/lint/run.js");
+  const { lintDocument, reduceText } = await import("../src/lint/run.js");
 
   const text = readFileSync(filePath, "utf8");
-  const report = lintDocument(text, { markdown, strictness });
+  const report =
+    reduceLevel === null
+      ? lintDocument(text, { markdown, strictness })
+      : reduceText(text, { markdown, level: reduceLevel, targetWords });
 
   console.log(JSON.stringify(report, null, 2));
 }

@@ -216,6 +216,93 @@ rules a second look with real POS tags. "Diagram the finding" (`diagram-finding.
 sentence a finding came from as a Reed-Kellogg diagram with the offending span lit up, so a rule
 that says "reframe" or "tricolon" can show its work instead of asserting it.
 
+## Reduction
+
+A different question from the rest of this document. The linter asks whether prose reads as
+machine-written. Reduction asks whether a sentence is carrying its weight, which is where most
+overwriting actually lives.
+
+```
+node scripts/destink-score.mjs --markdown --reduce=3 [--reduce-to=N] <file>
+```
+
+The answer comes out of the diagram. Reed-Kellogg's drawing rules are a removability ordering,
+which is what the notation was built to teach, and `ir.ts` already encodes it.
+
+| band | IR | drawn as | offered |
+| --- | --- | --- | --- |
+| unconnected | `Clause.detached`, `Clause.absolutes` | floating above, joined to nothing | always |
+| parenthetical | `Nominal.appositive` | in parentheses on the baseline | always |
+| below the line | `modifiers` | slants, recursive | ranked by depth |
+| on the line | subject, verb head, complement | the baseline | never |
+
+`Modifier` is recursive, so depth is a tree walk. Deepest candidates come first, because a phrase
+three levels off the baseline is decorating decoration.
+
+### The offset problem
+
+`Word` is `{ text, pos? }`. The IR carries no source offsets at all, and a candidate needs a span.
+So each candidate's words are collected and matched back against `UnitAnalysis.words`, which do
+carry spans, as a contiguous window.
+
+Matched as a MULTISET rather than an ordered sequence. The IR's order is not the surface order and
+cannot be made to be: a `Nominal` is `{ head, modifiers }`, so the tree yields "mailman" before
+"the" while English writes the determiner first. Requiring exact IR order dropped five of eight
+candidates on one test sentence. What actually holds is weaker and true: a window of the right
+width holding exactly the right words, in any arrangement.
+
+A candidate whose words appear in no window, or in more than one, is dropped rather than guessed
+at. Pointing at the wrong copy of a phrase is worse than saying nothing, and `unlocatable` in the
+result says how often it happened.
+
+### The safety check
+
+Cut the span, re-parse, and compare. A cut is safe when the reduced text still lowers to a clause
+and its subject head, verb head and complement head are the words they were.
+
+This is the check nothing else in the toolchain can offer. A model asked to shorten a sentence can
+only assert that the result reads fine, where this claim is mechanical. It doubles as a guard on
+the parser, since a misparse that yields a nonsense candidate usually moves the baseline when the
+candidate is applied.
+
+### Its own dial
+
+Reduction's level is **not** `--strictness`. Strictness decides how readily a shape is called a
+tell. Reduction decides how deep below the baseline a phrase must sit before it is offered. An
+editor may well want strict detection and conservative cutting, so these stay separate parameters
+that happen to share a 1-3 shape.
+
+| level | offers |
+| --- | --- |
+| 1 | unconnected and parenthetical only |
+| 2 | the above, plus modifiers of modifiers (depth >= 2) |
+| 3 | the above, plus any adjunct off the baseline (depth >= 1) |
+
+On technical documentation level 1 usually reports nothing, because that prose carries no
+interjections or absolute phrases. That is the level working rather than failing.
+
+### What it will not do
+
+It never edits. Everything is a candidate, and the report says as much: the IR knows what is
+grammatically OPTIONAL and has no idea what is worth keeping. Cutting "in 1994" from "The station
+opened in 1994" is perfectly grammatical and destroys the sentence.
+
+Three narrowings keep the noise down, each measured against this repository's own documentation.
+
+Single words are not offered. With a one-word floor the candidates included "ONNX", "fallback" and
+"Scene", content words that happen to sit deep while carrying the subject matter. A reduction is a
+phrase coming off, and a spare adverb belongs to the lexical tier anyway. Articles and possessives
+are not offered either, since cutting one is a typo rather than a reduction. Nor is a span holding
+half a bracket pair, because the multiset matcher is blind to punctuation between words and a
+re-parse rarely notices a stray `)`.
+
+Restrictive modifiers stay out. "The parser that runs client-side" identifies which parser, where
+"The parser, which runs client-side" does not. A comma is the only signal English offers and
+writers are inconsistent with it, so the test fails closed.
+
+With all of that, level 3 offers around 3% of this repository's own docs by word count. That number
+is the honest one. A tool claiming it could cut 30% would be measuring something else.
+
 ## Oracle-gated: what stays out, and what referees it
 
 Everything above is offline and deterministic: same input, same findings, same score, every time.

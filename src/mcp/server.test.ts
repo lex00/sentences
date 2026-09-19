@@ -37,9 +37,9 @@ const textOf = (result: unknown): string => {
 };
 
 describe("tools/list", () => {
-  it("advertises both tools with a description and a schema", async () => {
+  it("advertises every tool with a description and a schema", async () => {
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(["destink_lint", "destink_rules"]);
+    expect(tools.map((t) => t.name).sort()).toEqual(["destink_lint", "destink_reduce", "destink_rules"]);
     for (const tool of tools) {
       expect(tool.description!.length).toBeGreaterThan(40);
       expect(tool.inputSchema.type).toBe("object");
@@ -135,7 +135,7 @@ describe("callTool", () => {
   it("names the tools that exist when asked for one that doesn't", () => {
     const result = callTool("destink_fix", {});
     expect(result.isError).toBe(true);
-    expect(result.content[0]!.text).toContain("destink_lint, destink_rules");
+    expect(result.content[0]!.text).toContain("destink_lint, destink_reduce, destink_rules");
   });
 });
 
@@ -201,5 +201,48 @@ describe("isMainModule", () => {
         throw new Error("ENOENT");
       }),
     ).toBe(false);
+  });
+});
+
+describe("tools/call destink_reduce", () => {
+  const SENTENCE = "The tiny red dog barked loudly at the mailman in the yard.";
+
+  it("reports candidates ranked deepest first", async () => {
+    const result = await client.callTool({ name: "destink_reduce", arguments: { text: SENTENCE, level: 3 } });
+    expect(result.isError).toBeFalsy();
+    const text = textOf(result);
+    expect(text).toContain("destink reduce:");
+    expect(text).toContain("in the yard");
+    expect(text.indexOf("depth 2")).toBeLessThan(text.indexOf("depth 1"));
+  });
+
+  it("counts overlapping candidates once", async () => {
+    const text = textOf(await client.callTool({ name: "destink_reduce", arguments: { text: SENTENCE, level: 3 } }));
+    expect(text).toContain("6 of 12 words");
+  });
+
+  it("offers nothing at level 1 on prose with no detached material", async () => {
+    const text = textOf(await client.callTool({ name: "destink_reduce", arguments: { text: SENTENCE, level: 1 } }));
+    expect(text).toContain("nothing structurally removable");
+  });
+
+  it("says when a word target cannot be reached without the baseline", async () => {
+    const text = textOf(await client.callTool({
+      name: "destink_reduce",
+      arguments: { text: SENTENCE, level: 3, targetWords: 2 },
+    }));
+    expect(text).toContain("target not reachable");
+  });
+
+  it("refuses a level outside its own dial, naming the ones that exist", async () => {
+    const result = await client.callTool({ name: "destink_reduce", arguments: { text: SENTENCE, level: 9 } });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain("`level` must be one of: 1, 2, 3");
+  });
+
+  it("rejects an unknown key rather than quietly ignoring it", async () => {
+    const result = await client.callTool({ name: "destink_reduce", arguments: { text: SENTENCE, strictness: 3 } });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain("unknown argument(s): strictness");
   });
 });

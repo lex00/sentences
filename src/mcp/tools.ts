@@ -18,7 +18,9 @@
 import { readFileSync } from "node:fs";
 import type { Report, ReportFinding } from "../lint/report.js";
 import type { TropeTier } from "../lint/types.js";
-import { lintDocument } from "../lint/run.js";
+import { lintDocument, reduceText } from "../lint/run.js";
+import type { ReductionLevel } from "../lint/reduction.js";
+import { DEFAULT_REDUCTION_LEVEL, REDUCTION_LEVELS, isReductionLevel } from "../lint/reduction.js";
 import type { Strictness } from "../lint/strictness.js";
 import { DEFAULT_STRICTNESS, STRICTNESS_LEVELS, isStrictness } from "../lint/strictness.js";
 import { RULES } from "../lint/registry.js";
@@ -305,4 +307,109 @@ export function formatRules(rules: readonly RuleSummary[]): string {
   const width = Math.max(...rules.map((r) => r.id.length));
   const header = `${rules.length} rule(s), in the order findings are attributed when two rules tie:`;
   return [header, "", ...rules.map((r) => `${r.id.padEnd(width)}  ${r.tier.padEnd(10)}  ${r.name}`)].join("\n");
+}
+
+// ---------------------------------------------------------------------------------------------
+// destink_reduce (#51)
+// ---------------------------------------------------------------------------------------------
+
+// A different question from destink_lint, so a different tool rather than a flag on that one.
+// Linting asks whether prose reads as machine-written; this asks what could come off it without
+// the sentence changing shape. Both are read-only and neither edits anything.
+
+const REDUCE_KEYS = ["text", "path", "markdown", "level", "targetWords"];
+
+export type ReduceArgs = {
+  source: { kind: "text"; text: string } | { kind: "path"; path: string };
+  markdown: boolean;
+  level: ReductionLevel;
+  targetWords?: number;
+};
+
+export function parseReduceArgs(raw: unknown): Parsed<ReduceArgs> {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, error: "arguments must be an object" };
+  }
+  const args = raw as Record<string, unknown>;
+
+  const unknown = Object.keys(args).filter((k) => !REDUCE_KEYS.includes(k));
+  if (unknown.length > 0) {
+    return { ok: false, error: `unknown argument(s): ${unknown.join(", ")}. Accepted: ${REDUCE_KEYS.join(", ")}` };
+  }
+
+  const hasText = args.text !== undefined;
+  const hasPath = args.path !== undefined;
+  if (hasText === hasPath) {
+    return {
+      ok: false,
+      error: hasText ? "pass either `text` or `path`, not both" : "pass `text` (the prose itself) or `path` (a file to read)",
+    };
+  }
+  if (hasText && typeof args.text !== "string") return { ok: false, error: "`text` must be a string" };
+  if (hasPath && typeof args.path !== "string") return { ok: false, error: "`path` must be a string" };
+  if (args.markdown !== undefined && typeof args.markdown !== "boolean") {
+    return { ok: false, error: "`markdown` must be a boolean" };
+  }
+  if (args.level !== undefined && !isReductionLevel(args.level)) {
+    return { ok: false, error: `\`level\` must be one of: ${REDUCTION_LEVELS.join(", ")}` };
+  }
+  if (args.targetWords !== undefined && (!Number.isInteger(args.targetWords) || (args.targetWords as number) < 0)) {
+    return { ok: false, error: "`targetWords` must be a whole number of words" };
+  }
+
+  return {
+    ok: true,
+    value: {
+      source: hasText ? { kind: "text", text: args.text as string } : { kind: "path", path: args.path as string },
+      markdown: (args.markdown as boolean | undefined) ?? markdownDefault(args),
+      level: (args.level as ReductionLevel | undefined) ?? DEFAULT_REDUCTION_LEVEL,
+      ...(args.targetWords === undefined ? {} : { targetWords: args.targetWords as number }),
+    },
+  };
+}
+
+export function runReduce(raw: unknown, readFile: ReadFile = defaultReadFile): { ok: true; rendered: string } | { ok: false; error: string } {
+  const parsed = parseReduceArgs(raw);
+  if (!parsed.ok) return parsed;
+
+  const source = readSource(parsed.value as unknown as LintArgs, readFile);
+  if (!source.ok) return source;
+
+  const report = reduceText(source.value, {
+    markdown: parsed.value.markdown,
+    level: parsed.value.level,
+    ...(parsed.value.targetWords === undefined ? {} : { targetWords: parsed.value.targetWords }),
+  });
+  return { ok: true, rendered: formatReduction(source.value, report) };
+}
+
+export function formatReduction(text: string, report: ReturnType<typeof reduceText>): string {
+  const n = report.candidates.length;
+  const head =
+    n === 0
+      ? `destink reduce: nothing structurally removable at level ${report.level} in ${report.wordCount} words`
+      : `destink reduce: ${n} candidate${n === 1 ? "" : "s"} at level ${report.level}, ${report.words} of ${report.wordCount} words (would leave ${report.wouldBe})`;
+
+  const lines = [head];
+  if (report.reachedTarget === false) lines.push("target not reachable without cutting into the baseline");
+
+  if (n > 0) {
+    const starts = lineStarts(text);
+    const locs = report.candidates.map((c) => formatLoc(lineCol(starts, c.span.start)));
+    const w = Math.max(...locs.map((l) => l.length));
+    lines.push("");
+    lines.push("Deepest first. Every one has been checked: cutting it leaves the subject, verb and");
+    lines.push("complement where they were. Whether it is worth cutting is not a question structure answers.");
+    lines.push("");
+    for (const [i, c] of report.candidates.entries()) {
+      lines.push(`${locs[i]!.padEnd(w)}  depth ${c.depth}  ${String(c.words).padStart(2)}w  ${c.band}/${c.kind}`);
+      lines.push(`${" ".repeat(w + 2)}> ${c.text.replace(/\s+/g, " ").trim()}`);
+    }
+  }
+
+  if (report.refused > 0) lines.push("", `${report.refused} candidate(s) withdrawn: cutting them moved the baseline.`);
+  if (report.unlocatable > 0) {
+    lines.push(`${report.unlocatable} subtree(s) could not be located unambiguously in the source and were skipped.`);
+  }
+  return lines.join("\n");
 }

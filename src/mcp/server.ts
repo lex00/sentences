@@ -22,7 +22,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { pathToFileURL } from "node:url";
 import { realpathSync } from "node:fs";
-import { LINT_FORMATS, runLint, runRulesList } from "./tools.js";
+import { LINT_FORMATS, runLint, runReduce, runRulesList } from "./tools.js";
+import { REDUCTION_LEVELS } from "../lint/reduction.js";
 import { STRICTNESS_LEVELS } from "../lint/strictness.js";
 import { TIERS } from "../lint/score.js";
 import { RULES } from "../lint/registry.js";
@@ -71,6 +72,38 @@ const LINT_INPUT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+const REDUCE_INPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    text: { type: "string", description: "The prose to examine. Use this for a draft you are holding." },
+    path: { type: "string", description: "A file to read instead of `text`, resolved against the server's working directory." },
+    markdown: {
+      type: "boolean",
+      description:
+        "Blank markdown structure to spaces before reading, so it is not mistaken for prose. On by " +
+        "default for a .md/.markdown/.mdx path.",
+    },
+    level: {
+      type: "integer",
+      enum: [...REDUCTION_LEVELS],
+      description:
+        "How deep to cut. This is reduction's own dial and has nothing to do with destink_lint's " +
+        "`strictness`: that one decides how readily a shape is called a tell, this one decides how " +
+        "far from the baseline a phrase has to sit before it is offered. 1 offers only what the " +
+        "diagram draws detached or parenthesised. 2 (default) adds modifiers of modifiers. 3 adds " +
+        "any adjunct hanging off the baseline.",
+    },
+    targetWords: {
+      type: "integer",
+      minimum: 0,
+      description:
+        "Stop once the document would reach this many words, taking the deepest cuts first. The " +
+        "result says when the target cannot be reached without cutting into the baseline.",
+    },
+  },
+  additionalProperties: false,
+} as const;
+
 const RULES_INPUT_SCHEMA = {
   type: "object",
   properties: {
@@ -101,6 +134,21 @@ const TOOLS = [
     inputSchema: LINT_INPUT_SCHEMA,
   },
   {
+    name: "destink_reduce",
+    title: "Find what a sentence could lose",
+    description:
+      "Report the material a document could lose without its sentences changing shape. A different " +
+      "question from destink_lint: that asks whether prose reads as machine-written, this asks " +
+      "whether a sentence is carrying its weight, which is where most overwriting lives. Ranked by " +
+      "depth below the diagram's baseline — a Reed-Kellogg diagram draws obligatory material on the " +
+      "line and everything optional hanging beneath it, so the notation itself supplies the " +
+      "ordering. Every candidate is verified by cutting it and re-parsing: if the subject, verb or " +
+      "complement moves, it is withdrawn, which is a guarantee no rewrite can offer. Read-only, and " +
+      "it edits nothing. Candidates are suggestions about STRUCTURE — what is grammatically " +
+      "optional — and say nothing about what is worth keeping. That judgement is yours.",
+    inputSchema: REDUCE_INPUT_SCHEMA,
+  },
+  {
     name: "destink_rules",
     title: "List the de-stink rule set",
     description:
@@ -124,6 +172,10 @@ export function callTool(name: string, args: unknown): ToolResult {
   switch (name) {
     case "destink_lint": {
       const result = runLint(args);
+      return result.ok ? ok(result.rendered) : fail(result.error);
+    }
+    case "destink_reduce": {
+      const result = runReduce(args);
       return result.ok ? ok(result.rendered) : fail(result.error);
     }
     case "destink_rules": {
@@ -175,6 +227,9 @@ Tools:
                  finding as line:col with the offending excerpt and why it reads as a tell), score
                  (the counts alone, for checking whether an edit helped), or json (the full
                  versioned report).
+  destink_reduce Report what a document could LOSE without its sentences changing shape, ranked by
+                 depth below the diagram's baseline and verified by re-parsing each cut. Its
+                 'level' (1-3) is a separate dial from destink_lint's 'strictness'.
   destink_rules  List the ${RULES.length} rules destink_lint runs - id, tier, name.
 
 Both are read-only: nothing is written, and nothing leaves the machine.

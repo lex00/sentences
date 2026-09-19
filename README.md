@@ -103,6 +103,11 @@ back.
   reports the same as six, and raises each finding a severity step; 1 doubles the floors. Use 3 on
   text you already know a model wrote, when the question is whether the shape is there at all
   rather than whether it is a tic.
+- `--reduce=N` (1-3) answers a different question: not what reads as a tell, but what the document
+  could lose. Candidates are ranked by how far below the diagram's baseline they hang, and each is
+  verified by cutting it and re-parsing — if the subject, verb or complement moves, it is withdrawn.
+  `--reduce-to=N` stops once the document would reach N words. Nothing is edited. This is its own
+  dial and has nothing to do with `--strictness`.
 - Not a published `bin` — it only runs from a checkout of this repo, not via `npx`. The MCP server
   below is the published one.
 
@@ -131,6 +136,9 @@ Two read-only tools.
   reads as a tell, printed once per rule rather than repeated down a run. `score` drops the located
   findings and keeps the counts — the cheap call for "did my edit help?". `json` is the full
   versioned report, byte-identical to what the CLI prints for the same input.
+- **`destink_reduce`** reports what a document could lose without its sentences changing shape,
+  ranked by depth below the diagram's baseline and verified by re-parsing each cut. Its `level`
+  (1-3) is a separate dial from `destink_lint`'s `strictness`.
 - **`destink_rules`** lists the rule set (id, tier and name, in the order findings are attributed
   when two rules tie), so a caller can see what a clean report actually covers before trusting one.
 
