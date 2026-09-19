@@ -188,6 +188,8 @@ Call destink_rules if you need to know what a rule id means or what a clean repo
 The design behind that loop, and why the model edits while the linter referees rather than the
 linter asking a model whether the prose is good, is in `docs/DESTINK.md` under "Oracle-gated".
 
+Release notes are in [CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
 MIT. See `LICENSE`.
