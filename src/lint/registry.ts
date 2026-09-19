@@ -45,6 +45,7 @@ import { anaphoraRule } from "./rules/anaphora.js";
 import { aphoristicEnderRule } from "./rules/aphoristic-ender.js";
 import { deadMetaphorRule } from "./rules/dead-metaphor.js";
 import { elegantVariationRule } from "./rules/elegant-variation.js";
+import { epistropheRule } from "./rules/epistrophe.js";
 import { lowValueSentenceRule } from "./rules/low-value-sentence.js";
 import { trailingTailRule } from "./rules/trailing-tail.js";
 import { dilutionRule, nearDuplicateRule } from "./rules/repetition.js";
@@ -102,6 +103,7 @@ export const RULES: readonly TropeRule[] = [
   deadMetaphorRule,
   dilutionRule,
   elegantVariationRule,
+  epistropheRule, // anaphora's mirror image: the repeated sentence ENDING
   lowValueSentenceRule, // a whole sentence in a >50-word paragraph that adds no content word
   nearDuplicateRule,
   punchyFragmentsRule,

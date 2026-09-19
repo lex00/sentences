@@ -19,6 +19,7 @@
 // code, and the two are allowed to drift independently.
 
 import { readDocument } from "../document.js";
+import { tag } from "../nlp/tagger.js";
 import { blockSpans } from "./blocks.js";
 import type { DocAnalysis, DocUnit, Span, UnitAnalysis, WordSpan } from "./types.js";
 
@@ -38,7 +39,55 @@ function wordSpans(text: string, span: Span): WordSpan[] {
   return words;
 }
 
-const toUnitAnalysis = (text: string, unit: DocUnit): UnitAnalysis => ({ ...unit, words: wordSpans(text, unit.span) });
+// --- POS tags -----------------------------------------------------------------------------------
+
+// The tagger's vocabulary (src/nlp/tagger.ts) is coarser than the Penn Treebank one the lexicons
+// gate against, so only the gates it can actually answer are answered. RB and JJ map straight
+// across. A verb is whatever the tagger forced to "V" plus the copulas, auxiliaries and modals,
+// which is the same set document.ts calls verbal when deciding a unit is a fragment.
+//
+// NOUNS ARE DELIBERATELY ABSENT. The tagger's catch-all is "X", which covers nouns and also
+// everything it could not place, so mapping X to NN would turn a shrug into a claim. The six
+// noun-gated lexicon entries therefore keep failing closed, exactly as they did before, and that
+// is a smaller lie than gating them on a tag that means "unknown".
+const VERBAL_TAGS = new Set(["COP", "AUX", "MD"]);
+
+function ptbTag(t: ReturnType<typeof tag>[number]): string | undefined {
+  if (t.forced === "V" || VERBAL_TAGS.has(t.tag)) return "VB";
+  if (t.tag === "RB") return "RB";
+  if (t.tag === "JJ") return "JJ";
+  return undefined;
+}
+
+// Walk the tagger's output alongside the scanned words, matching on lowercase text. The two
+// tokenizers disagree (the tagger carries punctuation as its own entries and splits contractions
+// differently), so this advances through the tagger's list looking for the next entry whose text
+// matches, and simply leaves a word untagged when it cannot find one. An untagged word fails a POS
+// gate closed, which is the behaviour every gated rule already handles.
+function withPos(unitText: string, words: WordSpan[]): WordSpan[] {
+  let tagged: ReturnType<typeof tag>;
+  try {
+    tagged = tag(unitText);
+  } catch {
+    return words; // a tagger failure must not take the document down
+  }
+  let i = 0;
+  for (const w of words) {
+    const lc = w.text.toLowerCase();
+    let j = i;
+    while (j < tagged.length && tagged[j]!.lc !== lc) j++;
+    if (j >= tagged.length) continue; // no match ahead; leave this word untagged and keep going
+    const pos = ptbTag(tagged[j]!);
+    if (pos) w.pos = pos;
+    i = j + 1;
+  }
+  return words;
+}
+
+const toUnitAnalysis = (text: string, unit: DocUnit): UnitAnalysis => ({
+  ...unit,
+  words: withPos(unit.unit, wordSpans(text, unit.span)),
+});
 
 // The CLI's (and any other non-browser caller's) document analysis: real DocUnits from the
 // rule-based chunker/parser, plus word spans scanned per unit. No tree, no POS tags — readDocument

@@ -663,3 +663,32 @@ describe("the sufficiency reframe", () => {
     expect(fromText("It is not enough. You need to measure it.")).toEqual([]);
   });
 });
+
+// PREDICATE-GAP VARIANTS. Two forms the Clause IR cannot pair, because neither produces a
+// `complement` for isCopular to read: a copula whose predicate is a prepositional phrase (ir.ts
+// has no predicate-PP case) and an answer that drops its predicate entirely. Both found by running
+// the linter over published prose that the copular path scored as clean.
+describe("the reframes the IR cannot pair", () => {
+  const fromText = (text: string) => reframeRule.detect(realDoc(text));
+
+  test("fires on a copula with a prepositional predicate", () => {
+    const f = fromText("The trouble was never in group memberships. It was in how the rest of the system found things.");
+    expect(f.length).toBeGreaterThan(0);
+  });
+
+  test("fires when the answer drops its predicate", () => {
+    expect(fromText("SaaS isn't dead. Sameness is.").length).toBeGreaterThan(0);
+    expect(fromText("Code was never the asset. The system is.").length).toBeGreaterThan(0);
+  });
+
+  // The narrowing. Two sentences that merely sit next to each other are not a reframe; the answer
+  // has to be about the thing that was denied.
+  test("stays silent when the second sentence changes the subject", () => {
+    expect(fromText("It is not raining. That was a long day at work.")).toEqual([]);
+    expect(fromText("The parser is not fast. We shipped it anyway.")).toEqual([]);
+  });
+
+  test("stays silent without a denial at all", () => {
+    expect(fromText("The build is in progress. It is in the queue behind two others.")).toEqual([]);
+  });
+});

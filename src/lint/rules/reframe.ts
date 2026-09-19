@@ -298,6 +298,62 @@ function sufficiencyCandidate(span: Span): Candidate {
   };
 }
 
+// --- PREDICATE-GAP VARIANTS: the reframes the Clause IR cannot pair ---
+//
+// pairCandidates needs isCopular on both halves, and isCopular needs a `complement` of kind
+// predicateNoun or predicateAdj. Two very common forms of this trope never produce one, so the
+// flagship rule was silent on both:
+//
+//   PP predicate   "The trouble was never IN group memberships. It was IN how the rest of the
+//                   system found things."
+//                  ir.ts's Complement union has no predicate-PP case, so the phrase lowers as a
+//                  modifier on the verb. complementHead returns undefined, isCopular returns
+//                  false, and there is nothing to pair.
+//
+//   elliptical     "SaaS Isn't Dead. Sameness Is."
+//                  The second half omits its predicate entirely. There is no complement because
+//                  the writer deliberately left it out, which is the whole figure.
+//
+// Both are matched on text rather than through the IR, deliberately. Teaching the lowerer about
+// predicate PPs would change the diagram for every sentence in the app; these two shapes are
+// narrow enough to recognise from the surface, and doing so leaves lower.ts alone.
+const BE = /\b(?:is|are|was|were|isn't|aren't|wasn't|weren't)\b/i;
+const BE_NEG = /\b(?:is|are|was|were)\s+(?:not|never)\b|\b(?:isn't|aren't|wasn't|weren't)\b/i;
+const ANAPHORIC_BE = /^\s*(?:it|that|this|they|those|these)\s+(?:is|are|was|were)\b/i;
+// A unit whose last word is a bare copula: the predicate was left off on purpose.
+const ELLIPTICAL_END = /\b(?:is|are|was|were)\s*[.!?]?\s*$/i;
+
+function predicateGapVariant(u: UnitAnalysis, next: UnitAnalysis | undefined): Span | null {
+  if (!next) return null;
+  if (!BE_NEG.test(u.unit)) return null;
+
+  // Elliptical: the answer drops its predicate. Distinctive enough to stand on its own, and rare
+  // in ordinary prose — a sentence ending on a bare "is" is nearly always this figure.
+  if (ELLIPTICAL_END.test(next.unit) && BE.test(next.unit)) {
+    return { start: u.span.start, end: next.span.end };
+  }
+
+  // PP predicate: the answer has to be anaphoric, or this pairs two unrelated sentences that
+  // happen to sit next to each other. "It is not raining. That was a long day." must stay clean,
+  // and it does, because the denial and the answer have to be about the same thing.
+  if (!ANAPHORIC_BE.test(next.unit)) return null;
+  // Both halves must carry a prepositional predicate; otherwise pairCandidates already had it.
+  const prep = /\b(?:in|about|for|on|at|with|from|of)\b/i;
+  return prep.test(u.unit) && prep.test(next.unit) ? { start: u.span.start, end: next.span.end } : null;
+}
+
+function predicateGapCandidate(span: Span): Candidate {
+  return {
+    span,
+    message: "Negative parallelism: a denial answered by its replacement",
+    explanation:
+      "This denies one thing and hands the reader its replacement in the next breath, which is the " +
+      "most-identified tell in AI prose. The reader did not propose the denied version, so the first " +
+      "half exists only to be corrected by the second. Say the positive claim and stop, and keep the " +
+      "contrast only where a reader would genuinely have assumed the other thing.",
+  };
+}
+
 // --- findings ---
 
 // Severity is a function of how many times the document does this, not of any one instance: once
@@ -387,7 +443,10 @@ export const reframeRule: TropeRule = {
   name: "Negative parallelism (the reframe)",
   tier: "syntactic",
   detect(doc: DocAnalysis, strictness: Strictness = DEFAULT_STRICTNESS): Finding[] {
-    const candidates = [
+    // The IR paths first. They know more — a real pairing over lowered clauses — so where one of
+    // them has already reported a pair, the text-level fallbacks below must stand down rather than
+    // report the same words a second time under a slightly different span.
+    const fromIR = [
       ...pairCandidates(doc),
       ...doc.units.flatMap((u) => {
         const span = becauseVariant(u);
@@ -402,6 +461,16 @@ export const reframeRule: TropeRule = {
         return span ? [sufficiencyCandidate(span)] : [];
       }),
     ];
+
+    const overlaps = (a: Span, b: Span): boolean => a.start < b.end && b.start < a.end;
+    const gapCandidates = doc.units
+      .flatMap((u, i) => {
+        const span = predicateGapVariant(u, doc.units[i + 1]);
+        return span ? [predicateGapCandidate(span)] : [];
+      })
+      .filter((c) => !fromIR.some((seen) => overlaps(seen.span, c.span)));
+
+    const candidates = [...fromIR, ...gapCandidates];
 
     // One span, one finding. Two candidates can land on the same range (a dash unit whose clauses
     // pair up AND whose neighbour pairs with it); the runner would dedupe them anyway, but doing it
