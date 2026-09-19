@@ -9,6 +9,8 @@
 // import boilerplate. Split them out if a rule outgrows this.
 
 import type { DocAnalysis, Finding, Severity, TropeRule } from "../types.js";
+import type { Strictness } from "../strictness.js";
+import { DEFAULT_STRICTNESS, floorAt, rateAt, severityAt } from "../strictness.js";
 import type { MarkdownContext, ListBlock, Paragraph } from "../markdown.js";
 import { markdownContext, inKind } from "../markdown.js";
 import { spanning } from "../span.js";
@@ -52,14 +54,20 @@ export const emDashDensityRule: TropeRule = {
   id: "formatting/em-dash-density",
   name: "Em-dash density",
   tier: "formatting",
-  detect(doc: DocAnalysis): Finding[] {
+  // STRICTNESS (strictness.ts). Both floors move with the dial. One em dash is punctuation and six
+  // per thousand words is a tic, which is exactly the judgement the dial exists to let a caller
+  // overrule: at level 3 a single dash reports, for someone editing output they already know a
+  // model wrote. The severity BANDS below do not move with it — they describe how dense the
+  // document actually is, which is a fact about the text rather than a threshold.
+  detect(doc: DocAnalysis, strictness: Strictness = DEFAULT_STRICTNESS): Finding[] {
     const ctx = markdownContext(doc.text);
     const hits = dashOccurrences(ctx);
-    if (hits.length < 2) return [];
+    if (hits.length === 0 || hits.length < floorAt(2, strictness)) return [];
     const words = countWordsOutsideFences(ctx);
     const density = words === 0 ? 0 : (hits.length / words) * 1000;
-    if (density < 1) return [];
-    const severity: Severity = density >= 6 ? "high" : density >= 3 ? "medium" : "low";
+    if (density < rateAt(1, strictness)) return [];
+    const base: Severity = density >= 6 ? "high" : density >= 3 ? "medium" : "low";
+    const severity = severityAt(base, strictness);
     const rounded = Math.round(density * 10) / 10;
     const message = `em dash — ${hits.length} in ~${words} words (${rounded}/1000)`;
     const explanation = `You use an em dash or double-hyphen ${hits.length} times across this document — about ${rounded} per 1000 words. One is a stylistic choice; this many reads as a tic AI writing leans on for every aside and pivot. Cut most of them and let sentences end, or split into two sentences instead of dashing on.`;

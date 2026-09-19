@@ -172,6 +172,14 @@ rate detector into a prohibition. On the flip-flop family (`reframe`, `setup-tur
 `mirrored-clauses`), which already fire on a single instance, the dial moves severity instead: the
 same three findings on one paragraph score 7.5, 22.5 and 50 at levels 1, 2 and 3.
 
+COVERAGE, stated because the dial is easy to overread. A rule honours the dial only if it was
+written to, and most were not: at the time of writing six of forty-eight do. `reframe`,
+`setup-turn` and `mirrored-clauses` move their severities; `trailing-tail`, `formatting/em-dash-density`
+and `anaphora/repeated-opening` move their floors as well. The rest behave identically at every
+level, which is the honest answer for a rule with no density component and a silent gap for one
+that has a floor and ignores it. Issue #54 tracks the remainder, and the distinction that makes it
+delicate: a rule's DENSITY floor should move and its STRUCTURAL limits must not.
+
 What the dial never does is invent a finding a rule could not otherwise make, or relax a rule's
 structural narrowing. Level 3 does not make `trailing-tail` report a relative clause. Counts and
 severities are a judgment about how much is too much; what counts as the shape at all is the rule's

@@ -100,7 +100,8 @@ back.
   exits with an explanation instead of adding a transpiler dependency.
 - `--strictness=N` (1, 2 or 3) sets how hard it looks. 2 is the default and the level every
   threshold was calibrated against; 3 drops density floors to zero, so one instance of a shape
-  reports the same as six, and raises each finding a severity step; 1 doubles the floors. Use 3 on
+  reports the same as six, and raises each finding a severity step; 1 doubles the floors. Rules
+  honour the dial only where they were written to — six of forty-eight so far. Use 3 on
   text you already know a model wrote, when the question is whether the shape is there at all
   rather than whether it is a tic.
 - `--reduce=N` (1-3) answers a different question: not what reads as a tell, but what the document

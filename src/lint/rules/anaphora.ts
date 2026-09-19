@@ -27,6 +27,8 @@
 import { subjectHead } from "../ir-query.js";
 import { spanning } from "../span.js";
 import type { DocAnalysis, Finding, TropeRule } from "../types.js";
+import type { Strictness } from "../strictness.js";
+import { DEFAULT_STRICTNESS, floorAt } from "../strictness.js";
 
 const WINDOW = 5; // consecutive-unit sliding window — see header comment
 const HIGH_AT = 5; // a run this long or longer is more than a tic; bump severity
@@ -70,7 +72,7 @@ export const anaphoraRule: TropeRule = {
   id: "anaphora/repeated-opening",
   name: "Anaphora abuse (repeated sentence openings)",
   tier: "discourse",
-  detect(doc: DocAnalysis): Finding[] {
+  detect(doc: DocAnalysis, strictness: Strictness = DEFAULT_STRICTNESS): Finding[] {
     const keys = doc.units.map(openingKey);
     const findings: Finding[] = [];
     let i = 0;
@@ -89,7 +91,9 @@ export const anaphoraRule: TropeRule = {
           last = j;
         }
       }
-      if (members.length >= 3) {
+      // The run length is a density floor and moves with the dial: three openings in a row is a
+      // tic, and at level 3 two is enough to want to see.
+      if (members.length >= Math.max(2, floorAt(3, strictness))) {
         const first = doc.units[members[0]!]!;
         const lastUnit = doc.units[members[members.length - 1]!]!;
         const count = members.length;

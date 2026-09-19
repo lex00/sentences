@@ -148,3 +148,32 @@ describe("tricolon/comma-series — teaching voice", () => {
     expect(f.explanation.length).toBeGreaterThan(40);
   });
 });
+
+// A parenthesised enumeration carries its own commas. Counting them as separators made the
+// sentence around the aside look like a series it is not — reported on a real LinkedIn post, where
+// deleting the parenthetical left an identical sentence that came back clean.
+describe("commas inside brackets are the aside's, not the sentence's", () => {
+  const WITH = "A team with guardrails (automated tests, code checks, a real review process) can hand work to AI and ship value quickly because anything bad gets caught before it lands.";
+  const WITHOUT = "A team with guardrails can hand work to AI and ship value quickly because anything bad gets caught before it lands.";
+
+  it("does not fire on a sentence whose only commas are inside a parenthetical", () => {
+    expect(fire(WITH)).toEqual([]);
+  });
+
+  it("agrees with the same sentence carrying no parenthetical at all", () => {
+    expect(fire(WITH)).toEqual(fire(WITHOUT));
+  });
+
+  it("still fires on a real series that happens to contain a parenthetical item", () => {
+    const text = "The pass was fast, correct (measured twice), and small.";
+    expect(fire(text).length).toBeGreaterThan(0);
+  });
+
+  it("handles square brackets the same way", () => {
+    expect(fire("A team with guardrails [tests, checks, review] can hand work to AI and ship value quickly.")).toEqual([]);
+  });
+
+  it("is not thrown by an unbalanced bracket", () => {
+    expect(() => fire("A list (a, b, c and d without a close")).not.toThrow();
+  });
+});

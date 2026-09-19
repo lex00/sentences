@@ -58,7 +58,8 @@ const LINT_INPUT_SCHEMA = {
         "to zero — one instance of a shape reports the same as six — and raises each finding a " +
         "severity step; use it on text you already know a model wrote, when the question is whether " +
         "the shape is present at all rather than whether it is a tic. 1 doubles the floors and eases " +
-        "severities, for prose with a voice you are trying not to flatten.",
+        "severities, for prose with a voice you are trying not to flatten. Rules honour the dial " +
+        "only where they were written to, so a level change moves some findings and not others.",
     },
     format: {
       type: "string",

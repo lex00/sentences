@@ -104,13 +104,39 @@ function coreSpan(text: string, span: Span): Span | null {
   return end > span.start ? { start: span.start, end } : null;
 }
 
-// The unit's text cut on every comma, each piece carrying its source offsets. Empty pieces (a
-// doubled comma, a trailing one) drop out — they are not items.
+// Brackets that can hold a list of their own. A comma inside one separates the items of an ASIDE,
+// not the items of the sentence.
+const OPENERS = "([{";
+const CLOSERS = ")]}";
+
+// The unit's text cut on every top-level comma, each piece carrying its source offsets. Empty
+// pieces (a doubled comma, a trailing one) drop out — they are not items.
+//
+// TOP-LEVEL is the whole point. A parenthesised enumeration carries its own commas, and counting
+// them as separators makes the surrounding sentence look like a series it is not:
+//
+//   "A team with guardrails (automated tests, code checks, a real review process) can hand work
+//    to AI and ship value quickly because anything bad gets caught before it lands."
+//
+// reported as a 4-item comma series. Delete the parenthetical and the identical sentence is clean,
+// which is the tell that the aside was doing all the work. The three items inside the brackets are
+// a real list, but they are the aside's list, and a writer enumerating three things in a
+// parenthesis is not building a rhetorical tricolon out of the sentence around it.
+//
+// Same hazard an outside consumer reported against a different rule (#50): commas inside a
+// citation made a two-part sentence look like a three-part one. Counting after the brackets are
+// accounted for is the general answer.
 function commaSegments(text: string, span: Span): Segment[] {
   const segments: Segment[] = [];
   let start = span.start;
+  let depth = 0;
   for (let i = span.start; i <= span.end; i++) {
-    if (i < span.end && text[i] !== ",") continue;
+    if (i < span.end) {
+      const ch = text[i]!;
+      if (OPENERS.includes(ch)) depth++;
+      else if (CLOSERS.includes(ch)) depth = Math.max(0, depth - 1);
+      if (ch !== "," || depth > 0) continue;
+    }
     const trimmed = trimSpan(text, start, i);
     if (trimmed) segments.push({ text: text.slice(trimmed.start, trimmed.end), span: trimmed });
     start = i + 1;
