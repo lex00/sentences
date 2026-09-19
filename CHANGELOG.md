@@ -3,6 +3,45 @@
 Changes to the published `sentences` package that you would notice using it.
 Internal refactors are left out unless they change a result.
 
+## 0.5.0
+
+### A second score
+
+`score.total` weights a finding by severity, which says how confident a rule is in one instance. It
+says nothing about how much that rule firing tells you about the document, and those are different
+questions. Measured against a 39,793-word sample of generated prose with this repository's own
+documentation as a hand-written control:
+
+| | sample | control | separation |
+| --- | --- | --- | --- |
+| all 51 rules | 53.1 | 29.3 | 1.8x |
+| the 19 that discriminate | 26.1 | 1.2 | 21.8x |
+| the 10 that do not | 25.6 | 28.1 | 0.9x |
+
+The second group carries about half the sample score and nearly all of the control score, so the
+headline number was largely measuring the same thing in both columns.
+
+`score.discriminative` is the same arithmetic over the subset listed in `lint/discriminative.ts`.
+This is a second number rather than a replacement. `total` is what you want while editing.
+`discriminative` is what you want when the question is whether a machine wrote it.
+
+Additive to the report, and `version` stays at 1. A rule joins the list only by clearing three
+gates. It must be absent from the control or run at three times its rate there. It must fire in
+both halves of the sample rather than one. And it needs at least three occurrences, so nothing is
+picked on a coincidence. Held out, a list derived from one half of the sample separates the other
+half at 15.8x where the in-sample figure is 16.6x.
+
+One author's blog is not a definition of machine prose, and the file says so. It ships as data in
+one place so a better corpus can replace it.
+
+### Fix
+
+`discourse/punchy-fragments` no longer reads a grammar production table as terse beats. A table
+written with semicolons arrives as verbless units, since the splitter breaks on the semicolon and
+neither half carries a predicate. The suppression keys on arrows alone and applies only inside
+units already judged short and verbless. Real fragment runs are unaffected, including any that
+happen to mention an acronym.
+
 ## 0.4.1
 
 ### Fix: the comma-joined reframe
