@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { anaphoraRule } from "./anaphora.js";
 import { readDocument } from "../../document.js";
 import { wordSpans } from "../stub-doc.js";
+import { buildDocAnalysis } from "../build-doc.js";
 import type { DocAnalysis, UnitAnalysis } from "../types.js";
 
 // Builds a real DocAnalysis through the rule-based document splitter (document.ts, #7/#8) — the
@@ -132,5 +133,40 @@ describe("anaphora/repeated-opening — mixed clause and fragment units", () => 
     // "They." alone has no verb — it's a fragment — but its fallback key ("they") still matches
     // the two lowered units' subjectHead ("they"), completing a run of 3.
     expect(findings).toHaveLength(1);
+  });
+});
+
+// Issue #50: a leading markdown marker is punctuation, not a first word. Reported from a docs site
+// where three bullets in a row were flagged purely because each line began with "-".
+//
+// These go through buildDocAnalysis rather than the readDocument helper above, because that is the
+// path that splits on markdown blocks (blocks.ts). A heading carries no terminator, so under
+// readDocument alone three headings are one unit and the test would pass without proving anything.
+describe("markdown markers are not sentence openings", () => {
+  const run = (text: string) => anaphoraRule.detect(buildDocAnalysis(text));
+
+  it("stays silent on bullets whose prose opens differently", () => {
+    const text = "- Install the package first.\n- Run the build once.\n- Deploy whenever ready.";
+    expect(run(text)).toEqual([]);
+  });
+
+  it("still fires when the prose after the marker really does repeat", () => {
+    const text = "- Not a deployer: it writes files.\n- Not a builder: it copies them.\n- Not a server: it serves once.";
+    const findings = run(text);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.message).toContain("Not a");
+    expect(findings[0]!.message).not.toContain("-");
+  });
+
+  it("ignores ordered-list markers too", () => {
+    expect(run("1. Install it.\n2. Build it.\n3. Ship it.")).toEqual([]);
+  });
+
+  it("ignores heading markers", () => {
+    expect(run("## Setup\n\n## Usage\n\n## Notes")).toEqual([]);
+  });
+
+  it("strips a stacked marker, so a quoted bullet loses both", () => {
+    expect(run("> - Install it.\n> - Build it.\n> - Ship it.")).toEqual([]);
   });
 });

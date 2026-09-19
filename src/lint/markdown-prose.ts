@@ -48,6 +48,34 @@ function blankSpan(text: string, { start, end }: Span): string {
 // Applied in order. Order matters only where two could overlap: fenced code is removed first (by
 // markdownContext, above the loop), so a table row or a backtick INSIDE a code block is already
 // gone and cannot re-match across the hole it left.
+// --- frontmatter ---------------------------------------------------------------------------
+
+// A delimited metadata block at the very top of the file: `---` for YAML (Jekyll, Astro, Starlight,
+// MDX) or `+++` for TOML (Hugo). Handled here rather than in PATTERNS below because it is
+// start-anchored and occurs at most once, which the pattern loop's global-regex machinery has no
+// way to say.
+//
+// Without this, a file with a title block carries findings no edit can remove. The keys lint as
+// prose and the `---` delimiters count as em dashes, so `title:` and `description:` become
+// colon-reveals and the fences become an em-dash density spike. Measured by the reporter on a
+// 10-page Astro/Starlight site (issue #50): 48 of 63 remaining structural findings were
+// frontmatter, and the number barely moved across a whole editing pass, because there is no prose
+// there to edit.
+//
+// AMBIGUITY, and why position decides it. A `---` line is also a horizontal rule and a setext
+// heading underline, so `---` ... `---` in the middle of a document is not frontmatter. Anchoring
+// to offset 0 is what every static-site generator uses to tell them apart, and it is the rule
+// applied here: only a delimiter on the FIRST line opens a frontmatter block. A document whose
+// first line is a horizontal rule is indistinguishable from one with frontmatter, by construction,
+// and every tool in this ecosystem resolves it the same way.
+const FRONTMATTER = /^(---|\+\+\+)[ \t]*\r?\n(?:[\s\S]*?\r?\n)?\1[ \t]*(?=\r?\n|$)/;
+
+// The frontmatter block's span, or null when the file does not open with one.
+export function frontmatterSpan(text: string): Span | null {
+  const m = FRONTMATTER.exec(text);
+  return m ? { start: 0, end: m[0].length } : null;
+}
+
 const PATTERNS: readonly { name: string; re: RegExp }[] = [
   // HTML comments. Also covers the `<!-- GENERATED FILE`-style markers some doc pipelines use.
   { name: "html comment", re: /<!--[\s\S]*?-->/g },
@@ -85,7 +113,12 @@ export function extractProse(text: string): string {
   // Fenced code first, and from markdownContext rather than a second fence regex here, so this
   // module and the formatting rules agree on what a fence is by construction.
   let out = text;
-  for (const fence of [...markdownContext(text).codeFences].reverse()) out = blankSpan(out, fence);
+  // Frontmatter first: its body can contain anything, including lines that would otherwise read as
+  // a fence or a table row, and blanking it up front keeps those from being classified at all.
+  const front = frontmatterSpan(out);
+  if (front) out = blankSpan(out, front);
+
+  for (const fence of [...markdownContext(out).codeFences].reverse()) out = blankSpan(out, fence);
 
   for (const { re } of PATTERNS) {
     re.lastIndex = 0;

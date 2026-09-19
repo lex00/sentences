@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractProse } from "./markdown-prose.js";
+import { extractProse, frontmatterSpan } from "./markdown-prose.js";
 
 // Every assertion here checks one of two things: that a construct is gone, or that offsets still
 // index the original. The second is the property the whole module exists to keep.
@@ -96,5 +96,61 @@ describe("extractProse — what it keeps", () => {
   it("is idempotent", () => {
     const src = "Read the [guide](x.md).\n\n| a | b |\n\n`code`\n";
     expect(extractProse(extractProse(src))).toBe(extractProse(src));
+  });
+});
+
+describe("frontmatter", () => {
+  const FM = ["---", "title: Export a snapshot", "description: Freeze the estate.", "---", "", "The bundle is deploy ready."].join("\n");
+
+  it("blanks a YAML block at the top of the file", () => {
+    const out = extractProse(FM);
+    expect(out).toHaveLength(FM.length);
+    expect(out).not.toContain("title:");
+    expect(out).not.toContain("---");
+    expect(out).toContain("The bundle is deploy ready.");
+  });
+
+  it("blanks a TOML block too, which Hugo uses", () => {
+    const toml = ["+++", 'title = "Export"', "+++", "", "The bundle is ready."].join("\n");
+    const out = extractProse(toml);
+    expect(out).not.toContain("+++");
+    expect(out).toContain("The bundle is ready.");
+  });
+
+  it("keeps newlines, so line numbers still count", () => {
+    const out = extractProse(FM);
+    expect(out.split("\n")).toHaveLength(FM.split("\n").length);
+  });
+
+  it("reports the span, which starts at 0 and excludes the trailing newline", () => {
+    expect(frontmatterSpan(FM)).toEqual({ start: 0, end: FM.indexOf("---", 3) + 3 });
+  });
+
+  // Position is the only thing separating frontmatter from a horizontal rule, and every static
+  // site generator resolves it the same way: only the first line can open a block.
+  it("leaves a --- rule alone when it is not the first line", () => {
+    const mid = "Some prose first.\n\n---\nnot: frontmatter\n---\n";
+    expect(extractProse(mid)).toContain("not: frontmatter");
+    expect(frontmatterSpan(mid)).toBeNull();
+  });
+
+  it("does not open a block on a --- with no closing delimiter", () => {
+    expect(frontmatterSpan("---\ntitle: unterminated\n\nProse here.\n")).toBeNull();
+  });
+
+  it("handles an empty block", () => {
+    expect(frontmatterSpan("---\n---\nProse.")).toEqual({ start: 0, end: 7 });
+  });
+
+  it("takes the FIRST closing delimiter, not the last", () => {
+    const two = ["---", "title: One", "---", "", "Prose.", "", "---", "", "More prose."].join("\n");
+    const out = extractProse(two);
+    expect(out).toContain("Prose.");
+    expect(out).toContain("More prose.");
+  });
+
+  // The whole point of the issue: the keys lint as prose and the delimiters count as em dashes.
+  it("leaves nothing for the rules to find in a title block", () => {
+    expect(extractProse(FM).slice(0, FM.indexOf("The"))).toMatch(/^\s*$/);
   });
 });

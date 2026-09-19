@@ -66,6 +66,34 @@ path (`Parser` seam: rule-based by default, a loaded `ModelParser` for a second,
 tags every word with its source offsets, so a rule that flags one word reports characters an editor
 can underline, not a token index into a stream the caller has to re-derive.
 
+### Markdown preprocessing
+
+`extractProse` blanks everything that is not prose before the rules see it, replacing it with
+spaces so the output has the same length as the input and every span still indexes the original
+file. Code fences, tables, inline code, link targets, HTML blocks and admonition directives, plus
+**frontmatter**: a `---` (YAML) or `+++` (TOML) block on the FIRST line, through its matching
+delimiter.
+
+Frontmatter earns its own mention because of how it fails without this. The keys lint as prose.
+The delimiters count as em dashes. So `title:` becomes a colon-reveal and the fences become a
+density spike, and none of it can be edited away, because there is no prose there to edit. Measured by an outside reporter on a 10-page Astro/Starlight site (#50): 48 of 63 remaining
+structural findings were frontmatter, and the count barely moved across a full editing pass.
+
+A `---` line is also a horizontal rule and a setext underline, so position is what disambiguates:
+only the first line can open a block. That is the rule every static-site generator uses, and a
+document whose first line is a horizontal rule is indistinguishable from one with frontmatter by
+construction.
+
+What is deliberately NOT blanked is the markers themselves. A bullet's `-` and a heading's `##`
+have to survive into the extracted text. `blocks.ts` splits units on them and the formatting rules
+count them.
+
+The cost is that a marker is the first token of its unit. A rule keying on sentence openings sees
+`-` three times in a list and calls it anaphora. That is handled where openings are computed:
+`rules/anaphora.ts` strips a leading marker, so the prose after it still lints. Three bullets that
+genuinely do open the same way are still reported, now naming the word instead of the
+punctuation.
+
 ### Rule engine
 
 Forty-eight rules across four tiers: lexical (word lists with POS gating), syntactic (structural

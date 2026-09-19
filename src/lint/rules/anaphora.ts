@@ -36,6 +36,18 @@ const AMBIGUOUS_OPENERS = new Set(["a", "an", "the", "this", "that", "these", "t
 
 type OpeningKey = { display: string; norm: string };
 
+// A leading markdown marker is punctuation, not the sentence's first word. Without stripping it,
+// every bullet in a list keys on "-" and three of them in a row read as anaphora — 11 such findings
+// on a measured docs site (issue #50), none of them about the prose. Stripped here rather than in
+// markdown-prose.ts because the markers have to survive into the extracted text: blocks.ts splits
+// units on them and the formatting rules count them.
+//
+// Repeated on purpose, so "> - quoted item" loses both. What is left is the prose, which is what
+// the reader hears an opening in.
+const LEADING_MARKER = /^\s*(?:[-*+][ \t]+|\d+[.)][ \t]+|#{1,6}[ \t]+|>[ \t]*)+/;
+
+const withoutMarker = (text: string): string => text.replace(LEADING_MARKER, "");
+
 function firstWords(text: string, n: number): string {
   return text.trim().split(/\s+/).filter(Boolean).slice(0, n).join(" ");
 }
@@ -45,11 +57,12 @@ function openingKey(unit: DocAnalysis["units"][number]): OpeningKey | null {
     const head = subjectHead(unit.clauses[0]!);
     if (head) return { display: head.text, norm: head.text.toLowerCase() };
   }
-  const words = unit.unit.trim().split(/\s+/).filter(Boolean);
+  const bare = withoutMarker(unit.unit);
+  const words = bare.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return null;
   const bareFirst = (words[0] ?? "").toLowerCase().replace(/[^\p{L}\p{N}']/gu, "");
   const n = AMBIGUOUS_OPENERS.has(bareFirst) && words.length > 1 ? 2 : 1;
-  const display = firstWords(unit.unit, n);
+  const display = firstWords(bare, n);
   return { display, norm: display.toLowerCase() };
 }
 
