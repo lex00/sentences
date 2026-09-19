@@ -3,6 +3,24 @@
 Changes to the published `sentences` package that you would notice using it.
 Internal refactors are left out unless they change a result.
 
+## 0.5.1
+
+### Fix: the arrow suppression in 0.5.0 was too broad
+
+0.5.0 stopped `discourse/punchy-fragments` reading a grammar production table as terse beats, and
+keyed that on the arrow alone. Arrows are themselves a tell, so this handed a free pass to one of
+the runs the rule most wants to catch.
+
+It went unnoticed because of how it was calibrated. Across the sample used, no short fragment on
+the generated side contained an arrow at all, while a handful on the hand-written side did, so the
+suppression appeared to remove only false positives. That sample is long-form prose. Short-form
+generated copy uses arrows far more heavily, and on an arrow-dense document 0.5.0 would lose real
+runs that 0.4.1 reported.
+
+Both halves are now required: an arrow AND a short all-caps category symbol. A grammar table maps
+between symbols; decoration maps between ordinary words. Tables stay suppressed, arrow runs between
+ordinary words fire again.
+
 ## 0.5.0
 
 ### A second score
