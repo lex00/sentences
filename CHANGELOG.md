@@ -3,6 +3,25 @@
 Changes to the published `sentences` package that you would notice using it.
 Internal refactors are left out unless they change a result.
 
+## 0.4.1
+
+### Fix: the comma-joined reframe
+
+Negative parallelism folded into a single sentence and joined by a comma, with the same subject and
+the same form of "to be" on both sides, the first negated and the second not. This is the form that
+opens a great many announcement posts, and every arm of the rule missed it.
+
+Each missed it for a different reason, which is why it survived. One arm looks for a following
+sentence, and a comma does not end one. Another wants a requirement in the answering half and finds
+a copula instead. A third needs the sentence to lower into clauses, and this shape frequently does
+not lower at all.
+
+The new arm keys on the repetition rather than on any vocabulary: both halves must share a subject
+word and a verb form. Two unrelated facts joined by a comma share neither and stay clean.
+
+Calibration is unchanged. Across a 39,793-word sample of the target register the rule reports 1.38
+findings per 1000 words against 0.13 on hand-written control documents.
+
 ## 0.4.0
 
 ### POS tags were never populated (fix)
