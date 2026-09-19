@@ -3,6 +3,49 @@
 Changes to the published `sentences` package that you would notice using it.
 Internal refactors are left out unless they change a result.
 
+## 0.4.0
+
+### POS tags were never populated (fix)
+
+`buildDocAnalysis` is the path the CLI and the MCP server both run, and it left `pos` undefined on
+every word. Every POS-gated lexicon entry therefore failed closed and could not fire in the shipped
+package. That is 23 entries across five lexicons, among them `quietly` and `delve`, and both of
+the verb lists that carry a POS gate.
+
+The tagger now runs per unit and its tags are aligned to the scanned words. Nouns stay unmapped on
+purpose, because the tagger's catch-all covers nouns and everything it could not place, so claiming
+those are nouns would be a guess. Verbs, adverbs and adjectives map across.
+
+### New rules
+
+- `discourse/epistrophe` finds a run of sentences landing on the same two words. This is
+  anaphora's mirror image and nothing was watching it, so a passage built on four sentences ending
+  the same way scored zero.
+- `discourse/conjunction-opener` treats a bare `And`/`But`/`So` opener as a document RATE rather
+  than an instance. One of them is emphasis; one sentence in ten is a cadence. The floor sits at 3%
+  of sentences, above the maximum measured in any hand-written document available for calibration.
+- `claude/invitation` catches a conjured hypothetical used to open a sentence, where the reader is
+  asked to picture a scene before the point arrives. A single instance reports at `candidate`, and
+  three make it a habit.
+
+### Better detection
+
+- Two more forms of negative parallelism. Both were invisible because neither produces a complement
+  for the IR to pair on. The first is a copula whose predicate is a prepositional phrase, so the
+  denial and its replacement each land on a preposition. The second drops the predicate out of the
+  answering half, which then ends on a bare copula. Both are matched on text, and both stand down
+  wherever the IR path already reported that pair.
+- `tricolon/comma-series` now weighs a shared opening word one step heavier. Naming three things is
+  a list; saying one thing three times in the same frame is a figure of speech. Articles and
+  demonstratives do not count, since English forces those before a noun.
+- Commas inside brackets no longer split a series, and a list of names is no longer read as a
+  tricolon.
+
+### Library
+
+New `lint/neighborhood.ts` with `runsOf()` and `neighborhoods()`, the two windowing shapes several
+rules had each been reinventing.
+
 ## 0.3.0
 
 ### Reduction mode (new)
