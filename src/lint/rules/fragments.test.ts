@@ -194,9 +194,18 @@ describe("grammar notation is not a punchy fragment", () => {
     expect(fire("transitive NP → direct object; SBAR → subordinate-clause modifier")).toEqual([]);
   });
 
-  it("stays silent on ASCII arrows too", () => {
+  it("stays silent on ASCII production arrows too", () => {
     expect(fire("transitive NP -> direct object; SBAR -> subordinate-clause modifier")).toEqual([]);
-    expect(fire("input => parse; parse => lower")).toEqual([]);
+  });
+
+  // The arrow alone must NOT suppress. Arrows are an AI tell in their own right — CLAUDE.md lists
+  // unicode decoration and gives this very shape as the example — so suppressing on the character
+  // would hand a free pass to one of the runs this rule most wants. An earlier version did exactly
+  // that, and short-form generated copy is far more arrow-heavy than the long-form prose it was
+  // calibrated against.
+  it("still catches an arrow run between ordinary words", () => {
+    expect(fire("Input → Processing → Output. Simple. Fast. Done.").length).toBeGreaterThan(0);
+    expect(fire("Before -> after. Not a tweak. A rewrite.").length).toBeGreaterThan(0);
   });
 
   it("breaks a run rather than silencing the whole document", () => {

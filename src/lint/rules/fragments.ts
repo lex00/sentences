@@ -159,23 +159,30 @@ const MIN_UNITS = 4;
 const DENSITY_MEDIUM = 0.3;
 const DENSITY_HIGH = 0.5;
 
-// A production arrow is notation, not punctuation. A grammar table written as
+// A production arrow BETWEEN GRAMMAR SYMBOLS is notation, not punctuation. A reference table like
 //
 //   transitive NP → direct object; SBAR → subordinate-clause modifier
 //
 // arrives here as two verbless units, because splitUnits breaks on the semicolon and neither half
-// has a predicate — so a reference table reads as a column of terse beats. Both halves of that
-// example were false positives in docs/PARSER.md, and they were reaching score.discriminative,
-// which is the number that has to be trustworthy.
+// has a predicate — so a table reads as a column of terse beats.
 //
-// Only arrows, and only inside a unit already judged verbless and short. formatting.ts's
-// unicode-decoration rule already treats these characters as something other than prose, so the
-// judgement is not a new one. An all-caps test was the obvious alternative and is rejected: "API",
-// "CLI" and "JSON" are ordinary words in this domain, and suppressing on them would silence real
-// fragments that happen to mention one.
+// BOTH HALVES OF THE TEST ARE REQUIRED, and an earlier version of this that keyed on the arrow
+// alone was wrong. Arrows are themselves an AI tell: CLAUDE.md lists unicode decoration and gives
+// "Input → Processing → Output" as the example, and formatting/unicode-decoration reports exactly
+// that. Suppressing every arrow-bearing fragment therefore hands a free pass to one of the shapes
+// this rule most wants to catch, and short-form generated copy uses arrows far more heavily than
+// the long-form prose the first version was calibrated against.
+//
+// What separates the two is the other side of the arrow. A grammar table maps between CATEGORY
+// SYMBOLS — short all-caps tokens like NP, VP, SBAR, CC. Decoration maps between ordinary words.
+// So the suppression needs an arrow AND a symbol, which also disposes of the reason all-caps was
+// rejected as a standalone signal: "API", "CLI" and "JSON" are ordinary words here, but none of
+// them appears on the far side of a production arrow in running prose.
 const NOTATION_ARROW = /[\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F]|->|=>/;
+const GRAMMAR_SYMBOL = /(?:^|[^\p{L}])[A-Z]{2,5}(?![\p{Ll}])/u;
 
-const isNotation = (u: UnitAnalysis): boolean => NOTATION_ARROW.test(u.unit);
+const isNotation = (u: UnitAnalysis): boolean =>
+  NOTATION_ARROW.test(u.unit) && GRAMMAR_SYMBOL.test(u.unit);
 
 function isShortFragment(ctx: Context, u: UnitAnalysis): boolean {
   return (
