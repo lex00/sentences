@@ -232,9 +232,40 @@ function isSeries(text: string, items: Span[]): boolean {
 // wearing a sentence; 6+ is an inventory. The escalation mirrors rules/tricolon.ts's own.
 const severityFor = (count: number): Severity => (count >= 6 ? "high" : count >= 4 ? "medium" : "low");
 
+// Do the items open on the same word? "never read, never review, and never hand-edit" is a list by
+// every structural test here and a figure of speech by ear, and the difference is the repetition
+// INSIDE the series. An enumeration names three things; a rhetorical tricolon says one thing three
+// times in the same frame, and the shared opening is what tells a reader which they are getting.
+//
+// Counted over the items with the coordinator stripped, since the last one carries "and" or "or".
+// Two matching openings out of three is enough — the figure does not require all of them.
+const MIN_SHARED_OPENINGS = 2;
+
+// An article or demonstrative repeating across items is not anaphora. "The parser is fast, the
+// layout is tidy, and the export works" shares "the" because English requires a determiner before
+// those nouns, not because the writer chose to echo anything. A pronoun IS a choice — "we tested
+// it, we shipped it, we watched it burn" could have varied its subjects and did not — so pronouns
+// stay in. The test is whether the repetition was forced by grammar or picked by the writer.
+const FORCED_OPENERS = new Set(["a", "an", "the", "this", "that", "these", "those"]);
+
+const LADDER: readonly Severity[] = ["candidate", "low", "medium", "high"];
+const bumpSeverity = (sev: Severity): Severity => LADDER[Math.min(LADDER.length - 1, LADDER.indexOf(sev) + 1)]!;
+
+function sharedOpening(text: string, items: readonly Span[]): string | null {
+  const firsts = items.map((sp) => {
+    const words = text.slice(sp.start, sp.end).trim().split(/\s+/).filter(Boolean);
+    const w = (CONJ_OPENER.test(`${words[0] ?? ""} `) ? words[1] : words[0]) ?? "";
+    return w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "");
+  });
+  const counts = new Map<string, number>();
+  for (const f of firsts) if (f && !FORCED_OPENERS.has(f)) counts.set(f, (counts.get(f) ?? 0) + 1);
+  for (const [word, n] of counts) if (n >= MIN_SHARED_OPENINGS) return word;
+  return null;
+}
+
 // --- the rule ---
 
-type Hit = { span: Span; items: number; first: string; last: string };
+type Hit = { span: Span; items: number; first: string; last: string; shared: string | null };
 
 function collect(doc: DocAnalysis): Hit[] {
   const hits: Hit[] = [];
@@ -248,6 +279,7 @@ function collect(doc: DocAnalysis): Hit[] {
       items: items.length,
       first: doc.text.slice(items[0]!.start, items[0]!.end),
       last: doc.text.slice(items[items.length - 1]!.start, items[items.length - 1]!.end),
+      shared: sharedOpening(doc.text, items),
     });
   }
   return hits;
@@ -272,14 +304,22 @@ export const tricolonSeriesRule: TropeRule = {
       .map((h) => ({
         ruleId: RULE_ID,
         span: h.span,
-        severity: severityFor(h.items),
-        message: `a ${h.items}-item comma series: “${h.first}, … ${h.last}”`,
+        // A shared opening word moves this from enumeration to figure of speech, so it is worth a
+        // step. See sharedOpening: naming three things is a list, saying one thing three times in
+        // the same frame is rhetoric, and the reader hears the difference immediately.
+        severity: h.shared ? bumpSeverity(severityFor(h.items)) : severityFor(h.items),
+        message: h.shared
+          ? `a ${h.items}-item comma series, every item opening on “${h.shared}”`
+          : `a ${h.items}-item comma series: “${h.first}, … ${h.last}”`,
         explanation:
           `Three parallel phrases in a row land like a drumbeat, and once you hear it you hear it everywhere — ` +
           `“contribute code, iterate alongside engineering, and help build the guardrails”. ` +
           (h.items > 3
             ? `${h.items} items is past rhetoric and into inventory: keep the ones that carry weight and cut the rest. `
             : `Keep the item that does the work and put the others in their own sentence, or drop one and let two do the job. `) +
+          (h.shared
+            ? `Each item also opens on the same word, “${h.shared}”, which is what turns a list into a figure of speech: the frame repeats and only the last word changes. `
+            : "") +
           `The reader remembers what you said, not how evenly you spaced it.`,
       }));
   },

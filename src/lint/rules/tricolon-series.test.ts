@@ -74,7 +74,23 @@ describe("tricolon/comma-series — shapes", () => {
 
 describe("tricolon/comma-series — severity", () => {
   it("three items is low: visible on a single hit, but the gentlest weight there is", () => {
-    expect(only("We tested it, we shipped it, and we watched it burn.").severity).toBe("low");
+    // Items that do NOT share an opening word: a plain enumeration, which is the gentle case.
+    // ("We tested it, we shipped it, and we watched it burn" used to stand here and no longer
+    // can — every item opens on "we", which is the rhetorical form and now reports a step up.)
+    expect(only("The parser is fast, the layout is tidy, and the export works.").severity).toBe("low");
+  });
+
+  // A shared opening is what separates a figure of speech from a list: naming three things is an
+  // enumeration, saying one thing three times in the same frame is rhetoric, and a reader hears
+  // the difference immediately.
+  it("bumps a step when every item opens on the same word", () => {
+    const f = only("We tested it, we shipped it, and we watched it burn.");
+    expect(f.severity).toBe("medium");
+    expect(f.message).toContain("every item opening on “we”");
+  });
+
+  it("does not bump a series whose items merely start with the same letter", () => {
+    expect(only("The parser is fast, the layout is tidy, and the export works.").message).not.toContain("every item opening");
   });
 
   it("four or five items is medium", () => {

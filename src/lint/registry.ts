@@ -21,6 +21,7 @@ import { claudeAssistantVoiceRule } from "./rules/claude-assistant-voice.js";
 import { claudeDiscourseMarkersRule } from "./rules/claude-discourse-markers.js";
 import { claudeStockFramesRule } from "./rules/claude-stock-frames.js";
 import { corporateJargonRule } from "./rules/corporate-jargon.js";
+import { invitationRule } from "./rules/invitation.js";
 import { excessVocabularyRule } from "./rules/excess-vocabulary.js";
 import { soundsLikeClaudeRule } from "./rules/sounds-like-claude.js";
 import {
@@ -45,6 +46,7 @@ import { anaphoraRule } from "./rules/anaphora.js";
 import { aphoristicEnderRule } from "./rules/aphoristic-ender.js";
 import { deadMetaphorRule } from "./rules/dead-metaphor.js";
 import { elegantVariationRule } from "./rules/elegant-variation.js";
+import { conjunctionOpenerRule } from "./rules/conjunction-opener.js";
 import { epistropheRule } from "./rules/epistrophe.js";
 import { lowValueSentenceRule } from "./rules/low-value-sentence.js";
 import { trailingTailRule } from "./rules/trailing-tail.js";
@@ -70,6 +72,7 @@ export const RULES: readonly TropeRule[] = [
   claudeTechnicalVocabularyRule,
   corporateJargonRule,
   excessVocabularyRule,
+  invitationRule, // "Picture a ..." — the hypothetical the reader did not ask for
   lexDelveFamilyRule,
   lexFalseSuspenseRule,
   lexFillerTransitionsRule,
@@ -99,6 +102,7 @@ export const RULES: readonly TropeRule[] = [
   // --- discourse ---
   anaphoraRule,
   aphoristicEnderRule,
+  conjunctionOpenerRule, // a bare And/But/So opener as a rate, not an instance
   countdownRule,
   deadMetaphorRule,
   dilutionRule,

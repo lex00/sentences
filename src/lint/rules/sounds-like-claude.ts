@@ -44,6 +44,7 @@ import { colonRevealRule } from "./colon-reveal.js";
 import { claudeStockFramesRule } from "./claude-stock-frames.js";
 import { claudeTechnicalVocabularyRule } from "./claude-lexicon.js";
 import { elegantVariationRule } from "./elegant-variation.js";
+import { invitationRule } from "./invitation.js";
 import { mirroredClausesRule } from "./mirrored-clauses.js";
 
 const RULE_ID = "claude/sounds-like-claude";
@@ -63,6 +64,7 @@ const CLAUDE_FAMILIES: readonly TropeRule[] = [
   colonRevealRule,
   contrastTailRule,
   elegantVariationRule,
+  invitationRule,
   mirroredClausesRule,
 ];
 
